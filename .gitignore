@@ -3,3 +3,6 @@ __pycache__/
 
 # IDE
 .idea/
+
+# prevent .env to push
+.env
