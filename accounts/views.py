@@ -85,6 +85,8 @@ class AddressListView(generics.ListCreateAPIView):
     permission_classes = [IsActiveUser]
 
     def get_queryset(self):
+        if not self.request.user.is_authenticated:
+            return Address.objects.none()
         return Address.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
@@ -95,6 +97,8 @@ class AddressDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsOwner]
 
     def get_queryset(self):
+        if not self.request.user.is_authenticated:
+            return Address.objects.none()
         return Address.objects.filter(user=self.request.user)
 
 class UserRoleCheckView(APIView):
