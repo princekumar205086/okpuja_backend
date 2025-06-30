@@ -32,6 +32,7 @@ urlpatterns = [
     
     # API Endpoints
     path('api/auth/', include('accounts.urls')),
+    path('api/puja/', include('puja.urls')),
 ]
 
 if settings.DEBUG:

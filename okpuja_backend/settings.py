@@ -1,6 +1,9 @@
 import os
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -25,10 +28,12 @@ INSTALLED_APPS = [
     'imagekit',
     'django_otp',
     'django_otp.plugins.otp_totp',
+    'django_filters',
     
     # Local apps
     'accounts',
     'core',
+    'puja'
 ]
 
 MIDDLEWARE = [
@@ -116,10 +121,15 @@ EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@okpuja.com')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'okpuja108@gmail.com')
 
 # SMS Configuration
-SMS_BACKEND = os.getenv('SMS_BACKEND', 'accounts.sms.backends.console.SMSBackend')
+# Use Twilio backend if credentials are provided, otherwise default to console
+if os.getenv('TWILIO_ACCOUNT_SID'):
+    SMS_BACKEND = 'accounts.sms.backends.twilio.SMSBackend'
+else:
+    SMS_BACKEND = 'accounts.sms.backends.console.SMSBackend'
+
 TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID', '')
 TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN', '')
 TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER', '')

@@ -42,15 +42,15 @@ class RegisterView(generics.CreateAPIView):
     def _send_verification(self, user):
         # Send OTP via email
         send_mail(
-            'Verify Your Email',
-            f'Your verification code is: {user.otp}',
+            'Verify Your Email for OKPUJA',
+            f'Welcome to OKPUJA! Your verification code is: {user.otp}. This code will expire in {settings.OTP_EXPIRE_MINUTES} minutes.',
             settings.DEFAULT_FROM_EMAIL,
             [user.email],
             fail_silently=False,
         )
         # Send OTP via SMS if phone number is provided
         if user.phone:
-            message = f"Your OKPUJA verification code is: {user.otp}"
+            message = f"Your OKPUJA verification code is {user.otp}. This code is valid for {settings.OTP_EXPIRE_MINUTES} minutes. Do not share this code."
             sms_status = send_sms(user.phone, message)
             SMSLog.objects.create(
                 phone=user.phone,
