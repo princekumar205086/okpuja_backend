@@ -15,7 +15,7 @@ from .serializers import (
     UserConsentSerializer,
     CreateUserConsentSerializer
 )
-from accounts.permissions import IsAdminOrReadOnly
+from core.permissions import IsAdminOrReadOnly
 
 class CurrentTermsOfServiceView(generics.RetrieveAPIView):
     serializer_class = TermsOfServiceSerializer

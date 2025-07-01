@@ -100,6 +100,17 @@ class IsAdminOrEmployeeReadOnly(BasePermission):
                 return True
         return False
 
+class IsAdminOrReadOnly(BasePermission):
+    """
+    Allows full access to admins, read-only for others.
+    """
+    message = "Only admins can modify. Read-only for others."
+
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return True
+        return request.user.is_authenticated and request.user.is_staff
+
 # Utility Permissions
 class ReadOnly(BasePermission):
     """Global read-only permission"""

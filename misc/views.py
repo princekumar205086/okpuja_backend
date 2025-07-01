@@ -12,7 +12,7 @@ from .serializers import (
     ContactUsCreateSerializer,
     ContactUsAdminSerializer
 )
-from accounts.permissions import IsAdminOrReadOnly
+from core.permissions import IsAdminOrReadOnly
 from core.tasks import send_contact_confirmation_email, send_contact_notification_email
 
 class EventListView(generics.ListAPIView):

@@ -10,7 +10,7 @@ from .serializers import (
     GalleryItemDetailSerializer,
     GalleryViewSerializer
 )
-from accounts.permissions import IsAdminOrReadOnly
+from core.permissions import IsAdminOrReadOnly, IsOwnerOrReadOnly
 
 class GalleryCategoryListView(generics.ListAPIView):
     queryset = GalleryCategory.objects.filter(status='PUBLISHED')

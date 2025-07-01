@@ -10,7 +10,7 @@ from .serializers import (
     BlogPostListSerializer, BlogPostDetailSerializer,
     BlogCommentSerializer, BlogLikeSerializer, BlogViewSerializer
 )
-from accounts.permissions import IsAdminOrReadOnly, IsOwnerOrReadOnly
+from core.permissions import IsAdminOrReadOnly, IsOwnerOrReadOnly
 
 class BlogCategoryListCreateView(generics.ListCreateAPIView):
     queryset = BlogCategory.objects.all()
