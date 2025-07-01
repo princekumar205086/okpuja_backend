@@ -33,6 +33,9 @@ urlpatterns = [
     # API Endpoints
     path('api/auth/', include('accounts.urls')),
     path('api/puja/', include('puja.urls')),
+    path('api/astrology/', include('astrology.urls')),
+    path('api/promo/', include('promo.urls')),
+    path('api/cart/', include('cart.urls')),
 ]
 
 if settings.DEBUG:

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Email client compatibility fixes */
+        @media screen and (max-width: 600px) {
+            .mobile-padding { padding-left: 16px !important; padding-right: 16px !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <div class="min-h-screen py-4 px-2 sm:py-8 sm:px-4">
+        <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-6 sm:px-8 sm:py-8">
+                <div class="text-center">
+                    <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-2">
+                        🌟 Astrology Booking Confirmation
+                    </h1>
+                    <p class="text-purple-100 text-sm sm:text-base">
+                        Your cosmic journey begins here
+                    </p>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="px-4 py-6 sm:px-8 sm:py-8 mobile-padding">
+                <!-- Greeting -->
+                <div class="mb-6 sm:mb-8">
+                    <p class="text-gray-800 text-base sm:text-lg mb-3">
+                        Dear Valued Customer,
+                    </p>
+                    <p class="text-gray-600 text-sm sm:text-base leading-relaxed">
+                        Thank you for booking <span class="font-semibold text-purple-600">{{ service.title }}</span> with us. 
+                        We're excited to guide you on your spiritual journey.
+                    </p>
+                </div>
+
+                <!-- Booking Details Card -->
+                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 sm:p-6 mb-6 border border-blue-100">
+                    <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="bg-blue-500 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center text-xs sm:text-sm mr-3">📅</span>
+                        Booking Details
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        <div class="bg-white rounded-md p-3 sm:p-4 border border-blue-200">
+                            <p class="text-xs sm:text-sm text-gray-500 uppercase tracking-wide font-medium mb-1">Date</p>
+                            <p class="text-sm sm:text-base font-semibold text-gray-800">{{ booking.preferred_date }}</p>
+                        </div>
+                        <div class="bg-white rounded-md p-3 sm:p-4 border border-blue-200">
+                            <p class="text-xs sm:text-sm text-gray-500 uppercase tracking-wide font-medium mb-1">Time</p>
+                            <p class="text-sm sm:text-base font-semibold text-gray-800">{{ booking.preferred_time }}</p>
+                        </div>
+                        <div class="bg-white rounded-md p-3 sm:p-4 border border-blue-200 sm:col-span-2">
+                            <p class="text-xs sm:text-sm text-gray-500 uppercase tracking-wide font-medium mb-1">Language</p>
+                            <p class="text-sm sm:text-base font-semibold text-gray-800">{{ booking.language }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Birth Details Card -->
+                <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 sm:p-6 mb-6 border border-purple-100">
+                    <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="bg-purple-500 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center text-xs sm:text-sm mr-3">⭐</span>
+                        Birth Details
+                    </h2>
+                    <div class="space-y-3 sm:space-y-4">
+                        <div class="bg-white rounded-md p-3 sm:p-4 border border-purple-200">
+                            <p class="text-xs sm:text-sm text-gray-500 uppercase tracking-wide font-medium mb-1">Date of Birth</p>
+                            <p class="text-sm sm:text-base font-semibold text-gray-800">{{ booking.birth_date }}</p>
+                        </div>
+                        <div class="bg-white rounded-md p-3 sm:p-4 border border-purple-200">
+                            <p class="text-xs sm:text-sm text-gray-500 uppercase tracking-wide font-medium mb-1">Time of Birth</p>
+                            <p class="text-sm sm:text-base font-semibold text-gray-800">{{ booking.birth_time }}</p>
+                        </div>
+                        <div class="bg-white rounded-md p-3 sm:p-4 border border-purple-200">
+                            <p class="text-xs sm:text-sm text-gray-500 uppercase tracking-wide font-medium mb-1">Place of Birth</p>
+                            <p class="text-sm sm:text-base font-semibold text-gray-800">{{ booking.birth_place }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Questions Section -->
+                {% if booking.questions %}
+                <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 sm:p-6 mb-6 border border-green-100">
+                    <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="bg-green-500 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center text-xs sm:text-sm mr-3">❓</span>
+                        Your Questions
+                    </h2>
+                    <div class="bg-white rounded-md p-3 sm:p-4 border border-green-200">
+                        <p class="text-sm sm:text-base text-gray-700 leading-relaxed italic">
+                            "{{ booking.questions }}"
+                        </p>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Contact Information -->
+                <div class="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 sm:p-6 border border-orange-100">
+                    <div class="flex items-start space-x-3">
+                        <div class="bg-orange-500 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center text-xs sm:text-sm flex-shrink-0 mt-1">
+                            📞
+                        </div>
+                        <div>
+                            <h3 class="text-base sm:text-lg font-semibold text-gray-800 mb-2">What's Next?</h3>
+                            <p class="text-sm sm:text-base text-gray-600 leading-relaxed mb-2">
+                                We'll contact you shortly at <span class="font-semibold text-orange-600">{{ booking.contact_phone }}</span> 
+                                if we need any additional information.
+                            </p>
+                            <p class="text-sm sm:text-base text-gray-600">
+                                Please ensure your phone is accessible for our astrologer to reach you.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="bg-gray-50 px-4 py-6 sm:px-8 sm:py-8 border-t border-gray-200">
+                <div class="text-center">
+                    <p class="text-base sm:text-lg font-semibold text-gray-800 mb-2">
+                        Thank you for choosing our services! 🙏
+                    </p>
+                    <p class="text-xs sm:text-sm text-gray-500 mb-4">
+                        May the stars align in your favor
+                    </p>
+                    <div class="flex flex-wrap justify-center gap-2 text-xs sm:text-sm text-gray-400">
+                        <span>✨ Professional Astrology Services</span>
+                        <span class="hidden sm:inline">•</span>
+                        <span>🌙 Trusted by Thousands</span>
+                        <span class="hidden sm:inline">•</span>
+                        <span>🔮 Ancient Wisdom, Modern Approach</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
