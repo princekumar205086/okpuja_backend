@@ -3,107 +3,147 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
-from .models import GalleryCategory, GalleryItem, GalleryView
+from django.utils import timezone
+from .models import Event, JobOpening, ContactUs
 from .serializers import (
-    GalleryCategorySerializer,
-    GalleryItemListSerializer,
-    GalleryItemDetailSerializer,
-    GalleryViewSerializer
+    EventSerializer,
+    JobOpeningSerializer,
+    ContactUsSerializer,
+    ContactUsCreateSerializer,
+    ContactUsAdminSerializer
 )
 from accounts.permissions import IsAdminOrReadOnly
+from core.tasks import send_contact_confirmation_email, send_contact_notification_email
 
-class GalleryCategoryListView(generics.ListAPIView):
-    queryset = GalleryCategory.objects.filter(status='PUBLISHED')
-    serializer_class = GalleryCategorySerializer
+class EventListView(generics.ListAPIView):
+    serializer_class = EventSerializer
     permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['status']
+    filterset_fields = ['status', 'is_featured']
+    
+    def get_queryset(self):
+        # Show upcoming events by default
+        return Event.objects.filter(
+            status='PUBLISHED',
+            event_date__gte=timezone.now().date()
+        ).order_by('event_date')
+    
+    def list(self, request, *args, **kwargs):
+        # Allow showing past events with a query parameter
+        show_past = request.query_params.get('show_past', 'false').lower() == 'true'
+        
+        queryset = self.get_queryset()
+        if show_past:
+            queryset = Event.objects.filter(
+                status='PUBLISHED'
+            ).order_by('-event_date')
+        
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
-class GalleryCategoryDetailView(generics.RetrieveAPIView):
-    queryset = GalleryCategory.objects.all()
-    serializer_class = GalleryCategorySerializer
+class EventDetailView(generics.RetrieveAPIView):
+    queryset = Event.objects.all()
+    serializer_class = EventSerializer
     permission_classes = [permissions.AllowAny]
     lookup_field = 'slug'
 
-class GalleryItemListView(generics.ListAPIView):
-    serializer_class = GalleryItemListSerializer
+class FeaturedEventsView(generics.ListAPIView):
+    serializer_class = EventSerializer
+    permission_classes = [permissions.AllowAny]
+    
+    def get_queryset(self):
+        return Event.objects.filter(
+            status='PUBLISHED',
+            is_featured=True,
+            event_date__gte=timezone.now().date()
+        ).order_by('event_date')[:4]
+
+class JobOpeningListView(generics.ListAPIView):
+    serializer_class = JobOpeningSerializer
     permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['category', 'status', 'is_featured']
+    filterset_fields = ['job_type', 'location', 'is_active']
     
     def get_queryset(self):
-        return GalleryItem.objects.filter(status='PUBLISHED').select_related('category')
+        return JobOpening.objects.filter(
+            is_active=True,
+            application_deadline__gte=timezone.now()
+        ).order_by('application_deadline')
 
-class GalleryItemDetailView(generics.RetrieveAPIView):
-    queryset = GalleryItem.objects.all()
-    serializer_class = GalleryItemDetailSerializer
+class JobOpeningDetailView(generics.RetrieveAPIView):
+    queryset = JobOpening.objects.all()
+    serializer_class = JobOpeningSerializer
     permission_classes = [permissions.AllowAny]
-    
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        
-        # Record view
-        GalleryView.objects.create(
-            item=instance,
-            user=request.user if request.user.is_authenticated else None,
-            ip_address=self.get_client_ip(request),
-            user_agent=request.META.get('HTTP_USER_AGENT', '')
-        )
-        
-        # Increment popularity
-        instance.increment_popularity()
-        
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data)
-    
-    def get_client_ip(self, request):
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
-        else:
-            ip = request.META.get('REMOTE_ADDR')
-        return ip
+    lookup_field = 'slug'
 
-class FeaturedGalleryItemsView(generics.ListAPIView):
-    serializer_class = GalleryItemListSerializer
+class ActiveJobOpeningsView(generics.ListAPIView):
+    serializer_class = JobOpeningSerializer
     permission_classes = [permissions.AllowAny]
     
     def get_queryset(self):
-        return GalleryItem.objects.filter(
-            status='PUBLISHED',
-            is_featured=True
-        ).order_by('-popularity')[:12]
+        return JobOpening.objects.filter(
+            is_active=True,
+            application_deadline__gte=timezone.now()
+        ).order_by('application_deadline')[:5]
 
-class GalleryCategoryItemsView(generics.ListAPIView):
-    serializer_class = GalleryItemListSerializer
+class ContactUsCreateView(generics.CreateAPIView):
+    serializer_class = ContactUsCreateSerializer
     permission_classes = [permissions.AllowAny]
-    
-    def get_queryset(self):
-        category_slug = self.kwargs['slug']
-        category = get_object_or_404(GalleryCategory, slug=category_slug)
-        return GalleryItem.objects.filter(
-            category=category,
-            status='PUBLISHED'
-        ).order_by('-is_featured', '-popularity')
-
-class GalleryUploadView(generics.CreateAPIView):
-    queryset = GalleryItem.objects.all()
-    serializer_class = GalleryItemDetailSerializer
-    permission_classes = [permissions.IsAdminUser]
     
     def perform_create(self, serializer):
-        serializer.save()
+        contact = serializer.save()
+        
+        # Send confirmation to user
+        send_contact_confirmation_email.delay(contact.id)
+        
+        # Send notification to admin
+        send_contact_notification_email.delay(contact.id)
 
-class GalleryAdminListView(generics.ListAPIView):
-    serializer_class = GalleryItemDetailSerializer
+class ContactUsListView(generics.ListAPIView):
+    serializer_class = ContactUsAdminSerializer
     permission_classes = [permissions.IsAdminUser]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['category', 'status', 'is_featured']
+    filterset_fields = ['status', 'subject']
     
     def get_queryset(self):
-        return GalleryItem.objects.all().select_related('category')
+        return ContactUs.objects.all().order_by('-created_at')
 
-class GalleryAdminDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = GalleryItem.objects.all()
-    serializer_class = GalleryItemDetailSerializer
+class ContactUsDetailView(generics.RetrieveUpdateAPIView):
+    queryset = ContactUs.objects.all()
+    serializer_class = ContactUsAdminSerializer
     permission_classes = [permissions.IsAdminUser]
+    
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        new_status = serializer.validated_data.get('status')
+        
+        # Handle status changes
+        if new_status == ContactUsStatus.REPLIED and instance.status != ContactUsStatus.REPLIED:
+            instance.mark_as_replied()
+        elif new_status == ContactUsStatus.CLOSED and instance.status != ContactUsStatus.CLOSED:
+            instance.mark_as_closed()
+        else:
+            serializer.save()
+
+class ContactUsStatusUpdateView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+    
+    def post(self, request, pk, status):
+        contact = get_object_or_404(ContactUs, pk=pk)
+        
+        if status == 'replied':
+            contact.mark_as_replied()
+            return Response({'status': 'marked as replied'})
+        elif status == 'closed':
+            contact.mark_as_closed()
+            return Response({'status': 'marked as closed'})
+        else:
+            return Response(
+                {'error': 'Invalid status'},
+                status=status.HTTP_400_BAD_REQUEST
+            )

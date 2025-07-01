@@ -6,6 +6,7 @@ from twilio.rest import Client
 import logging
 
 from booking.models import Booking
+from misc.models import ContactUs
 
 logger = logging.getLogger(__name__)
 
@@ -137,3 +138,43 @@ def send_payment_status_notification(payment_id):
 def send_refund_initiated_notification(refund_id):
     # TODO: Implement notification logic for refund initiation
     pass
+
+@shared_task
+def send_contact_confirmation_email(contact_id):
+    try:
+        contact = ContactUs.objects.get(pk=contact_id)
+        subject = "Thank you for contacting us"
+        context = {'contact': contact}
+        
+        text_content = render_to_string('emails/contact_confirmation.txt', context)
+        html_content = render_to_string('emails/contact_confirmation.html', context)
+        
+        send_mail(
+            subject,
+            text_content,
+            settings.DEFAULT_FROM_EMAIL,
+            [contact.email],
+            html_message=html_content
+        )
+    except ContactUs.DoesNotExist:
+        pass
+
+@shared_task
+def send_contact_notification_email(contact_id):
+    try:
+        contact = ContactUs.objects.get(pk=contact_id)
+        subject = f"New Contact Message: {contact.subject}"
+        context = {'contact': contact}
+        
+        text_content = render_to_string('emails/contact_notification.txt', context)
+        html_content = render_to_string('emails/contact_notification.html', context)
+        
+        send_mail(
+            subject,
+            text_content,
+            settings.DEFAULT_FROM_EMAIL,
+            [settings.CONTACT_NOTIFICATION_EMAIL],
+            html_message=html_content
+        )
+    except ContactUs.DoesNotExist:
+        pass

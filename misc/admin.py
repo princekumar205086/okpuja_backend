@@ -1,72 +1,51 @@
 from django.contrib import admin
-from .models import GalleryCategory, GalleryItem, GalleryView
+from .models import Event, JobOpening, ContactUs
 from imagekit.admin import AdminThumbnail
 
-@admin.register(GalleryCategory)
-class GalleryCategoryAdmin(admin.ModelAdmin):
-    list_display = ('title', 'slug', 'status', 'position', 'item_count', 'created_at')
-    list_filter = ('status', 'created_at')
-    search_fields = ('title', 'description')
-    prepopulated_fields = {'slug': ('title',)}
-    readonly_fields = ('created_at', 'updated_at')
-    list_editable = ('position', 'status')
-    
-    def item_count(self, obj):
-        return obj.items.count()
-    item_count.short_description = 'Items'
-
-class GalleryViewInline(admin.TabularInline):
-    model = GalleryView
-    extra = 0
-    readonly_fields = ('user', 'ip_address', 'user_agent', 'created_at')
-    can_delete = False
-
-@admin.register(GalleryItem)
-class GalleryItemAdmin(admin.ModelAdmin):
+@admin.register(Event)
+class EventAdmin(admin.ModelAdmin):
     list_display = (
         'admin_thumbnail', 
         'title', 
-        'category', 
+        'event_date', 
+        'location',
         'status', 
-        'is_featured', 
-        'popularity',
+        'is_featured',
         'created_at'
     )
-    list_filter = ('category', 'status', 'is_featured', 'created_at')
-    search_fields = ('title', 'description')
+    list_filter = ('status', 'is_featured', 'event_date')
+    search_fields = ('title', 'description', 'location')
+    prepopulated_fields = {'slug': ('title',)}
     readonly_fields = (
         'created_at', 
-        'updated_at', 
-        'popularity',
+        'updated_at',
         'thumbnail_preview',
-        'medium_preview',
-        'large_preview',
-        'web_preview'
+        'banner_preview'
     )
     list_editable = ('status', 'is_featured')
-    inlines = [GalleryViewInline]
     
     fieldsets = (
         (None, {
-            'fields': ('category', 'title', 'description')
+            'fields': ('title', 'slug', 'description')
         }),
         ('Image', {
             'fields': (
                 'original_image', 
                 'thumbnail_preview',
-                'medium_preview',
-                'large_preview',
-                'web_preview'
+                'banner_preview'
             )
         }),
-        ('Metadata', {
-            'fields': ('taken_at',)
+        ('Details', {
+            'fields': (
+                'event_date', 'start_time', 'end_time', 
+                'location', 'registration_link'
+            )
         }),
         ('Settings', {
             'fields': ('status', 'is_featured')
         }),
-        ('Statistics', {
-            'fields': ('popularity', 'created_at', 'updated_at')
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at')
         }),
     )
     
@@ -79,30 +58,101 @@ class GalleryItemAdmin(admin.ModelAdmin):
         return "-"
     thumbnail_preview.short_description = "Thumbnail URL"
     
-    def medium_preview(self, obj):
-        if obj.medium:
-            return obj.medium.url
+    def banner_preview(self, obj):
+        if obj.banner:
+            return obj.banner.url
         return "-"
-    medium_preview.short_description = "Medium URL"
-    
-    def large_preview(self, obj):
-        if obj.large:
-            return obj.large.url
-        return "-"
-    large_preview.short_description = "Large URL"
-    
-    def web_preview(self, obj):
-        if obj.web_optimized:
-            return obj.web_optimized.url
-        return "-"
-    web_preview.short_description = "Web URL"
+    banner_preview.short_description = "Banner URL"
 
-@admin.register(GalleryView)
-class GalleryViewAdmin(admin.ModelAdmin):
-    list_display = ('item', 'user', 'ip_address', 'created_at')
-    list_filter = ('created_at',)
-    search_fields = ('item__title', 'user__email', 'ip_address')
-    readonly_fields = ('item', 'user', 'ip_address', 'user_agent', 'created_at')
+@admin.register(JobOpening)
+class JobOpeningAdmin(admin.ModelAdmin):
+    list_display = (
+        'title', 
+        'job_type',
+        'location',
+        'application_deadline',
+        'is_active',
+        'created_at'
+    )
+    list_filter = ('job_type', 'is_active', 'application_deadline')
+    search_fields = ('title', 'description', 'location')
+    prepopulated_fields = {'slug': ('title',)}
+    readonly_fields = ('created_at', 'updated_at')
+    list_editable = ('is_active',)
+    
+    fieldsets = (
+        (None, {
+            'fields': ('title', 'slug', 'description')
+        }),
+        ('Details', {
+            'fields': (
+                'responsibilities', 'requirements',
+                'job_type', 'location', 'salary_range'
+            )
+        }),
+        ('Application', {
+            'fields': ('application_deadline', 'application_link')
+        }),
+        ('Status', {
+            'fields': ('is_active',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    )
+    
+    def get_readonly_fields(self, request, obj=None):
+        # Don't allow changing application deadline after creation
+        if obj:
+            return self.readonly_fields + ('application_deadline',)
+        return self.readonly_fields
+
+@admin.register(ContactUs)
+class ContactUsAdmin(admin.ModelAdmin):
+    list_display = (
+        'name', 
+        'email', 
+        'subject', 
+        'status',
+        'created_at',
+        'replied_at'
+    )
+    list_filter = ('status', 'subject', 'created_at')
+    search_fields = ('name', 'email', 'message')
+    readonly_fields = (
+        'name', 'email', 'phone', 
+        'subject', 'message', 'ip_address',
+        'user_agent', 'created_at', 'updated_at',
+        'replied_at'
+    )
+    actions = ['mark_as_replied', 'mark_as_closed']
+    
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'email', 'phone', 'subject', 'message')
+        }),
+        ('Status', {
+            'fields': ('status',)
+        }),
+        ('Metadata', {
+            'fields': ('ip_address', 'user_agent')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at', 'replied_at')
+        }),
+    )
+    
+    def mark_as_replied(self, request, queryset):
+        for contact in queryset:
+            contact.mark_as_replied()
+        self.message_user(request, "Selected contacts marked as replied")
+    mark_as_replied.short_description = "Mark as replied"
+    
+    def mark_as_closed(self, request, queryset):
+        for contact in queryset:
+            contact.mark_as_closed()
+        self.message_user(request, "Selected contacts marked as closed")
+    mark_as_closed.short_description = "Mark as closed"
     
     def has_add_permission(self, request):
         return False

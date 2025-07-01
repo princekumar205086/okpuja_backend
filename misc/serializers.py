@@ -1,32 +1,20 @@
 from rest_framework import serializers
-from .models import GalleryCategory, GalleryItem, GalleryView
-from accounts.serializers import UserSerializer
+from .models import Event, JobOpening, ContactUs
 
-class GalleryCategorySerializer(serializers.ModelSerializer):
-    item_count = serializers.SerializerMethodField()
+class EventSerializer(serializers.ModelSerializer):
+    thumbnail_url = serializers.SerializerMethodField()
+    banner_url = serializers.SerializerMethodField()
+    original_image_url = serializers.SerializerMethodField()
+    days_until = serializers.SerializerMethodField()
     
     class Meta:
-        model = GalleryCategory
+        model = Event
         fields = [
             'id', 'title', 'slug', 'description',
-            'status', 'position', 'item_count',
-            'created_at', 'updated_at'
-        ]
-        read_only_fields = ['id', 'slug', 'item_count', 'created_at', 'updated_at']
-    
-    def get_item_count(self, obj):
-        return obj.items.filter(status='PUBLISHED').count()
-
-class GalleryItemListSerializer(serializers.ModelSerializer):
-    category = GalleryCategorySerializer(read_only=True)
-    thumbnail_url = serializers.SerializerMethodField()
-    medium_url = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = GalleryItem
-        fields = [
-            'id', 'title', 'category', 'thumbnail_url', 'medium_url',
-            'popularity', 'is_featured', 'status', 'created_at'
+            'thumbnail_url', 'banner_url', 'original_image_url',
+            'event_date', 'start_time', 'end_time', 'location',
+            'registration_link', 'status', 'is_featured',
+            'days_until', 'created_at', 'updated_at'
         ]
         read_only_fields = fields
 
@@ -35,41 +23,87 @@ class GalleryItemListSerializer(serializers.ModelSerializer):
             return self.context['request'].build_absolute_uri(obj.thumbnail.url)
         return None
 
-    def get_medium_url(self, obj):
-        if obj.medium:
-            return self.context['request'].build_absolute_uri(obj.medium.url)
+    def get_banner_url(self, obj):
+        if obj.banner:
+            return self.context['request'].build_absolute_uri(obj.banner.url)
         return None
 
-class GalleryItemDetailSerializer(GalleryItemListSerializer):
-    large_url = serializers.SerializerMethodField()
-    web_url = serializers.SerializerMethodField()
-    original_url = serializers.SerializerMethodField()
-    
-    class Meta(GalleryItemListSerializer.Meta):
-        fields = GalleryItemListSerializer.Meta.fields + [
-            'description', 'large_url', 'web_url', 'original_url',
-            'taken_at', 'updated_at'
-        ]
-    
-    def get_large_url(self, obj):
-        if obj.large:
-            return self.context['request'].build_absolute_uri(obj.large.url)
-        return None
-
-    def get_web_url(self, obj):
-        if obj.web_optimized:
-            return self.context['request'].build_absolute_uri(obj.web_optimized.url)
-        return None
-
-    def get_original_url(self, obj):
+    def get_original_image_url(self, obj):
         if obj.original_image:
             return self.context['request'].build_absolute_uri(obj.original_image.url)
         return None
 
-class GalleryViewSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
+    def get_days_until(self, obj):
+        from django.utils import timezone
+        if obj.event_date:
+            delta = obj.event_date - timezone.now().date()
+            return delta.days
+        return None
+
+class JobOpeningSerializer(serializers.ModelSerializer):
+    is_open = serializers.BooleanField(read_only=True)
+    days_until_deadline = serializers.SerializerMethodField()
     
     class Meta:
-        model = GalleryView
-        fields = ['id', 'user', 'ip_address', 'created_at']
+        model = JobOpening
+        fields = [
+            'id', 'title', 'slug', 'description',
+            'responsibilities', 'requirements',
+            'job_type', 'location', 'salary_range',
+            'application_deadline', 'application_link',
+            'is_active', 'is_open', 'days_until_deadline',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = fields
+
+    def get_days_until_deadline(self, obj):
+        from django.utils import timezone
+        if obj.application_deadline:
+            delta = obj.application_deadline - timezone.now()
+            return delta.days
+        return None
+
+class ContactUsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactUs
+        fields = [
+            'id', 'name', 'email', 'phone',
+            'subject', 'message', 'status',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'status', 'created_at', 'updated_at']
+
+class ContactUsCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactUs
+        fields = [
+            'name', 'email', 'phone',
+            'subject', 'message'
+        ]
+        
+    def create(self, validated_data):
+        request = self.context['request']
+        return ContactUs.objects.create(
+            **validated_data,
+            ip_address=self.get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', '')
+        )
+    
+    def get_client_ip(self, request):
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+
+class ContactUsAdminSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactUs
+        fields = [
+            'id', 'name', 'email', 'phone',
+            'subject', 'message', 'status',
+            'ip_address', 'user_agent',
+            'created_at', 'updated_at', 'replied_at'
+        ]
         read_only_fields = fields

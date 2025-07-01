@@ -2,16 +2,21 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    # Public endpoints
-    path('categories/', views.GalleryCategoryListView.as_view(), name='category-list'),
-    path('categories/<slug:slug>/', views.GalleryCategoryDetailView.as_view(), name='category-detail'),
-    path('items/', views.GalleryItemListView.as_view(), name='item-list'),
-    path('items/featured/', views.FeaturedGalleryItemsView.as_view(), name='featured-items'),
-    path('items/<int:pk>/', views.GalleryItemDetailView.as_view(), name='item-detail'),
-    path('categories/<slug:slug>/items/', views.GalleryCategoryItemsView.as_view(), name='category-items'),
+    # Events
+    path('events/', views.EventListView.as_view(), name='event-list'),
+    path('events/featured/', views.FeaturedEventsView.as_view(), name='featured-events'),
+    path('events/<slug:slug>/', views.EventDetailView.as_view(), name='event-detail'),
     
-    # Admin endpoints
-    path('admin/items/', views.GalleryAdminListView.as_view(), name='admin-item-list'),
-    path('admin/items/upload/', views.GalleryUploadView.as_view(), name='item-upload'),
-    path('admin/items/<int:pk>/', views.GalleryAdminDetailView.as_view(), name='admin-item-detail'),
+    # Job Openings
+    path('jobs/', views.JobOpeningListView.as_view(), name='job-list'),
+    path('jobs/active/', views.ActiveJobOpeningsView.as_view(), name='active-jobs'),
+    path('jobs/<slug:slug>/', views.JobOpeningDetailView.as_view(), name='job-detail'),
+    
+    # Contact Us
+    path('contact/', views.ContactUsCreateView.as_view(), name='contact-create'),
+    
+    # Admin Endpoints
+    path('admin/contact/', views.ContactUsListView.as_view(), name='admin-contact-list'),
+    path('admin/contact/<int:pk>/', views.ContactUsDetailView.as_view(), name='admin-contact-detail'),
+    path('admin/contact/<int:pk>/<str:status>/', views.ContactUsStatusUpdateView.as_view(), name='admin-contact-status'),
 ]
