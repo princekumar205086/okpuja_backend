@@ -36,6 +36,8 @@ urlpatterns = [
     path('api/astrology/', include('astrology.urls')),
     path('api/promo/', include('promo.urls')),
     path('api/cart/', include('cart.urls')),
+    path('api/booking/', include('booking.urls')),
+    path('api/payments/', include('payment.urls')),
 ]
 
 if settings.DEBUG:

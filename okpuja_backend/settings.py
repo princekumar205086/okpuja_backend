@@ -37,6 +37,9 @@ INSTALLED_APPS = [
     'astrology',
     'promo',
     'cart',
+    'booking',
+    'payment',
+    
 ]
 
 MIDDLEWARE = [

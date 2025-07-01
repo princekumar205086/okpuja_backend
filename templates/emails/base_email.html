@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>{% block title %}OkPuja - Notification{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media only screen and (max-width: 600px) {
+            .email-container {
+                width: 100% !important;
+                padding: 0 16px !important;
+            }
+            .content-padding {
+                padding: 20px 16px !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="min-h-screen py-4 px-2 sm:px-4">
+        <!-- Email Container -->
+        <div class="email-container max-w-2xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-8 text-center">
+                <h1 class="text-white text-2xl sm:text-3xl font-bold">
+                    {% block header_title %}OkPuja{% endblock %}
+                </h1>
+                <p class="text-orange-100 mt-2 text-sm sm:text-base">
+                    {% block header_subtitle %}Your Trusted Spiritual Partner{% endblock %}
+                </p>
+            </div>
+
+            <!-- Main Content -->
+            <div class="content-padding p-6 sm:p-8">
+                {% block content %}
+                <!-- Default content goes here -->
+                {% endblock %}
+            </div>
+
+            <!-- Footer -->
+            <div class="bg-gray-50 px-6 py-6 border-t border-gray-200">
+                <div class="text-center">
+                    <p class="text-gray-600 text-sm mb-4">
+                        Thank you for choosing OkPuja for your spiritual needs
+                    </p>
+                    <div class="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4 text-xs text-gray-500">
+                        <p>© 2025 OkPuja. All rights reserved.</p>
+                        <div class="flex space-x-4">
+                            <a href="#" class="hover:text-orange-500 transition-colors">Privacy Policy</a>
+                            <a href="#" class="hover:text-orange-500 transition-colors">Terms of Service</a>
+                            <a href="#" class="hover:text-orange-500 transition-colors">Contact Us</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile-friendly spacing -->
+        <div class="h-4"></div>
+    </div>
+</body>
+</html>
