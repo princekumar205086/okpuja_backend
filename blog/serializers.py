@@ -25,16 +25,26 @@ class BlogPostListSerializer(serializers.ModelSerializer):
     author = UserSerializer(source='user', read_only=True)
     category = BlogCategorySerializer(read_only=True)
     tags = BlogTagSerializer(many=True, read_only=True)
-    
+    featured_image_thumbnail_url = serializers.SerializerMethodField()
+
     class Meta:
         model = BlogPost
         fields = [
             'id', 'title', 'slug', 'excerpt', 'author',
-            'category', 'tags', 'featured_image_thumbnail',
+            'category', 'tags', 'featured_image_thumbnail_url',
             'status', 'is_featured', 'view_count',
             'created_at', 'updated_at', 'published_at'
         ]
         read_only_fields = fields
+
+    def get_featured_image_thumbnail_url(self, obj):
+        request = self.context.get('request')
+        if obj.featured_image_thumbnail and hasattr(obj.featured_image_thumbnail, 'url'):
+            url = obj.featured_image_thumbnail.url
+            if request is not None:
+                return request.build_absolute_uri(url)
+            return url
+        return None
 
 class BlogPostDetailSerializer(BlogPostListSerializer):
     class Meta(BlogPostListSerializer.Meta):
