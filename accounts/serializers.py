@@ -89,6 +89,9 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.SerializerMethodField()
+    profile_thumbnail = serializers.SerializerMethodField()
+
     class Meta:
         model = UserProfile
         fields = [
@@ -97,6 +100,22 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
+
+    def get_profile_picture(self, obj):
+        if obj.profile_picture:
+            try:
+                return obj.profile_picture.url
+            except ValueError:
+                return None
+        return None
+
+    def get_profile_thumbnail(self, obj):
+        if hasattr(obj, 'profile_thumbnail'):
+            try:
+                return obj.profile_thumbnail.url if obj.profile_thumbnail else None
+            except (ValueError, NameError):  # Use NameError for MissingSource if not imported
+                return None
+        return None
 
 
 class AddressSerializer(serializers.ModelSerializer):

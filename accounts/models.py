@@ -171,7 +171,8 @@ class UserProfile(models.Model):
         _('profile picture'),
         upload_to=user_upload_path,
         blank=True,
-        null=True
+        null=True,
+        default=None  # Explicitly set default to None
     )
     profile_thumbnail = ImageSpecField(
         source='profile_picture',

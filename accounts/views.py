@@ -80,8 +80,15 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
-        profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
-        return profile
+        try:
+            return self.request.user.profile
+        except UserProfile.DoesNotExist:
+            # Create profile with safe defaults
+            return UserProfile.objects.create(
+                user=self.request.user,
+                first_name='',
+                last_name=''
+            )
 
 
 class AddressListView(generics.ListCreateAPIView):
