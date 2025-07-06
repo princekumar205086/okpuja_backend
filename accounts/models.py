@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from imagekit.models import ImageSpecField
 from imagekit.processors import ResizeToFill
+from imagekitio_storage.storage import MediaStorage
 
 
 def user_upload_path(instance, filename):
@@ -172,7 +173,8 @@ class UserProfile(models.Model):
         upload_to=user_upload_path,
         blank=True,
         null=True,
-        default=None  # Explicitly set default to None
+        default=None,
+        storage=MediaStorage()  # Store only profile_picture on ImageKit
     )
     profile_thumbnail = ImageSpecField(
         source='profile_picture',
