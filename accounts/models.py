@@ -35,7 +35,7 @@ class CustomUserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
-        USER = 'USER', _('Public User')
+        USER = 'USER', _('User')
         ADMIN = 'ADMIN', _('Administrator')
         EMPLOYEE = 'EMPLOYEE', _('Employee/Priest')
 

@@ -1,0 +1,253 @@
+{
+  "info": {
+    "_postman_id": "okpuja-accounts-app-2025",
+    "name": "OKPUJA Accounts API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Postman collection for OKPUJA Accounts app endpoints."
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"phone\": \"+460923946597\",\n  \"password\": \"string\",\n  \"password2\": \"string\",\n  \"role\": \"USER\"\n}"
+            },
+            "url": {
+              "raw": "https://api.okpuja.com/api/auth/register/",
+              "protocol": "https",
+              "host": ["api", "okpuja", "com"],
+              "path": ["api", "auth", "register", ""]
+            }
+          }
+        },
+        {
+          "name": "Register Employee (Restricted)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"employee@example.com\",\n  \"phone\": \"+460923946597\",\n  \"password\": \"string\",\n  \"password2\": \"string\",\n  \"role\": \"EMPLOYEE\",\n  \"employee_registration_code\": \"EMPLOYEE2025\"\n}"
+            },
+            "url": {
+              "raw": "https://api.okpuja.com/api/auth/register/",
+              "protocol": "https",
+              "host": ["api", "okpuja", "com"],
+              "path": ["api", "auth", "register", ""]
+            }
+          }
+        },
+        {
+          "name": "Login (JWT Token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"string\"\n}"
+            },
+            "url": {
+              "raw": "https://api.okpuja.com/api/auth/token/",
+              "protocol": "https",
+              "host": ["api", "okpuja", "com"],
+              "path": ["api", "auth", "token", ""]
+            }
+          }
+        },
+        {
+          "name": "OTP Request (Email/SMS)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"via\": \"email\"\n}"
+            },
+            "url": {
+              "raw": "https://api.okpuja.com/api/auth/otp/request/",
+              "protocol": "https",
+              "host": ["api", "okpuja", "com"],
+              "path": ["api", "auth", "otp", "request", ""]
+            }
+          }
+        },
+        {
+          "name": "OTP Verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "https://api.okpuja.com/api/auth/otp/verify/",
+              "protocol": "https",
+              "host": ["api", "okpuja", "com"],
+              "path": ["api", "auth", "otp", "verify", ""]
+            }
+          }
+        },
+        {
+          "name": "Password Reset Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "https://api.okpuja.com/api/auth/password/reset/request/",
+              "protocol": "https",
+              "host": ["api", "okpuja", "com"],
+              "path": ["api", "auth", "password", "reset", "request", ""]
+            }
+          }
+        },
+        {
+          "name": "Password Reset Confirm",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"123456\",\n  \"new_password\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "https://api.okpuja.com/api/auth/password/reset/confirm/",
+              "protocol": "https",
+              "host": ["api", "okpuja", "com"],
+              "path": ["api", "auth", "password", "reset", "confirm", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "Get User List (Admin Only)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "https://api.okpuja.com/api/auth/users/",
+              "protocol": "https",
+              "host": ["api", "okpuja", "com"],
+              "path": ["api", "auth", "users", ""]
+            }
+          }
+        },
+        {
+          "name": "Get/Update/Delete User Detail (Self/Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "https://api.okpuja.com/api/auth/users/1/",
+              "protocol": "https",
+              "host": ["api", "okpuja", "com"],
+              "path": ["api", "auth", "users", "1", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile & Address",
+      "item": [
+        {
+          "name": "Get/Update Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "https://api.okpuja.com/api/auth/profile/",
+              "protocol": "https",
+              "host": ["api", "okpuja", "com"],
+              "path": ["api", "auth", "profile", ""]
+            }
+          }
+        },
+        {
+          "name": "List/Create Address",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "https://api.okpuja.com/api/auth/addresses/",
+              "protocol": "https",
+              "host": ["api", "okpuja", "com"],
+              "path": ["api", "auth", "addresses", ""]
+            }
+          }
+        },
+        {
+          "name": "Get/Update/Delete Address Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "https://api.okpuja.com/api/auth/addresses/1/",
+              "protocol": "https",
+              "host": ["api", "okpuja", "com"],
+              "path": ["api", "auth", "addresses", "1", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Role Check",
+      "item": [
+        {
+          "name": "Check User Role",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "https://api.okpuja.com/api/auth/role-check/",
+              "protocol": "https",
+              "host": ["api", "okpuja", "com"],
+              "path": ["api", "auth", "role-check", ""]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

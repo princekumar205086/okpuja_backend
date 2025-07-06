@@ -153,6 +153,7 @@ IMAGEKIT_URL_ENDPOINT = os.getenv('IMAGEKIT_URL_ENDPOINT', '')
 OTP_EXPIRE_MINUTES = int(os.getenv('OTP_EXPIRE_MINUTES', 15))
 OTP_LENGTH = int(os.getenv('OTP_LENGTH', 6))
 
+
 # Documentation
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
@@ -168,3 +169,6 @@ SWAGGER_SETTINGS = {
 # Admin Seed Config
 ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', 'admin@okpuja.com')
 ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin@123')
+
+# Employee Registration Code (set this in your .env for security)
+EMPLOYEE_REGISTRATION_CODE = os.getenv('EMPLOYEE_REGISTRATION_CODE', 'EMPLOYEE2025')

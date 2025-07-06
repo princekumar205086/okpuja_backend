@@ -35,24 +35,36 @@ class UserSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
     password2 = serializers.CharField(write_only=True, required=True)
+    role = serializers.ChoiceField(choices=[('USER', 'User'), ('EMPLOYEE', 'Employee/Priest')], default='USER', required=False)
+    employee_registration_code = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = User
-        fields = ['email', 'phone', 'password', 'password2']
+        fields = ['email', 'phone', 'password', 'password2', 'role', 'employee_registration_code']
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError({"password": "Password fields didn't match."})
+
+        role = attrs.get('role', 'USER')
+        if role == 'EMPLOYEE':
+            code = attrs.get('employee_registration_code')
+            from django.conf import settings
+            expected_code = getattr(settings, 'EMPLOYEE_REGISTRATION_CODE', None)
+            if not code or not expected_code or code != expected_code:
+                raise serializers.ValidationError({"employee_registration_code": "Invalid or missing employee registration code."})
         return attrs
 
     def create(self, validated_data):
+        role = validated_data.pop('role', 'USER')
+        validated_data.pop('employee_registration_code', None)  # Remove if present
         user = User.objects.create(
             email=validated_data['email'],
-            phone=validated_data.get('phone', '')
+            phone=validated_data.get('phone', ''),
+            role=role
         )
         user.set_password(validated_data['password'])
         user.generate_otp()
-        # user.save() is called inside generate_otp
         return user
 
 class UserProfileSerializer(serializers.ModelSerializer):
