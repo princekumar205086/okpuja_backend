@@ -7,7 +7,7 @@
   },
   "item": [
     {
-      "name": "Auth",
+      "name": "Authentication",
       "item": [
         {
           "name": "Register User",
@@ -21,9 +21,10 @@
               "raw": "{\n  \"email\": \"user@example.com\",\n  \"phone\": \"+460923946597\",\n  \"password\": \"string\",\n  \"password2\": \"string\",\n  \"role\": \"USER\"\n}"
             },
             "url": {
-              "raw": "https://api.okpuja.com/api/auth/register/",
-              "protocol": "https",
-              "host": ["api", "okpuja", "com"],
+              "raw": "http://127.0.0.1:8000/api/auth/register/",
+              "protocol": "http",
+              "host": ["127.0.0.1"],
+              "port": "8000",
               "path": ["api", "auth", "register", ""]
             }
           }
@@ -40,15 +41,16 @@
               "raw": "{\n  \"email\": \"employee@example.com\",\n  \"phone\": \"+460923946597\",\n  \"password\": \"string\",\n  \"password2\": \"string\",\n  \"role\": \"EMPLOYEE\",\n  \"employee_registration_code\": \"EMPLOYEE2025\"\n}"
             },
             "url": {
-              "raw": "https://api.okpuja.com/api/auth/register/",
-              "protocol": "https",
-              "host": ["api", "okpuja", "com"],
+              "raw": "http://127.0.0.1:8000/api/auth/register/",
+              "protocol": "http",
+              "host": ["127.0.0.1"],
+              "port": "8000",
               "path": ["api", "auth", "register", ""]
             }
           }
         },
         {
-          "name": "Login (JWT Token)",
+          "name": "Login (Get JWT Tokens)",
           "request": {
             "method": "POST",
             "header": [
@@ -59,13 +61,39 @@
               "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"string\"\n}"
             },
             "url": {
-              "raw": "https://api.okpuja.com/api/auth/token/",
-              "protocol": "https",
-              "host": ["api", "okpuja", "com"],
-              "path": ["api", "auth", "token", ""]
+              "raw": "http://127.0.0.1:8000/api/auth/login/",
+              "protocol": "http",
+              "host": ["127.0.0.1"],
+              "port": "8000",
+              "path": ["api", "auth", "login", ""]
             }
           }
         },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"<refresh_token>\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:8000/api/auth/refresh/",
+              "protocol": "http",
+              "host": ["127.0.0.1"],
+              "port": "8000",
+              "path": ["api", "auth", "refresh", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "OTP Verification",
+      "item": [
         {
           "name": "OTP Request (Email/SMS)",
           "request": {
@@ -78,9 +106,10 @@
               "raw": "{\n  \"email\": \"user@example.com\",\n  \"via\": \"email\"\n}"
             },
             "url": {
-              "raw": "https://api.okpuja.com/api/auth/otp/request/",
-              "protocol": "https",
-              "host": ["api", "okpuja", "com"],
+              "raw": "http://127.0.0.1:8000/api/auth/otp/request/",
+              "protocol": "http",
+              "host": ["127.0.0.1"],
+              "port": "8000",
               "path": ["api", "auth", "otp", "request", ""]
             }
           }
@@ -97,13 +126,19 @@
               "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"123456\"\n}"
             },
             "url": {
-              "raw": "https://api.okpuja.com/api/auth/otp/verify/",
-              "protocol": "https",
-              "host": ["api", "okpuja", "com"],
+              "raw": "http://127.0.0.1:8000/api/auth/otp/verify/",
+              "protocol": "http",
+              "host": ["127.0.0.1"],
+              "port": "8000",
               "path": ["api", "auth", "otp", "verify", ""]
             }
           }
-        },
+        }
+      ]
+    },
+    {
+      "name": "Password Management",
+      "item": [
         {
           "name": "Password Reset Request",
           "request": {
@@ -116,10 +151,11 @@
               "raw": "{\n  \"email\": \"user@example.com\"\n}"
             },
             "url": {
-              "raw": "https://api.okpuja.com/api/auth/password/reset/request/",
-              "protocol": "https",
-              "host": ["api", "okpuja", "com"],
-              "path": ["api", "auth", "password", "reset", "request", ""]
+              "raw": "http://127.0.0.1:8000/api/auth/password/reset/",
+              "protocol": "http",
+              "host": ["127.0.0.1"],
+              "port": "8000",
+              "path": ["api", "auth", "password", "reset", ""]
             }
           }
         },
@@ -135,9 +171,10 @@
               "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"123456\",\n  \"new_password\": \"newpassword123\"\n}"
             },
             "url": {
-              "raw": "https://api.okpuja.com/api/auth/password/reset/confirm/",
-              "protocol": "https",
-              "host": ["api", "okpuja", "com"],
+              "raw": "http://127.0.0.1:8000/api/auth/password/reset/confirm/",
+              "protocol": "http",
+              "host": ["127.0.0.1"],
+              "port": "8000",
               "path": ["api", "auth", "password", "reset", "confirm", ""]
             }
           }
@@ -145,42 +182,7 @@
       ]
     },
     {
-      "name": "User",
-      "item": [
-        {
-          "name": "Get User List (Admin Only)",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{access_token}}" }
-            ],
-            "url": {
-              "raw": "https://api.okpuja.com/api/auth/users/",
-              "protocol": "https",
-              "host": ["api", "okpuja", "com"],
-              "path": ["api", "auth", "users", ""]
-            }
-          }
-        },
-        {
-          "name": "Get/Update/Delete User Detail (Self/Admin)",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{access_token}}" }
-            ],
-            "url": {
-              "raw": "https://api.okpuja.com/api/auth/users/1/",
-              "protocol": "https",
-              "host": ["api", "okpuja", "com"],
-              "path": ["api", "auth", "users", "1", ""]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Profile & Address",
+      "name": "Profile Management",
       "item": [
         {
           "name": "Get/Update Profile",
@@ -190,60 +192,32 @@
               { "key": "Authorization", "value": "Bearer {{access_token}}" }
             ],
             "url": {
-              "raw": "https://api.okpuja.com/api/auth/profile/",
-              "protocol": "https",
-              "host": ["api", "okpuja", "com"],
+              "raw": "http://127.0.0.1:8000/api/auth/profile/",
+              "protocol": "http",
+              "host": ["127.0.0.1"],
+              "port": "8000",
               "path": ["api", "auth", "profile", ""]
-            }
-          }
-        },
-        {
-          "name": "List/Create Address",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{access_token}}" }
-            ],
-            "url": {
-              "raw": "https://api.okpuja.com/api/auth/addresses/",
-              "protocol": "https",
-              "host": ["api", "okpuja", "com"],
-              "path": ["api", "auth", "addresses", ""]
-            }
-          }
-        },
-        {
-          "name": "Get/Update/Delete Address Detail",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{access_token}}" }
-            ],
-            "url": {
-              "raw": "https://api.okpuja.com/api/auth/addresses/1/",
-              "protocol": "https",
-              "host": ["api", "okpuja", "com"],
-              "path": ["api", "auth", "addresses", "1", ""]
             }
           }
         }
       ]
     },
     {
-      "name": "Role Check",
+      "name": "Admin Endpoints",
       "item": [
         {
-          "name": "Check User Role",
+          "name": "Get User List (Admin Only)",
           "request": {
             "method": "GET",
             "header": [
               { "key": "Authorization", "value": "Bearer {{access_token}}" }
             ],
             "url": {
-              "raw": "https://api.okpuja.com/api/auth/role-check/",
-              "protocol": "https",
-              "host": ["api", "okpuja", "com"],
-              "path": ["api", "auth", "role-check", ""]
+              "raw": "http://127.0.0.1:8000/api/auth/users/",
+              "protocol": "http",
+              "host": ["127.0.0.1"],
+              "port": "8000",
+              "path": ["api", "auth", "users", ""]
             }
           }
         }

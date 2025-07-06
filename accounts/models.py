@@ -1,19 +1,28 @@
+import os
+import uuid
+from datetime import timedelta
+
+from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
+from django.core.validators import RegexValidator
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-from django.core.validators import RegexValidator
 from imagekit.models import ImageSpecField
 from imagekit.processors import ResizeToFill
-import uuid
-import os
-from django.conf import settings
-from datetime import timedelta
+
 
 def user_upload_path(instance, filename):
     ext = filename.split('.')[-1]
     filename = f"{uuid.uuid4()}.{ext}"
     return os.path.join('users', str(instance.user.id), filename)
+
+
+def pancard_upload_path(instance, filename):
+    ext = filename.split('.')[-1]
+    filename = f"{uuid.uuid4()}.{ext}"
+    return os.path.join('users', str(instance.user.id), 'pancards', filename)
+
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -30,8 +39,9 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('role', User.Role.ADMIN)
         extra_fields.setdefault('account_status', User.AccountStatus.ACTIVE)
-        extra_fields.setdefault('is_active', True) # Added from new code
+        extra_fields.setdefault('is_active', True)  # Added from new code
         return self.create_user(email, password, **extra_fields)
+
 
 class User(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
@@ -47,19 +57,19 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     email = models.EmailField(_('email address'), unique=True)
     username = models.CharField(_('username'), max_length=150, blank=True)
-    
+
     phone_regex = RegexValidator(
         regex=r'^\+?1?\d{9,15}$',
         message="Phone number must be entered in the format: '+999999999'"
     )
     phone = models.CharField(
-        _('phone number'), 
-        validators=[phone_regex], 
-        max_length=17, 
-        blank=True, 
+        _('phone number'),
+        validators=[phone_regex],
+        max_length=17,
+        blank=True,
         null=True
     )
-    
+
     role = models.CharField(
         _('role'),
         max_length=20,
@@ -72,7 +82,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         choices=AccountStatus.choices,
         default=AccountStatus.PENDING
     )
-    
+
     # Verification fields
     email_verified = models.BooleanField(_('email verified'), default=False)
     verification_token = models.UUIDField(_('verification token'), default=uuid.uuid4, editable=False)
@@ -85,11 +95,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     # Password Reset
     reset_token = models.UUIDField(default=uuid.uuid4, editable=False, null=True, blank=True)
     reset_token_created_at = models.DateTimeField(null=True, blank=True)
-    
+
     # Timestamps
     date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
     last_login = models.DateTimeField(_('last login'), blank=True, null=True)
-    
+
     # Permissions
     is_staff = models.BooleanField(_('staff status'), default=False)
     is_active = models.BooleanField(_('active'), default=True)
@@ -114,8 +124,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     def generate_otp(self):
         """Generate and save OTP"""
         from random import randint
-        # Assumes OTP_LENGTH is defined in your settings, e.g., OTP_LENGTH = 6
-        self.otp = str(randint(10**(settings.OTP_LENGTH-1), 10**settings.OTP_LENGTH-1))
+        self.otp = str(randint(10 ** (settings.OTP_LENGTH - 1), 10 ** settings.OTP_LENGTH - 1))
         self.otp_created_at = timezone.now()
         self.otp_verified = False
         self.save(update_fields=['otp', 'otp_created_at', 'otp_verified'])
@@ -125,15 +134,14 @@ class User(AbstractBaseUser, PermissionsMixin):
         """Verify OTP with expiry check"""
         if not self.otp or not self.otp_created_at:
             return False
-            
-        # Assumes OTP_EXPIRE_MINUTES is defined in settings, e.g., OTP_EXPIRE_MINUTES = 5
+
         expiry_time = self.otp_created_at + timedelta(minutes=settings.OTP_EXPIRE_MINUTES)
         if timezone.now() > expiry_time:
             return False
-            
+
         if self.otp == otp:
             self.otp_verified = True
-            self.otp = None # Clear OTP after verification
+            self.otp = None  # Clear OTP after verification
             self.otp_created_at = None
             self.save(update_fields=['otp_verified', 'otp', 'otp_created_at'])
             return True
@@ -147,6 +155,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     def is_public_user(self):
         return self.role == self.Role.USER
 
+
 class UserProfile(models.Model):
     user = models.OneToOneField(
         User,
@@ -157,7 +166,7 @@ class UserProfile(models.Model):
     first_name = models.CharField(_('first name'), max_length=100)
     last_name = models.CharField(_('last name'), max_length=100)
     dob = models.DateField(_('date of birth'), blank=True, null=True)
-    
+
     profile_picture = models.ImageField(
         _('profile picture'),
         upload_to=user_upload_path,
@@ -170,7 +179,7 @@ class UserProfile(models.Model):
         format='JPEG',
         options={'quality': 80}
     )
-    
+
     created_at = models.DateTimeField(_('created at'), auto_now_add=True)
     updated_at = models.DateTimeField(_('updated at'), auto_now=True)
 
@@ -180,6 +189,7 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
+
 
 class Address(models.Model):
     user = models.ForeignKey(
@@ -212,6 +222,7 @@ class Address(models.Model):
     def __str__(self):
         return f"{self.address_line1}, {self.city}, {self.postal_code}"
 
+
 class SMSLog(models.Model):
     phone = models.CharField(max_length=15)
     message = models.TextField()
@@ -220,3 +231,35 @@ class SMSLog(models.Model):
 
     def __str__(self):
         return f"SMS to {self.phone}"
+
+
+class PanCard(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='pancard',
+        verbose_name=_('user')
+    )
+    pan_number = models.CharField(_('PAN number'), max_length=10, unique=True)
+    pan_card_image = models.ImageField(
+        _('PAN card image'),
+        upload_to=pancard_upload_path,
+        blank=True,
+        null=True
+    )
+    pan_card_thumbnail = ImageSpecField(
+        source='pan_card_image',
+        processors=[ResizeToFill(150, 150)],
+        format='JPEG',
+        options={'quality': 80}
+    )
+    is_verified = models.BooleanField(_('verified'), default=False)
+    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
+
+    class Meta:
+        verbose_name = _('PAN Card')
+        verbose_name_plural = _('PAN Cards')
+
+    def __str__(self):
+        return self.pan_number
