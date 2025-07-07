@@ -1,23 +1,20 @@
 import os
-import uuid
 import re
+import uuid
 from datetime import timedelta
 from io import BytesIO
 
+from PIL import Image
 from django.conf import settings
 from django.contrib.auth.models import (
     AbstractBaseUser, PermissionsMixin, BaseUserManager
 )
-from django.core.validators import RegexValidator
-from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-from PIL import Image
 from imagekitio import ImageKit
 from imagekitio.models.UploadFileRequestOptions import UploadFileRequestOptions
 from rest_framework import serializers
-
 
 # Initialize ImageKit client with enhanced configuration
 imagekit = ImageKit(
@@ -55,24 +52,24 @@ def upload_to_imagekit(file, file_name, folder=None, is_private=False):
             overwrite_tags=True,
             overwrite_custom_metadata=True
         )
-        
+
         # Handle both file objects and bytes
         if isinstance(file, bytes):
             file = (file_name, BytesIO(file))
-        
+
         response = imagekit.upload_file(
             file=file,
             file_name=file_name,
             options=options
         )
-        
+
         if response.response_metadata.http_status_code != 200:
             raise Exception(
                 f"ImageKit upload failed: {response.response_metadata.raw}"
             )
-            
+
         return response.url
-    
+
     except Exception as e:
         # Log the error for debugging
         print(f"Error uploading to ImageKit: {str(e)}")
@@ -81,6 +78,7 @@ def upload_to_imagekit(file, file_name, folder=None, is_private=False):
 
 class ImageKitField(models.CharField):
     """Enhanced custom field to store ImageKit URLs with validation"""
+
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('max_length', 500)
         kwargs.setdefault('blank', True)
@@ -95,6 +93,7 @@ class ImageKitField(models.CharField):
 
 class CustomUserManager(BaseUserManager):
     """Enhanced user manager with better validation"""
+
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError(_('Users must have an email address'))
@@ -115,6 +114,7 @@ class CustomUserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     """Enhanced User model with India-specific phone validation"""
+
     class Role(models.TextChoices):
         USER = 'USER', _('User')
         ADMIN = 'ADMIN', _('Administrator')
@@ -129,7 +129,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     # Core fields
     email = models.EmailField(_('email address'), unique=True)
     username = models.CharField(_('username'), max_length=150, blank=True)
-    
+
     # India-specific phone number field
     phone = models.CharField(
         _('phone number'),
@@ -326,16 +326,16 @@ class UserProfile(models.Model):
             ext = os.path.splitext(original_filename)[1].lower()
             if ext not in ['.jpg', '.jpeg', '.png', '.gif']:
                 raise serializers.ValidationError("Unsupported image format. Please upload JPG, JPEG, PNG, or GIF.")
-                
+
             filename = f"profile_{self.user.id}_{uuid.uuid4()}{ext}"
-            
+
             # Upload original image
             self.profile_picture_url = upload_to_imagekit(
                 file_bytes,
                 filename,
                 folder="user_profiles"
             )
-            
+
             # Create and upload thumbnail
             thumbnail_bytes = self._create_thumbnail(file_bytes)
             thumbnail_filename = f"thumb_{filename}"
@@ -344,10 +344,10 @@ class UserProfile(models.Model):
                 thumbnail_filename,
                 folder="user_profiles/thumbnails"
             )
-            
+
             self.save()
             return True
-            
+
         except Exception as e:
             # Log the error in production
             print(f"Error saving profile picture: {str(e)}")
@@ -358,10 +358,10 @@ class UserProfile(models.Model):
         try:
             with Image.open(BytesIO(image_bytes)) as img:
                 img = img.convert('RGB')
-                
+
                 # Maintain aspect ratio while fitting within dimensions
                 img.thumbnail(size, Image.Resampling.LANCZOS)
-                
+
                 thumb_io = BytesIO()
                 img.save(thumb_io, format='JPEG', quality=quality, optimize=True)
                 thumb_io.seek(0)
@@ -395,7 +395,7 @@ class Address(models.Model):
         default='India'
     )
     is_default = models.BooleanField(_('default address'), default=False)
-    
+
     # Timestamps
     created_at = models.DateTimeField(_('created at'), auto_now_add=True)
     updated_at = models.DateTimeField(_('updated at'), auto_now=True)
@@ -461,14 +461,14 @@ class PanCard(models.Model):
         max_length=10,
         unique=True
     )
-    
+
     # Image fields
     pan_card_image_url = ImageKitField(_('PAN card image URL'))
     pan_card_thumbnail_url = ImageKitField(_('PAN card thumbnail URL'))
-    
+
     # Verification status
     is_verified = models.BooleanField(_('verified'), default=False)
-    
+
     # Timestamps
     created_at = models.DateTimeField(_('created at'), auto_now_add=True)
     updated_at = models.DateTimeField(_('updated at'), auto_now=True)
@@ -502,16 +502,16 @@ class PanCard(models.Model):
             ext = os.path.splitext(original_filename)[1].lower()
             if ext not in ['.jpg', '.jpeg', '.png']:
                 raise serializers.ValidationError("Only JPG/PNG images are supported for PAN cards.")
-                
+
             filename = f"pancard_{self.user.id}_{uuid.uuid4()}{ext}"
-            
+
             # Upload original image
             self.pan_card_image_url = upload_to_imagekit(
                 file_bytes,
                 filename,
                 folder="pancards"
             )
-            
+
             # Create and upload thumbnail
             thumbnail_bytes = self._create_thumbnail(file_bytes)
             thumbnail_filename = f"thumb_{filename}"
@@ -520,10 +520,10 @@ class PanCard(models.Model):
                 thumbnail_filename,
                 folder="pancards/thumbnails"
             )
-            
+
             self.save()
             return True
-            
+
         except Exception as e:
             # Log the error in production
             print(f"Error saving PAN card image: {str(e)}")
@@ -534,10 +534,10 @@ class PanCard(models.Model):
         try:
             with Image.open(BytesIO(image_bytes)) as img:
                 img = img.convert('RGB')
-                
+
                 # PAN cards often have different aspect ratio
                 img.thumbnail(size, Image.Resampling.LANCZOS)
-                
+
                 thumb_io = BytesIO()
                 img.save(thumb_io, format='JPEG', quality=quality, optimize=True)
                 thumb_io.seek(0)

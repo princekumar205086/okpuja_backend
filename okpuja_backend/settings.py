@@ -42,7 +42,8 @@ INSTALLED_APPS = [
     'blog',
     'cms',
     'gallery',
-    'misc'
+    'misc',
+    'corsheaders',
     
 ]
 
@@ -55,10 +56,22 @@ MIDDLEWARE = [
     'django_otp.middleware.OTPMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
 ]
 
 # The name of the root URLconf module.
 ROOT_URLCONF = 'okpuja_backend.urls'
+
+# configure CORS
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://okpuja.com",
+    "https://www.okpuja.com",
+    "https://api.okpuja.com",
+    "https://okpuja.in",
+    "https://www.okpuja.in",
+]
 
 TEMPLATES = [
     {
