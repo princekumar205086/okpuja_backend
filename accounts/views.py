@@ -3,6 +3,7 @@ from django.core.mail import send_mail
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from core.permissions import (
@@ -259,3 +260,15 @@ class PanCardDetailView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         pancard, _ = PanCard.objects.get_or_create(user=self.request.user)
         return pancard
+
+
+class UserProfilePictureUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        profile = request.user.profile
+        image_file = request.FILES.get('profile_picture')
+        if not image_file:
+            return Response({'detail': 'No file provided.'}, status=status.HTTP_400_BAD_REQUEST)
+        profile.save_profile_picture(image_file)
+        return Response({'profile_picture_url': profile.profile_picture_url, 'profile_thumbnail_url': profile.profile_thumbnail_url})

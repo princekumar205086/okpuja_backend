@@ -102,20 +102,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at']
 
     def get_profile_picture(self, obj):
-        if obj.profile_picture:
-            try:
-                return obj.profile_picture.url
-            except ValueError:
-                return None
-        return None
+        return obj.profile_picture_url if obj.profile_picture_url else None
 
     def get_profile_thumbnail(self, obj):
-        if hasattr(obj, 'profile_thumbnail'):
-            try:
-                return obj.profile_thumbnail.url if obj.profile_thumbnail else None
-            except (ValueError, NameError):  # Use NameError for MissingSource if not imported
-                return None
-        return None
+        return obj.profile_thumbnail_url if obj.profile_thumbnail_url else None
 
 
 class AddressSerializer(serializers.ModelSerializer):
@@ -155,6 +145,16 @@ class UserBasicSerializer(serializers.ModelSerializer):
         fields = ['id', 'email', 'username', 'phone']
 
 
+class PanCardSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PanCard
+        fields = '__all__'
+        read_only_fields = ('user', 'is_verified')
+class PanCardSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PanCard
+        fields = '__all__'
+        read_only_fields = ('user', 'is_verified')
 class PanCardSerializer(serializers.ModelSerializer):
     class Meta:
         model = PanCard

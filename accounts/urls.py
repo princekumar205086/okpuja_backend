@@ -7,6 +7,7 @@ from .views import (
     UserListView,
     UserDetailView,
     UserProfileView,
+    UserProfilePictureUpdateView,
     AddressListView,
     AddressDetailView,
     UserRoleCheckView,
@@ -27,6 +28,7 @@ urlpatterns = [
     path('users/', UserListView.as_view(), name='user-list'),
     path('users/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
     path('profile/', UserProfileView.as_view(), name='user-profile'),
+    path('profile/picture/', UserProfilePictureUpdateView.as_view(), name='profile-picture-update'),
 
     # Address Management
     path('addresses/', AddressListView.as_view(), name='address-list'),
