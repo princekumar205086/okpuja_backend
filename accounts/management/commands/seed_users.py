@@ -47,7 +47,7 @@ class Command(BaseCommand):
         ]
 
         for user_data in test_users:
-            if not User.objects.filter(email=user_data['email']).exists():
+            if not User.objects.filter(email=user_data['email']).exists() and not User.objects.filter(phone=user_data['phone']).exists():
                 user = User.objects.create(
                     email=user_data['email'],
                     phone=user_data['phone'],
@@ -65,14 +65,21 @@ class Command(BaseCommand):
                     last_name=user_data['last_name']
                 )
                 self.stdout.write(self.style.SUCCESS(f'User {user_data["email"]} created'))
+            else:
+                self.stdout.write(self.style.WARNING(f'User or phone already exists for {user_data["email"]}'))
 
         # Create unverified users (for testing OTP flow)
         for _ in range(3):
             email = fake.email()
+            # Generate a unique phone number
+            while True:
+                phone = f'+91{random.randint(6000000000, 9999999999)}'
+                if not User.objects.filter(phone=phone).exists():
+                    break
             if not User.objects.filter(email=email).exists():
                 user = User.objects.create(
                     email=email,
-                    phone=f'+91{fake.msisdn()[3:]}',
+                    phone=phone,
                     role=User.Role.USER,
                     account_status=User.AccountStatus.PENDING,
                     otp_verified=False,
