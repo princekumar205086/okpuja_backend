@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'gallery',
     'misc',
     'corsheaders',
+    'rest_framework_simplejwt.token_blacklist'
     
 ]
 

@@ -3,13 +3,17 @@ from django.core.mail import send_mail
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
+from rest_framework import serializers
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 from core.permissions import (
     IsAdminUser,
     IsOwner,
-    IsActiveUser  # Assuming this permission exists
+    IsActiveUser  
 )
 from .models import User, UserProfile, Address, SMSLog, PanCard
 from .serializers import (
@@ -272,3 +276,29 @@ class UserProfilePictureUpdateView(APIView):
             return Response({'detail': 'No file provided.'}, status=status.HTTP_400_BAD_REQUEST)
         profile.save_profile_picture(image_file)
         return Response({'profile_picture_url': profile.profile_picture_url, 'profile_thumbnail_url': profile.profile_thumbnail_url})
+
+
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+
+
+class LogoutView(APIView):
+    permission_classes = [AllowAny]
+
+    @swagger_auto_schema(
+        request_body=LogoutSerializer,
+        responses={
+            205: openapi.Response('Logout successful'),
+            400: openapi.Response('Bad request')
+        }
+    )
+    def post(self, request):
+        serializer = LogoutSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            refresh_token = serializer.validated_data["refresh"]
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response({"detail": "Logout successful."}, status=status.HTTP_205_RESET_CONTENT)
+        except TokenError:
+            return Response({"detail": "Invalid or expired token."}, status=status.HTTP_400_BAD_REQUEST)

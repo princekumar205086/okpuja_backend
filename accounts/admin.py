@@ -7,7 +7,7 @@ class UserProfileInline(admin.StackedInline):
     model = UserProfile
     can_delete = False
     verbose_name_plural = 'Profile'
-    readonly_fields = ('profile_thumbnail_display',)
+    readonly_fields = ('profile_picture_display', 'profile_thumbnail_display',)
     fields = ('first_name', 'last_name', 'dob', 'profile_picture_display', 'profile_thumbnail_display')
     
     def profile_picture_display(self, obj):
@@ -34,7 +34,7 @@ class PanCardInline(admin.StackedInline):
     model = PanCard
     can_delete = False
     verbose_name_plural = 'PAN Card'
-    readonly_fields = ('pan_card_thumbnail_display',)
+    readonly_fields = ('pan_card_image_display', 'pan_card_thumbnail_display',)
     fields = ('pan_number', 'pan_card_image_display', 'pan_card_thumbnail_display', 'is_verified')
     
     def pan_card_image_display(self, obj):
@@ -102,3 +102,9 @@ class SMSLogAdmin(admin.ModelAdmin):
     search_fields = ('phone',)
     readonly_fields = ('created_at',)
     date_hierarchy = 'created_at'
+
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'first_name', 'last_name', 'dob', 'is_verified')
+    list_filter = ('is_verified',)
+    search_fields = ('user__email', 'first_name', 'last_name')
+    readonly_fields = ('user', 'dob', 'is_verified')

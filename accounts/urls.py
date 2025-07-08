@@ -15,7 +15,8 @@ from .views import (
     PasswordResetConfirmView,
     OTPRequestView,
     OTPVerifyView,
-    PanCardDetailView
+    PanCardDetailView,
+    LogoutView
 )
 
 urlpatterns = [
@@ -47,4 +48,7 @@ urlpatterns = [
 
     # PAN Card
     path('pancard/', PanCardDetailView.as_view(), name='pancard-detail'),
+
+    # Logout
+    path('logout/', LogoutView.as_view(), name='logout'),
 ]
