@@ -10,7 +10,10 @@ class PujaCategorySerializer(serializers.ModelSerializer):
 from accounts.models import upload_to_imagekit
 
 class PujaServiceSerializer(serializers.ModelSerializer):
-    category = PujaCategorySerializer(read_only=True)
+    category = serializers.PrimaryKeyRelatedField(
+        queryset=PujaCategory.objects.all(), write_only=True
+    )
+    category_detail = PujaCategorySerializer(source='category', read_only=True)
     image = serializers.FileField(write_only=True, required=False)
     image_url = serializers.CharField(source='image', read_only=True)
     image_thumbnail = serializers.ImageField(read_only=True)
@@ -20,7 +23,7 @@ class PujaServiceSerializer(serializers.ModelSerializer):
         model = PujaService
         fields = [
             'id', 'title', 'image', 'image_url', 'image_thumbnail', 'image_card',
-            'description', 'category', 'type', 'duration_minutes',
+            'description', 'category', 'category_detail', 'type', 'duration_minutes',
             'is_active', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
