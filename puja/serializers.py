@@ -27,8 +27,19 @@ class PujaServiceSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at']
 
     def create(self, validated_data):
-        image_file = self.context['request'].FILES.get('image')
+        request = self.context.get('request')
+        image_file = request.FILES.get('image') if request else None
         if image_file:
+            image_file.seek(0)
+            image_bytes = image_file.read()
+            image_file.seek(0)
+            from PIL import Image
+            try:
+                img = Image.open(image_file)
+                img.verify()  # Verify image is not broken
+            except Exception:
+                raise serializers.ValidationError({'image': 'Uploaded file is not a valid image.'})
+            image_file.seek(0)
             image_url = upload_to_imagekit(image_file, image_file.name, folder="puja/services")
             validated_data['image'] = image_url
         else:
@@ -36,8 +47,19 @@ class PujaServiceSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        image_file = self.context['request'].FILES.get('image')
+        request = self.context.get('request')
+        image_file = request.FILES.get('image') if request else None
         if image_file:
+            image_file.seek(0)
+            image_bytes = image_file.read()
+            image_file.seek(0)
+            from PIL import Image
+            try:
+                img = Image.open(image_file)
+                img.verify()  # Verify image is not broken
+            except Exception:
+                raise serializers.ValidationError({'image': 'Uploaded file is not a valid image.'})
+            image_file.seek(0)
             image_url = upload_to_imagekit(image_file, image_file.name, folder="puja/services")
             validated_data['image'] = image_url
         return super().update(instance, validated_data)
