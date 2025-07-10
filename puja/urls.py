@@ -1,7 +1,8 @@
 from django.urls import path
 from .views import (
-    PujaCategoryListView, PujaCategoryCreateView,
-    PujaServiceListView, PackageListView,
+    PujaCategoryListView, PujaCategoryCreateView, PujaCategoryDetailView,
+    PujaServiceListView, PujaServiceCreateView, PujaServiceDetailView,
+    PackageListView, PackageCreateView, PackageDetailView,
     PujaBookingListView, PujaBookingCreateView, PujaBookingDetailView
 )
 
@@ -9,13 +10,18 @@ urlpatterns = [
     # Categories
     path('categories/', PujaCategoryListView.as_view(), name='puja-category-list'),
     path('categories/create/', PujaCategoryCreateView.as_view(), name='puja-category-create'),
-    
+    path('categories/<int:pk>/', PujaCategoryDetailView.as_view(), name='puja-category-detail'),
+
     # Services
     path('services/', PujaServiceListView.as_view(), name='puja-service-list'),
-    
+    path('services/create/', PujaServiceCreateView.as_view(), name='puja-service-create'),
+    path('services/<int:pk>/', PujaServiceDetailView.as_view(), name='puja-service-detail'),
+
     # Packages
     path('packages/', PackageListView.as_view(), name='package-list'),
-    
+    path('packages/create/', PackageCreateView.as_view(), name='package-create'),
+    path('packages/<int:pk>/', PackageDetailView.as_view(), name='package-detail'),
+
     # Bookings
     path('bookings/', PujaBookingListView.as_view(), name='puja-booking-list'),
     path('bookings/create/', PujaBookingCreateView.as_view(), name='puja-booking-create'),

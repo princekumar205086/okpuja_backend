@@ -1,12 +1,12 @@
 from rest_framework import generics, permissions, filters
 from django_filters.rest_framework import DjangoFilterBackend
+from core.permissions import IsAdminUser, IsActiveUser
 from .models import PujaCategory, PujaService, Package, PujaBooking
 from .serializers import (
     PujaCategorySerializer, PujaServiceSerializer,
     PackageSerializer, PujaBookingSerializer,
     CreatePujaBookingSerializer
 )
-from core.permissions import IsAdminUser, IsActiveUser
 from .filters import PujaServiceFilter, PackageFilter
 
 class PujaCategoryListView(generics.ListAPIView):
@@ -76,3 +76,28 @@ class PujaBookingDetailView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.user.is_staff:
             return PujaBooking.objects.all()
         return PujaBooking.objects.filter(user=self.request.user)
+
+class PujaCategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = PujaCategory.objects.all()
+    serializer_class = PujaCategorySerializer
+    permission_classes = [IsAdminUser]
+
+class PujaServiceCreateView(generics.CreateAPIView):
+    queryset = PujaService.objects.all()
+    serializer_class = PujaServiceSerializer
+    permission_classes = [IsAdminUser]
+
+class PujaServiceDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = PujaService.objects.all()
+    serializer_class = PujaServiceSerializer
+    permission_classes = [IsAdminUser]
+
+class PackageCreateView(generics.CreateAPIView):
+    queryset = Package.objects.all()
+    serializer_class = PackageSerializer
+    permission_classes = [IsAdminUser]
+
+class PackageDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Package.objects.all()
+    serializer_class = PackageSerializer
+    permission_classes = [IsAdminUser]
