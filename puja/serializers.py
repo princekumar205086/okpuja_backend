@@ -16,13 +16,11 @@ class PujaServiceSerializer(serializers.ModelSerializer):
     category_detail = PujaCategorySerializer(source='category', read_only=True)
     image = serializers.FileField(write_only=True, required=False)
     image_url = serializers.CharField(source='image', read_only=True)
-    image_thumbnail = serializers.ImageField(read_only=True)
-    image_card = serializers.ImageField(read_only=True)
 
     class Meta:
         model = PujaService
         fields = [
-            'id', 'title', 'image', 'image_url', 'image_thumbnail', 'image_card',
+            'id', 'title', 'image', 'image_url',
             'description', 'category', 'category_detail', 'type', 'duration_minutes',
             'is_active', 'created_at', 'updated_at'
         ]

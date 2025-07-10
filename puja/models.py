@@ -32,18 +32,7 @@ class PujaService(models.Model):
 
     title = models.CharField(max_length=255, db_index=True)
     image = ImageKitField(_('image URL'))
-    image_thumbnail = ImageSpecField(
-        source='image',
-        processors=[SmartResize(300, 200)],
-        format='JPEG',
-        options={'quality': 85}
-    )
-    image_card = ImageSpecField(
-        source='image',
-        processors=[ResizeToFill(600, 400)],
-        format='JPEG',
-        options={'quality': 90}
-    )
+    # Removed image_thumbnail and image_card fields because ImageSpecField does not work with URL/CharField
     description = models.TextField()
     category = models.ForeignKey(
         PujaCategory,
