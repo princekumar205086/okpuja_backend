@@ -63,17 +63,21 @@ def upload_to_imagekit(file, file_name, folder=None, is_private=False):
             options=options
         )
 
-        if response.response_metadata.http_status_code != 200:
-            raise Exception(
-                f"ImageKit upload failed: {response.response_metadata.raw}"
-            )
-
-        return response.url
+        # Robust: check for valid response and URL
+        if hasattr(response, 'response_metadata') and getattr(response.response_metadata, 'http_status_code', None) == 200:
+            if hasattr(response, 'url') and response.url and str(response.url).startswith('http'):
+                return response.url
+            elif hasattr(response.response_metadata, 'raw') and response.response_metadata.raw.get('url'):
+                return response.response_metadata.raw['url']
+            else:
+                raise Exception(f"ImageKit upload succeeded but no URL returned: {getattr(response.response_metadata, 'raw', {})}")
+        else:
+            raise Exception(f"ImageKit upload failed: {getattr(response.response_metadata, 'raw', 'No metadata')}")
 
     except Exception as e:
-        # Log the error for debugging
-        print(f"Error uploading to ImageKit: {str(e)}")
-        raise
+        import logging
+        logging.error(f"ImageKit upload error: {e}")
+        raise Exception(f"ImageKit upload error: {e}")
 
 
 class ImageKitField(models.CharField):
