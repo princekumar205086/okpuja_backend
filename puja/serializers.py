@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from puja.models import PujaCategory, PujaService, Package, PujaBooking
 
+#just pushed to check git history
 class PujaCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = PujaCategory
