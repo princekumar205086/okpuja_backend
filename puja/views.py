@@ -86,6 +86,8 @@ class PujaServiceCreateView(generics.CreateAPIView):
     queryset = PujaService.objects.all()
     serializer_class = PujaServiceSerializer
     permission_classes = [IsAdminUser]
+    from rest_framework.parsers import MultiPartParser, FormParser
+    parser_classes = [MultiPartParser, FormParser]
 
 class PujaServiceDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = PujaService.objects.all()
