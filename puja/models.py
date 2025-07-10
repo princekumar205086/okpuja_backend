@@ -2,6 +2,8 @@ from django.db import models
 from django.conf import settings
 from imagekit.models import ImageSpecField
 from imagekit.processors import ResizeToFill, SmartResize
+from accounts.models import ImageKitField
+from django.utils.translation import gettext_lazy as _
 
 User = settings.AUTH_USER_MODEL
 
@@ -29,7 +31,7 @@ class PujaService(models.Model):
         ONLINE = 'ONLINE', 'Online'
 
     title = models.CharField(max_length=255, db_index=True)
-    image = models.ImageField(upload_to=puja_service_image_path)
+    image = ImageKitField(_('image URL'))
     image_thumbnail = ImageSpecField(
         source='image',
         processors=[SmartResize(300, 200)],
@@ -181,4 +183,4 @@ class PujaBooking(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.puja_service.title} - {self.booking_date} ({self.get_status_display()})" 
+        return f"{self.puja_service.title} - {self.booking_date} ({self.get_status_display()})"
