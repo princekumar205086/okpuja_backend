@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from .models import Cart
 from .serializers import CartSerializer, CartCreateSerializer
+from promo.models import PromoCode
 
 class CartViewSet(viewsets.ModelViewSet):
     queryset = Cart.objects.all()

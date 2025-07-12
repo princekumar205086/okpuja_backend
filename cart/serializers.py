@@ -3,6 +3,7 @@ from rest_framework import serializers
 from .models import Cart
 from puja.models import PujaService, Package
 from astrology.models import AstrologyService
+from promo.models import PromoCode
 from puja.serializers import PujaServiceSerializer, PackageSerializer
 from astrology.serializers import AstrologyServiceSerializer
 from promo.serializers import PromoCodeSerializer
