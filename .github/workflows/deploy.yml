@@ -1,0 +1,32 @@
+name: Deploy Django DRF API
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Deploy to VPS
+        run: |
+          ssh -o StrictHostKeyChecking=no root@157.173.221.192 << 'ENDSSH'
+            cd /opt/api.okpuja.com
+            git pull
+            source venv/bin/activate
+            pip install -r requirements.txt
+            python manage.py makemigrations --noinput
+            python manage.py migrate --noinput
+            python manage.py collectstatic --noinput
+            systemctl restart nginx
+            systemctl restart gunicorn_api_okpuja  # or your service name
+          ENDSSH
