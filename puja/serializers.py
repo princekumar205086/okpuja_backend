@@ -124,16 +124,17 @@ class PujaServiceSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 class PackageSerializer(serializers.ModelSerializer):
-    puja_service = PujaServiceSerializer(read_only=True)
+    puja_service = serializers.PrimaryKeyRelatedField(queryset=PujaService.objects.all(), write_only=True)
+    puja_service_detail = PujaServiceSerializer(source='puja_service', read_only=True)
 
     class Meta:
         model = Package
         fields = [
-            'id', 'puja_service', 'location', 'language', 'package_type',
+            'id', 'puja_service', 'puja_service_detail', 'location', 'language', 'package_type',
             'price', 'description', 'includes_materials', 'priest_count',
             'is_active', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at', 'puja_service_detail']
 
 class PujaBookingSerializer(serializers.ModelSerializer):
     puja_service = PujaServiceSerializer(read_only=True)
