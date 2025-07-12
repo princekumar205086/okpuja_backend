@@ -30,4 +30,5 @@ jobs:
             python manage.py collectstatic --noinput
             systemctl restart nginx
             systemctl restart gunicorn_api_okpuja
+            sudo systemctl restart nginx
           ENDSSH
