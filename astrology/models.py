@@ -3,10 +3,31 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
-from imagekit.models import ImageSpecField, ProcessedImageField
-from imagekit.processors import ResizeToFill, SmartResize
+from imagekitio import ImageKit
+from imagekitio.models.UploadFileRequestOptions import UploadFileRequestOptions
 
 User = settings.AUTH_USER_MODEL
+
+# Initialize ImageKit client with enhanced configuration
+imagekit = ImageKit(
+    private_key=settings.IMAGEKIT_PRIVATE_KEY,
+    public_key=settings.IMAGEKIT_PUBLIC_KEY,
+    url_endpoint=settings.IMAGEKIT_URL_ENDPOINT
+)
+
+class ImageKitField(models.CharField):
+    """Enhanced custom field to store ImageKit URLs with validation"""
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('max_length', 500)
+        kwargs.setdefault('blank', True)
+        kwargs.setdefault('null', True)
+        super().__init__(*args, **kwargs)
+
+    def validate(self, value, model_instance):
+        super().validate(value, model_instance)
+        if value and not value.startswith(('http://', 'https://')):
+            raise ValueError("ImageKit URL must be a valid HTTP/HTTPS URL")
 
 def astrology_service_image_path(instance, filename):
     return f'astrology/services/{instance.id}/{filename}'
@@ -25,25 +46,10 @@ class AstrologyService(models.Model):
     service_type = models.CharField(max_length=20, choices=SERVICE_TYPES, db_index=True)
     description = models.TextField()
     
-    # ImageKit integration for main image
-    image = ProcessedImageField(
-        upload_to=astrology_service_image_path,
-        processors=[ResizeToFill(800, 600)],
-        format='JPEG',
-        options={'quality': 90}
-    )
-    image_thumbnail = ImageSpecField(
-        source='image',
-        processors=[SmartResize(300, 200)],
-        format='JPEG',
-        options={'quality': 85}
-    )
-    image_card = ImageSpecField(
-        source='image',
-        processors=[ResizeToFill(600, 400)],
-        format='JPEG',
-        options={'quality': 90}
-    )
+    # Store only the image URL (uploaded to ImageKit)
+    image_url = ImageKitField('Service Image URL')
+    image_thumbnail_url = ImageKitField('Service Thumbnail URL')
+    image_card_url = ImageKitField('Service Card URL')
     
     price = models.DecimalField(max_digits=10, decimal_places=2)
     duration_minutes = models.PositiveIntegerField(default=30)
@@ -62,6 +68,120 @@ class AstrologyService(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.get_service_type_display()})"
+
+    def save_service_image(self, image_file):
+        """
+        Enhanced service image upload with better file handling
+        and error management
+        """
+        try:
+            import os
+            import uuid
+            from PIL import Image
+            from io import BytesIO
+            from rest_framework import serializers
+
+            # Read file content once
+            if hasattr(image_file, 'read'):
+                file_bytes = image_file.read()
+                # Reset file pointer if it's a file object
+                if hasattr(image_file, 'seek'):
+                    image_file.seek(0)
+            else:
+                with open(image_file, 'rb') as f:
+                    file_bytes = f.read()
+
+            # Validate image
+            try:
+                img_test = Image.open(BytesIO(file_bytes))
+                img_test.verify()
+                # Reset BytesIO after verification
+                del img_test
+            except Exception as e:
+                raise serializers.ValidationError(f"Invalid image file: {str(e)}")
+
+            # Generate unique filename
+            original_filename = getattr(image_file, 'name', 'service.jpg')
+            ext = os.path.splitext(original_filename)[1].lower()
+            if ext not in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+                raise serializers.ValidationError("Unsupported image format. Please upload JPG, JPEG, PNG, GIF, or WEBP.")
+
+            filename = f"service_{self.id}_{uuid.uuid4()}{ext}"
+
+            # Upload original image
+            self.image_url = upload_to_imagekit(
+                file_bytes,
+                filename,
+                folder="astrology/services"
+            )
+
+            # Create and upload thumbnail
+            thumbnail_bytes = self._create_thumbnail(file_bytes)
+            thumbnail_filename = f"thumb_{filename}"
+            self.image_thumbnail_url = upload_to_imagekit(
+                thumbnail_bytes,
+                thumbnail_filename,
+                folder="astrology/services/thumbnails"
+            )
+
+            # Create and upload card image (medium size)
+            card_bytes = self._create_card_image(file_bytes)
+            card_filename = f"card_{filename}"
+            self.image_card_url = upload_to_imagekit(
+                card_bytes,
+                card_filename,
+                folder="astrology/services/cards"
+            )
+
+            self.save()
+            return True
+
+        except Exception as e:
+            # Log the error in production
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error saving service image: {str(e)}")
+            raise
+
+    def _create_thumbnail(self, image_bytes, size=(150, 150), quality=80):
+        """Create optimized thumbnail from image bytes"""
+        try:
+            from PIL import Image
+            from io import BytesIO
+            
+            with Image.open(BytesIO(image_bytes)) as img:
+                img = img.convert('RGB')
+
+                # Maintain aspect ratio while fitting within dimensions
+                img.thumbnail(size, Image.Resampling.LANCZOS)
+
+                thumb_io = BytesIO()
+                img.save(thumb_io, format='JPEG', quality=quality, optimize=True)
+                thumb_io.seek(0)
+                return thumb_io.getvalue()
+        except Exception as e:
+            print(f"Error creating thumbnail: {str(e)}")
+            raise
+
+    def _create_card_image(self, image_bytes, size=(300, 200), quality=85):
+        """Create optimized card image from image bytes"""
+        try:
+            from PIL import Image
+            from io import BytesIO
+            
+            with Image.open(BytesIO(image_bytes)) as img:
+                img = img.convert('RGB')
+
+                # Maintain aspect ratio while fitting within dimensions
+                img.thumbnail(size, Image.Resampling.LANCZOS)
+
+                card_io = BytesIO()
+                img.save(card_io, format='JPEG', quality=quality, optimize=True)
+                card_io.seek(0)
+                return card_io.getvalue()
+        except Exception as e:
+            print(f"Error creating card image: {str(e)}")
+            raise
 
 class AstrologyBooking(models.Model):
     STATUS_CHOICES = [
@@ -139,3 +259,44 @@ class AstrologyBooking(models.Model):
             html_message=html_message,
             fail_silently=False
         )
+
+def upload_to_imagekit(file, file_name, folder=None, is_private=False):
+    """Enhanced helper function to upload files to ImageKit with better error handling"""
+    try:
+        from io import BytesIO
+        
+        options = UploadFileRequestOptions(
+            use_unique_file_name=False,
+            folder=folder,
+            is_private_file=is_private,
+            overwrite_file=True,
+            overwrite_ai_tags=True,
+            overwrite_tags=True,
+            overwrite_custom_metadata=True
+        )
+
+        # Handle both file objects and bytes
+        if isinstance(file, bytes):
+            file = (file_name, BytesIO(file))
+
+        response = imagekit.upload_file(
+            file=file,
+            file_name=file_name,
+            options=options
+        )
+
+        # Robust: check for valid response and URL
+        if hasattr(response, 'response_metadata') and getattr(response.response_metadata, 'http_status_code', None) == 200:
+            if hasattr(response, 'url') and response.url and str(response.url).startswith('http'):
+                return response.url
+            elif hasattr(response.response_metadata, 'raw') and response.response_metadata.raw.get('url'):
+                return response.response_metadata.raw['url']
+            else:
+                raise Exception(f"ImageKit upload succeeded but no URL returned: {getattr(response.response_metadata, 'raw', {})}")
+        else:
+            raise Exception(f"ImageKit upload failed: {getattr(response.response_metadata, 'raw', 'No metadata')}")
+
+    except Exception as e:
+        import logging
+        logging.error(f"ImageKit upload error: {e}")
+        raise Exception(f"ImageKit upload error: {e}")
