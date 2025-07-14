@@ -64,18 +64,12 @@ class PaymentViewSet(viewsets.ModelViewSet):
         try:
             with transaction.atomic():
                 payment = serializer.save()
-                gateway = get_payment_gateway(payment.method.lower())
+                
+                # Get PhonePe gateway
+                gateway = get_payment_gateway('phonepe')
                 
                 # Initiate payment with gateway
                 response = gateway.initiate_payment(payment)
-                payment.gateway_response = response
-                
-                # Update payment with gateway response
-                if payment.method == PaymentMethod.PHONEPE:
-                    payment.phonepe_payment_id = response.get('data', {}).get('paymentId')
-                    payment.redirect_url = response.get('data', {}).get('instrumentResponse', {}).get('redirectInfo', {}).get('url')
-                
-                payment.save()
                 
                 # Send payment initiated notification
                 send_payment_initiated_notification.delay(payment.id)
@@ -88,7 +82,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
                     'transaction_id': payment.transaction_id,
                     'amount': payment.amount,
                     'currency': payment.currency,
-                    'payment_url': payment.redirect_url,
+                    'payment_url': response.get('checkout_url'),
                     'status': payment.status
                 })
                 
@@ -112,18 +106,20 @@ class PaymentViewSet(viewsets.ModelViewSet):
         payment = self.get_object()
         
         try:
-            gateway = get_payment_gateway(payment.method.lower())
+            gateway = get_payment_gateway('phonepe')
             status_response = gateway.check_payment_status(payment.merchant_transaction_id)
             
             # Update payment status if changed
-            new_status = status_response.get('state')
+            new_status = status_response.get('status')
             if new_status and new_status != payment.status:
-                payment.status = {
-                    'COMPLETED': PaymentStatus.SUCCESS,
-                    'FAILED': PaymentStatus.FAILED,
-                    'PENDING': PaymentStatus.PENDING
-                }.get(new_status, payment.status)
-                payment.gateway_response = status_response
+                status_mapping = {
+                    'CHECKOUT_ORDER_COMPLETED': PaymentStatus.SUCCESS,
+                    'CHECKOUT_ORDER_FAILED': PaymentStatus.FAILED,
+                    'CHECKOUT_TRANSACTION_ATTEMPT_FAILED': PaymentStatus.FAILED,
+                }
+                payment.status = status_mapping.get(new_status, payment.status)
+                payment.gateway_response = payment.gateway_response or {}
+                payment.gateway_response.update({'status_check': status_response})
                 payment.save()
                 send_payment_status_notification.delay(payment.id)
             
@@ -220,29 +216,34 @@ class PaymentWebhookView(APIView):
     permission_classes = []  # Public endpoint for gateway callbacks
 
     def post(self, request, gateway_name):
-        serializer = PaymentWebhookSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
+        """
+        Handle PhonePe webhook callback
+        """
         try:
-            gateway = get_payment_gateway(gateway_name)
-            if not gateway:
-                return Response(
-                    {'error': 'Invalid payment gateway'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            # Get authorization header
+            authorization_header = request.headers.get('Authorization', '')
             
-            # Process webhook
-            payment = gateway.process_webhook(serializer.validated_data)
+            # Get raw callback body as string
+            callback_body_string = request.body.decode('utf-8')
+            
+            # Process with PhonePe gateway
+            gateway = get_payment_gateway(gateway_name)
+            payment = gateway.process_webhook(authorization_header, callback_body_string)
             
             return Response(
-                PaymentDetailSerializer(payment).data,
+                {
+                    'success': True,
+                    'message': 'Webhook processed successfully',
+                    'payment_id': payment.id,
+                    'status': payment.status
+                },
                 status=status.HTTP_200_OK
             )
             
         except Exception as e:
             logger.error(f"Webhook processing failed: {str(e)}")
             return Response(
-                {'error': str(e)},
+                {'error': str(e), 'success': False},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

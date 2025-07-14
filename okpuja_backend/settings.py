@@ -167,6 +167,25 @@ IMAGEKIT_URL_ENDPOINT = os.getenv('IMAGEKIT_URL_ENDPOINT', '')
 OTP_EXPIRE_MINUTES = int(os.getenv('OTP_EXPIRE_MINUTES', 15))
 OTP_LENGTH = int(os.getenv('OTP_LENGTH', 6))
 
+# PhonePe Payment Gateway Configuration
+PHONEPE_ENV = os.getenv('PHONEPE_ENV', 'UAT')  # UAT for testing, PRODUCTION for live
+PHONEPE_CLIENT_ID = os.getenv('PHONEPE_CLIENT_ID', '')
+PHONEPE_CLIENT_SECRET = os.getenv('PHONEPE_CLIENT_SECRET', '')
+PHONEPE_CLIENT_VERSION = int(os.getenv('PHONEPE_CLIENT_VERSION', 1))
+
+# PhonePe URLs
+PHONEPE_REDIRECT_URL = os.getenv('PHONEPE_REDIRECT_URL', 'http://localhost:8000/api/payments/webhook/phonepe/')
+PHONEPE_CALLBACK_URL = os.getenv('PHONEPE_CALLBACK_URL', 'http://localhost:8000/api/payments/webhook/phonepe/')
+PHONEPE_FAILED_REDIRECT_URL = os.getenv('PHONEPE_FAILED_REDIRECT_URL', 'http://localhost:3000/failedbooking')
+PHONEPE_SUCCESS_REDIRECT_URL = os.getenv('PHONEPE_SUCCESS_REDIRECT_URL', 'http://localhost:3000/confirmbooking/')
+
+# Frontend Base URL
+FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'http://localhost:3000')
+
+# PhonePe Callback Authentication
+PHONEPE_CALLBACK_USERNAME = os.getenv('PHONEPE_CALLBACK_USERNAME', '')
+PHONEPE_CALLBACK_PASSWORD = os.getenv('PHONEPE_CALLBACK_PASSWORD', '')
+
 
 # Documentation
 SWAGGER_SETTINGS = {
