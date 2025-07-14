@@ -47,7 +47,7 @@ class BookingViewSet(viewsets.ModelViewSet):
             booking.cart.status = 'INACTIVE'
             booking.cart.save()
             # Send confirmation
-            send_booking_confirmation.delay(booking.id)
+            send_booking_confirmation(booking.id)
 
     @action(detail=True, methods=['post', 'patch'], url_path='status')
     def update_status(self, request, pk=None):

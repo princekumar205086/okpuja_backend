@@ -94,7 +94,7 @@ class Booking(models.Model):
     def send_status_notification(self):
         """Send notification based on booking status"""
         from core.tasks import send_booking_notification
-        send_booking_notification.delay(self.id)
+        send_booking_notification(self.id)
 
 class BookingAttachment(models.Model):
     booking = models.ForeignKey(
