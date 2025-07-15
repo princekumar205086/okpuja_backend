@@ -204,4 +204,4 @@ ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', 'admin@okpuja.com')
 ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin@123')
 
 # Employee Registration Code (set this in your .env for security)
-EMPLOYEE_REGISTRATION_CODE = os.getenv('EMPLOYEE_REGISTRATION_CODE', 'EMPLOYEE2025')
+EMPLOYEE_REGISTRATION_CODE = os.getenv('EMPLOYEE_REGISTRATION_CODE', 'EMP2025OK5')
