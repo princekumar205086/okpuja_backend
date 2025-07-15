@@ -12,4 +12,6 @@ twilio==9.6.3
 django-cors-headers==4.7.0
 django_otp==1.6.1
 django-filter==25.1
+--index-url https://phonepe.mycloudrepo.io/public/repositories/phonepe-pg-sdk-python
+--extra-index-url https://pypi.org/simple
 phonepe_sdk==2.1.4
