@@ -1,0 +1,297 @@
+{
+  "info": {
+    "name": "OkPuja Complete API Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "okpuja-complete-api"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000" },
+    { "key": "access_token", "value": "" },
+    { "key": "cart_id", "value": "" },
+    { "key": "payment_id", "value": "" },
+    { "key": "booking_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"asliprinceraj@gmail.com\",\n  \"password\": \"testpass123\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/login/", "host": ["{{base_url}}"], "path": ["api", "auth", "login"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', response.access);",
+                  "    console.log('Access token saved:', response.access);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cart Flow",
+      "item": [
+        {
+          "name": "Create Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_type\": \"PUJA\",\n  \"puja_service\": 8,\n  \"package_id\": 2,\n  \"selected_date\": \"2025-07-25\",\n  \"selected_time\": \"10:00 AM\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/cart/carts/", "host": ["{{base_url}}"], "path": ["api", "cart", "carts"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('cart_id', response.id);",
+                  "    console.log('Cart ID saved:', response.id);",
+                  "    console.log('Total Price:', response.total_price);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Cart Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/cart/carts/{{cart_id}}/", "host": ["{{base_url}}"], "path": ["api", "cart", "carts", "{{cart_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payment Flow",
+      "item": [
+        {
+          "name": "Process Cart Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cart_id\": {{cart_id}},\n  \"method\": \"PHONEPE\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/payments/payments/process-cart/", "host": ["{{base_url}}"], "path": ["api", "payments", "payments", "process-cart"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('payment_id', response.payment_id);",
+                  "    console.log('Payment ID saved:', response.payment_id);",
+                  "    console.log('Transaction ID:', response.transaction_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Simulate Payment Success",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/payments/payments/{{payment_id}}/simulate-success/", "host": ["{{base_url}}"], "path": ["api", "payments", "payments", "{{payment_id}}", "simulate-success"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('Payment simulation successful');",
+                  "    console.log('Booking created:', response.booking_created);",
+                  "    console.log('Booking ID:', response.booking_id);",
+                  "    if (response.booking_id) {",
+                  "        pm.collectionVariables.set('booking_id', response.booking_id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check Payment Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/payments/payments/{{payment_id}}/status/", "host": ["{{base_url}}"], "path": ["api", "payments", "payments", "{{payment_id}}", "status"] }
+          }
+        },
+        {
+          "name": "Get Payment Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/payments/payments/{{payment_id}}/", "host": ["{{base_url}}"], "path": ["api", "payments", "payments", "{{payment_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Booking Management",
+      "item": [
+        {
+          "name": "List My Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/booking/bookings/", "host": ["{{base_url}}"], "path": ["api", "booking", "bookings"] }
+          }
+        },
+        {
+          "name": "Get Booking Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/booking/bookings/{{booking_id}}/", "host": ["{{base_url}}"], "path": ["api", "booking", "bookings", "{{booking_id}}"] }
+          }
+        },
+        {
+          "name": "Reschedule Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"selected_date\": \"2025-07-26\",\n  \"selected_time\": \"14:00:00\",\n  \"reason\": \"Customer requested change\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/booking/bookings/{{booking_id}}/reschedule/", "host": ["{{base_url}}"], "path": ["api", "booking", "bookings", "{{booking_id}}", "reschedule"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Operations",
+      "item": [
+        {
+          "name": "Admin - List All Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/booking/admin/bookings/", "host": ["{{base_url}}"], "path": ["api", "booking", "admin", "bookings"] }
+          }
+        },
+        {
+          "name": "Admin - Update Booking Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COMPLETED\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/booking/admin/bookings/{{booking_id}}/status/", "host": ["{{base_url}}"], "path": ["api", "booking", "admin", "bookings", "{{booking_id}}", "status"] }
+          }
+        },
+        {
+          "name": "Admin - Assign Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assigned_to_id\": 1,\n  \"notes\": \"Assign to priest for tomorrow's ceremony\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/booking/admin/bookings/{{booking_id}}/assign/", "host": ["{{base_url}}"], "path": ["api", "booking", "admin", "bookings", "{{booking_id}}", "assign"] }
+          }
+        },
+        {
+          "name": "Admin - Get Employees List",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/booking/admin/bookings/employees/", "host": ["{{base_url}}"], "path": ["api", "booking", "admin", "bookings", "employees"] }
+          }
+        },
+        {
+          "name": "Admin - Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/booking/admin/bookings/dashboard_stats/", "host": ["{{base_url}}"], "path": ["api", "booking", "admin", "bookings", "dashboard_stats"] }
+          }
+        },
+        {
+          "name": "Admin - Reschedule Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"selected_date\": \"2025-07-27\",\n  \"selected_time\": \"16:00:00\",\n  \"reason\": \"Priest unavailable at requested time\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/booking/admin/bookings/{{booking_id}}/reschedule/", "host": ["{{base_url}}"], "path": ["api", "booking", "admin", "bookings", "{{booking_id}}", "reschedule"] }
+          }
+        }
+      ]
+    }
+  ]
+}

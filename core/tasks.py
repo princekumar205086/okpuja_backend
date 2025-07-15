@@ -12,20 +12,124 @@ logger = logging.getLogger(__name__)
 
 @shared_task
 def send_booking_confirmation(booking_id):
-    booking = Booking.objects.get(id=booking_id)
-    
-    # Email notification only
-    subject = f"Booking Confirmation - {booking.book_id}"
-    message = render_to_string('emails/booking_confirmation.html', {
-        'booking': booking
-    })
-    send_mail(
-        subject,
-        message,
-        settings.DEFAULT_FROM_EMAIL,
-        [booking.user.email],
-        html_message=message
-    )
+    """Send booking confirmation email with invoice details"""
+    try:
+        booking = Booking.objects.select_related(
+            'user', 'cart', 'address', 'assigned_to'
+        ).get(id=booking_id)
+        
+        subject = f"🙏 Booking Confirmed & Invoice - {booking.book_id}"
+        html_message = render_to_string('emails/booking_invoice.html', {
+            'booking': booking
+        })
+        
+        send_mail(
+            subject,
+            f"Your booking {booking.book_id} has been confirmed. Please find the invoice details in the email.",
+            settings.DEFAULT_FROM_EMAIL,
+            [booking.user.email],
+            html_message=html_message
+        )
+        
+        # Also send notification to admin
+        send_mail(
+            f"New Booking Confirmed - {booking.book_id}",
+            f"Booking {booking.book_id} for {booking.user.email} has been confirmed.",
+            settings.DEFAULT_FROM_EMAIL,
+            [settings.ADMIN_EMAIL],
+        )
+        
+        logger.info(f"Booking confirmation email sent for {booking.book_id}")
+        
+    except Booking.DoesNotExist:
+        logger.error(f"Booking with ID {booking_id} not found")
+    except Exception as e:
+        logger.error(f"Failed to send booking confirmation: {str(e)}")
+
+@shared_task 
+def send_booking_reschedule_notification(booking_id, old_date, old_time, rescheduled_by_id):
+    """Send email notification when booking is rescheduled"""
+    try:
+        from accounts.models import User
+        
+        booking = Booking.objects.select_related(
+            'user', 'cart', 'address', 'assigned_to'
+        ).get(id=booking_id)
+        
+        rescheduled_by = User.objects.get(id=rescheduled_by_id)
+        
+        subject = f"📅 Booking Rescheduled - {booking.book_id}"
+        html_message = render_to_string('emails/booking_rescheduled.html', {
+            'booking': booking,
+            'old_date': old_date,
+            'old_time': old_time,
+            'rescheduled_by': rescheduled_by
+        })
+        
+        send_mail(
+            subject,
+            f"Your booking {booking.book_id} has been rescheduled to {booking.selected_date} at {booking.selected_time}.",
+            settings.DEFAULT_FROM_EMAIL,
+            [booking.user.email],
+            html_message=html_message
+        )
+        
+        logger.info(f"Reschedule notification sent for {booking.book_id}")
+        
+    except (Booking.DoesNotExist, User.DoesNotExist):
+        logger.error(f"Booking or user not found for reschedule notification")
+    except Exception as e:
+        logger.error(f"Failed to send reschedule notification: {str(e)}")
+
+@shared_task
+def send_booking_assignment_notification(booking_id, assigned_by_id, old_assigned_id=None):
+    """Send email notifications when booking is assigned to employee"""
+    try:
+        from accounts.models import User
+        
+        booking = Booking.objects.select_related(
+            'user', 'cart', 'address', 'assigned_to'
+        ).get(id=booking_id)
+        
+        assigned_by = User.objects.get(id=assigned_by_id)
+        
+        # Send notification to user
+        subject_user = f"👨‍🦱 Priest Assigned - {booking.book_id}"
+        html_message_user = render_to_string('emails/booking_assigned_user.html', {
+            'booking': booking,
+            'assigned_by': assigned_by
+        })
+        
+        send_mail(
+            subject_user,
+            f"A priest has been assigned to your booking {booking.book_id}.",
+            settings.DEFAULT_FROM_EMAIL,
+            [booking.user.email],
+            html_message=html_message_user
+        )
+        
+        # Send notification to assigned priest
+        if booking.assigned_to:
+            subject_priest = f"📋 New Booking Assignment - {booking.book_id}"
+            html_message_priest = render_to_string('emails/booking_assigned_priest.html', {
+                'booking': booking,
+                'assigned_by': assigned_by
+            })
+            
+            send_mail(
+                subject_priest,
+                f"You have been assigned to booking {booking.book_id}.",
+                settings.DEFAULT_FROM_EMAIL,
+                [booking.assigned_to.email],
+                html_message=html_message_priest
+            )
+        
+        logger.info(f"Assignment notifications sent for {booking.book_id}")
+        
+    except (Booking.DoesNotExist, User.DoesNotExist):
+        logger.error(f"Booking or user not found for assignment notification")
+    except Exception as e:
+        logger.error(f"Failed to send assignment notification: {str(e)}")
 
 @shared_task
 def send_booking_notification(booking_id):

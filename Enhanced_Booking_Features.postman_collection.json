@@ -1,0 +1,229 @@
+{
+  "info": {
+    "name": "OkPuja Enhanced Booking Features",
+    "description": "API collection for testing the new booking assignment and rescheduling features",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "{{base_url}}"
+    },
+    {
+      "key": "booking_id",
+      "value": "1"
+    },
+    {
+      "key": "employee_id",
+      "value": "2"
+    }
+  ],
+  "item": [
+    {
+      "name": "User Endpoints",
+      "item": [
+        {
+          "name": "Get My Bookings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/bookings/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reschedule My Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"selected_date\": \"2024-02-15\",\n  \"selected_time\": \"10:00:00\",\n  \"reason\": \"Family emergency\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/bookings/{{booking_id}}/reschedule/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", "{{booking_id}}", "reschedule", ""]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin Endpoints",
+      "item": [
+        {
+          "name": "Get All Bookings (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/bookings/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "bookings", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Booking to Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assigned_to_id\": {{employee_id}},\n  \"notes\": \"Experienced priest for this type of puja\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/bookings/{{booking_id}}/assign/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "bookings", "{{booking_id}}", "assign", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Reschedule Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"selected_date\": \"2024-02-20\",\n  \"selected_time\": \"15:30:00\",\n  \"reason\": \"Priest availability change\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/bookings/{{booking_id}}/reschedule/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "bookings", "{{booking_id}}", "reschedule", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Available Employees",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/bookings/employees/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "bookings", "employees", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/bookings/dashboard_stats/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "bookings", "dashboard_stats", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Booking Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CONFIRMED\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/bookings/{{booking_id}}/status/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "bookings", "{{booking_id}}", "status", ""]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Employee Endpoints",
+      "item": [
+        {
+          "name": "Get My Assigned Bookings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/bookings/?assigned_to={{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", ""],
+              "query": [
+                {
+                  "key": "assigned_to",
+                  "value": "{{user_id}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Employee Reschedule Assigned Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"selected_date\": \"2024-02-18\",\n  \"selected_time\": \"11:00:00\",\n  \"reason\": \"Personal conflict\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/bookings/{{booking_id}}/reschedule/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", "{{booking_id}}", "reschedule", ""]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

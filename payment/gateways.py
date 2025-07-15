@@ -187,6 +187,14 @@ class PhonePeGateway:
             
             payment.save()
             
+            # Create booking if payment is successful and no booking exists yet
+            if payment.status == PaymentStatus.SUCCESS and not payment.booking:
+                try:
+                    booking = payment.create_booking_from_cart()
+                    logger.info(f"Booking {booking.book_id} created successfully for payment {payment.transaction_id}")
+                except Exception as e:
+                    logger.error(f"Failed to create booking from payment {payment.transaction_id}: {str(e)}")
+            
             # Send notification if status changed
             if old_status != payment.status:
                 payment.send_notification()

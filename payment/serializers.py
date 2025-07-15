@@ -4,8 +4,8 @@ from django.utils import timezone
 from decimal import Decimal
 import json
 from .models import Payment, Refund, PaymentStatus, PaymentMethod
-from booking.serializers import BookingSerializer
 from accounts.serializers import UserBasicSerializer
+from cart.serializers import CartSerializer
 
 class PaymentMethodSerializer(serializers.Serializer):
     """
@@ -34,34 +34,34 @@ class PaymentMethodSerializer(serializers.Serializer):
 
 class PaymentCreateSerializer(serializers.ModelSerializer):
     """
-    Serializer for creating new payment transactions
-    Includes validation for booking ownership and amount matching
+    Serializer for creating new payment transactions from cart
+    Creates payment before booking - proper payment-first flow
     """
+    cart_id = serializers.IntegerField(
+        write_only=True,
+        help_text="ID of the cart to process payment for"
+    )
     amount = serializers.DecimalField(
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(Decimal('0.01'))],
-        help_text="Payment amount in INR"
+        help_text="Payment amount in INR (auto-calculated from cart)"
     )
 
     class Meta:
         model = Payment
         fields = [
-            'booking', 
-            'amount', 
-            'currency', 
-            'method',
-            'callback_url',
-            'redirect_url'
+            'cart_id', 'amount', 'method', 'currency',
+            'redirect_url', 'callback_url'
         ]
         extra_kwargs = {
-            'booking': {
+            'cart_id': {
                 'required': True,
-                'help_text': "ID of the booking being paid for"
+                'help_text': "ID of the cart to process payment for"
             },
             'amount': {
                 'required': True,
-                'help_text': "Payment amount (must match booking total)"
+                'help_text': "Payment amount (must match cart total)"
             },
             'currency': {
                 'required': False,
@@ -83,33 +83,65 @@ class PaymentCreateSerializer(serializers.ModelSerializer):
             }
         }
 
+    def validate_cart_id(self, value):
+        """Validate cart exists and belongs to user"""
+        from cart.models import Cart
+        
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            raise serializers.ValidationError("Authentication required")
+        
+        try:
+            cart = Cart.objects.get(
+                id=value, 
+                user=request.user,
+                status='ACTIVE'
+            )
+        except Cart.DoesNotExist:
+            raise serializers.ValidationError("Active cart not found")
+        
+        return value
+
     def validate(self, data):
         """
         Validate payment creation:
-        1. Booking belongs to requesting user
-        2. Amount matches booking total
-        3. No existing successful payment for booking
+        1. Cart belongs to requesting user
+        2. Amount matches cart total
+        3. Cart is in ACTIVE status
         """
-        booking = data['booking']
+        from cart.models import Cart
+        
+        cart_id = data['cart_id']
         amount = data['amount']
         request = self.context.get('request')
 
-        if booking.user != request.user:
+        cart = Cart.objects.get(
+            id=cart_id,
+            user=request.user,
+            status='ACTIVE'
+        )
+
+        if amount != cart.total_price:
             raise serializers.ValidationError(
-                {"booking": "Booking does not belong to this user"}
+                {"amount": f"Payment amount must be exactly {cart.total_price}"}
             )
 
-        if amount != booking.total_amount:
-            raise serializers.ValidationError(
-                {"amount": f"Payment amount must be exactly {booking.total_amount}"}
-            )
-
-        if booking.payments.filter(status=PaymentStatus.SUCCESS).exists():
-            raise serializers.ValidationError(
-                {"booking": "This booking already has a successful payment"}
-            )
-
+        # Store cart for create method
+        data['_cart'] = cart
         return data
+
+    def create(self, validated_data):
+        """Create payment linked to cart and user"""
+        cart = validated_data.pop('_cart')
+        validated_data.pop('cart_id')  # Remove cart_id, we'll use cart object
+        
+        payment = Payment.objects.create(
+            cart=cart,
+            user=self.context['request'].user,
+            **validated_data
+        )
+        
+        return payment
 
 
 class PaymentDetailSerializer(serializers.ModelSerializer):
@@ -117,7 +149,8 @@ class PaymentDetailSerializer(serializers.ModelSerializer):
     Detailed payment serializer with expanded relationships and computed fields
     Used for retrieving single payment records
     """
-    booking = BookingSerializer(read_only=True)
+    user = UserBasicSerializer(read_only=True)
+    cart = CartSerializer(read_only=True)
     status_display = serializers.CharField(
         source='get_status_display',
         read_only=True,
@@ -144,6 +177,8 @@ class PaymentDetailSerializer(serializers.ModelSerializer):
             'id',
             'transaction_id',
             'merchant_transaction_id',
+            'user',
+            'cart',
             'booking',
             'amount',
             'currency',

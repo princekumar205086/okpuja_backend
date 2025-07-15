@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background-color: #f8d7da; padding: 20px; border-radius: 5px; border-left: 4px solid #dc3545; }
+        .details { margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px; }
+        .highlight { background-color: #fff3cd; padding: 10px; border-radius: 3px; margin: 10px 0; }
+        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>📋 New Booking Assignment</h2>
+        <p>Dear {{ booking.assigned_to.first_name|default:booking.assigned_to.email }},</p>
+        <p>You have been assigned a new booking. Please review the details below and prepare accordingly.</p>
+    </div>
+
+    <div class="details">
+        <h3>Booking Information</h3>
+        <p><strong>Booking ID:</strong> {{ booking.book_id }}</p>
+        <p><strong>Date & Time:</strong> {{ booking.selected_date|date:"F d, Y" }} at {{ booking.selected_time }}</p>
+        <p><strong>Status:</strong> {{ booking.get_status_display }}</p>
+        <p><strong>Assigned by:</strong> {{ assigned_by.first_name }} {{ assigned_by.last_name }}</p>
+    </div>
+
+    <div class="details">
+        <h3>Customer Information</h3>
+        <p><strong>Name:</strong> {{ booking.user.first_name }} {{ booking.user.last_name }}</p>
+        <p><strong>Email:</strong> {{ booking.user.email }}</p>
+        {% if booking.user.phone_number %}
+        <p><strong>Phone:</strong> {{ booking.user.phone_number }}</p>
+        {% endif %}
+    </div>
+
+    <div class="details">
+        <h3>Service Details</h3>
+        {% if booking.cart.service_type == 'PUJA' %}
+            <p><strong>Service:</strong> {{ booking.cart.puja_service.name }}</p>
+            {% if booking.cart.package %}
+                <p><strong>Package:</strong> {{ booking.cart.package.name }}</p>
+                <p><strong>Description:</strong> {{ booking.cart.package.description }}</p>
+            {% endif %}
+        {% elif booking.cart.service_type == 'ASTROLOGY' %}
+            <p><strong>Service:</strong> {{ booking.cart.astrology_service.name }}</p>
+            <p><strong>Description:</strong> {{ booking.cart.astrology_service.description }}</p>
+        {% endif %}
+        <p><strong>Amount:</strong> ₹{{ booking.total_amount }}</p>
+    </div>
+
+    {% if booking.address %}
+    <div class="details">
+        <h3>Service Address</h3>
+        <p>{{ booking.address.address_line_1 }}</p>
+        {% if booking.address.address_line_2 %}
+            <p>{{ booking.address.address_line_2 }}</p>
+        {% endif %}
+        <p>{{ booking.address.city }}, {{ booking.address.state }} - {{ booking.address.pincode }}</p>
+    </div>
+    {% endif %}
+
+    <div class="highlight">
+        <h3>Next Steps</h3>
+        <ol>
+            <li>Review the service requirements and prepare necessary items</li>
+            <li>Contact the customer 1 hour before the scheduled time</li>
+            <li>Arrive at the location 15 minutes before the scheduled time</li>
+            <li>Ensure you have all required materials for the service</li>
+        </ol>
+    </div>
+
+    <div class="footer">
+        <p><strong>Important Notes:</strong></p>
+        <ul>
+            <li>Please confirm your availability for this booking</li>
+            <li>If you cannot attend, inform the admin immediately</li>
+            <li>Maintain professional conduct and follow all guidelines</li>
+            <li>Complete the service review form after completion</li>
+        </ul>
+        
+        <p>For any queries or support, contact admin at admin@okpuja.com</p>
+        <p>🙏 Thank you for your service!</p>
+    </div>
+</body>
+</html>

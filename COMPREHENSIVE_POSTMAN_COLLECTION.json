@@ -1,0 +1,520 @@
+{
+  "info": {
+    "name": "OKPUJA Complete API Collection",
+    "description": "Complete test collection for Cart, Payments, Booking, Authentication and ALL implemented endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "2.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-set content type for JSON requests",
+          "if (pm.request.body && pm.request.body.mode === 'raw') {",
+          "    pm.request.headers.add({",
+          "        key: 'Content-Type',",
+          "        value: 'application/json'",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{base_url}}/api/auth/register/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"strongpassword123\",\n  \"password2\": \"strongpassword123\",\n  \"username\": \"testuser\",\n  \"phone\": \"9876543210\",\n  \"role\": \"USER\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    console.log('User registered successfully');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login User",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{base_url}}/api/auth/login/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"strongpassword123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('token', response.access);",
+                  "    pm.environment.set('refresh_token', response.refresh);",
+                  "    console.log('Login successful, token saved');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/api/auth/profile/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🛒 Cart Management",
+      "item": [
+        {
+          "name": "Create Puja Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{base_url}}/api/cart/carts/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_type\": \"PUJA\",\n  \"puja_service\": 1,\n  \"package_id\": 1,\n  \"selected_date\": \"2025-07-25\",\n  \"selected_time\": \"10:00 AM\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('cart_id', response.id);",
+                  "    console.log('Cart created with ID:', response.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Astrology Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{base_url}}/api/cart/carts/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_type\": \"ASTROLOGY\",\n  \"astrology_service_id\": 1,\n  \"selected_date\": \"2025-07-25\",\n  \"selected_time\": \"11:00 AM\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Active Carts",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/api/cart/carts/active/"
+          }
+        },
+        {
+          "name": "Get All My Carts",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/api/cart/carts/"
+          }
+        },
+        {
+          "name": "Apply Promo Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{base_url}}/api/cart/carts/{{cart_id}}/apply_promo/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"promo_code\": \"DISCOUNT10\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Remove Promo Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/api/cart/carts/{{cart_id}}/remove_promo/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "💳 Payment Operations",
+      "item": [
+        {
+          "name": "💡 Process Cart Payment (MAIN ENDPOINT)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{base_url}}/api/payments/payments/process-cart/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cart_id\": {{cart_id}},\n  \"method\": \"PHONEPE\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('payment_id', response.payment_id);",
+                  "    pm.environment.set('payment_url', response.payment_url);",
+                  "    pm.environment.set('merchant_transaction_id', response.merchant_transaction_id);",
+                  "    console.log('Payment initiated:', response.payment_id);",
+                  "    console.log('Payment URL:', response.payment_url);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Payment Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/api/payments/payments/{{payment_id}}/status/"
+          }
+        },
+        {
+          "name": "Check Payment Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/api/payments/payments/{{payment_id}}/"
+          }
+        },
+        {
+          "name": "Check Booking After Payment",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/api/payments/payments/{{payment_id}}/check-booking/"
+          }
+        },
+        {
+          "name": "Get All My Payments",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/api/payments/payments/"
+          }
+        },
+        {
+          "name": "🔧 Simulate Payment Success (DEV ONLY)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{base_url}}/api/payments/payments/{{payment_id}}/simulate-success/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"simulate\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Request Refund",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{base_url}}/api/payments/payments/{{payment_id}}/refund/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": \"100.00\",\n  \"reason\": \"Customer request\",\n  \"notes\": \"Partial refund\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📅 Booking Management",
+      "item": [
+        {
+          "name": "Get My Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/api/booking/bookings/"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.length > 0) {",
+                  "        pm.environment.set('booking_id', response[0].id);",
+                  "        console.log('First booking ID saved:', response[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Booking Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/api/booking/bookings/{{booking_id}}/"
+          }
+        },
+        {
+          "name": "Reschedule Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{base_url}}/api/booking/bookings/{{booking_id}}/reschedule/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"selected_date\": \"2025-07-30\",\n  \"selected_time\": \"14:00:00\",\n  \"reason\": \"Change of plans\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Booking Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{base_url}}/api/booking/bookings/{{booking_id}}/status/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CANCELLED\",\n  \"cancellation_reason\": \"Emergency came up\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Upload Booking Attachment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/api/booking/bookings/{{booking_id}}/upload_attachment/",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "description",
+                  "value": "Additional requirements"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏠 Address Management",
+      "item": [
+        {
+          "name": "Create Address",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{base_url}}/api/auth/addresses/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"street_address\": \"123 Main Street\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"pincode\": \"400001\",\n  \"landmark\": \"Near Railway Station\",\n  \"is_default\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Get My Addresses",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/api/auth/addresses/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔮 Services & Products",
+      "item": [
+        {
+          "name": "Get Puja Services",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/puja/services/"
+          }
+        },
+        {
+          "name": "Get Puja Categories",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/puja/categories/"
+          }
+        },
+        {
+          "name": "Get Packages for Service",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/puja/packages/?puja_service=1"
+          }
+        },
+        {
+          "name": "Get Astrology Services",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/astrology/services/"
+          }
+        },
+        {
+          "name": "Get Promo Codes",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/api/promo/codes/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🧪 Development & Testing",
+      "item": [
+        {
+          "name": "Webhook Test (PhonePe Simulation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "test-signature" }
+            ],
+            "url": "{{base_url}}/api/payments/webhook/phonepe/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchantId\": \"TEST-M22KEWU5BO1I2\",\n  \"transactionId\": \"{{merchant_transaction_id}}\",\n  \"amount\": 49900,\n  \"state\": \"CHECKOUT_ORDER_COMPLETED\",\n  \"responseCode\": \"SUCCESS\"\n}"
+            }
+          }
+        },
+        {
+          "name": "System Health Check",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/"
+          }
+        },
+        {
+          "name": "API Documentation",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/docs/"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "refresh_token", "value": "", "type": "string" },
+    { "key": "cart_id", "value": "", "type": "string" },
+    { "key": "payment_id", "value": "", "type": "string" },
+    { "key": "booking_id", "value": "", "type": "string" },
+    { "key": "merchant_transaction_id", "value": "", "type": "string" },
+    { "key": "payment_url", "value": "", "type": "string" }
+  ]
+}

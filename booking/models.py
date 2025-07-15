@@ -53,6 +53,14 @@ class Booking(models.Model):
         default=BookingStatus.PENDING,
         db_index=True
     )
+    assigned_to = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_bookings',
+        help_text="Employee/Priest assigned to handle this booking"
+    )
     cancellation_reason = models.TextField(null=True, blank=True)
     failure_reason = models.TextField(null=True, blank=True)
     rejection_reason = models.TextField(null=True, blank=True)
@@ -95,6 +103,47 @@ class Booking(models.Model):
         """Send notification based on booking status"""
         from core.tasks import send_booking_notification
         send_booking_notification(self.id)
+    
+    def can_be_rescheduled(self):
+        """Check if booking can be rescheduled"""
+        return self.status not in [BookingStatus.COMPLETED, BookingStatus.CANCELLED]
+    
+    def can_be_assigned(self):
+        """Check if booking can be assigned to an employee"""
+        return self.status not in [BookingStatus.COMPLETED, BookingStatus.CANCELLED]
+    
+    def reschedule(self, new_date, new_time, rescheduled_by):
+        """Reschedule booking to new date/time"""
+        if not self.can_be_rescheduled():
+            raise ValidationError("Cannot reschedule completed or cancelled bookings")
+        
+        old_date = self.selected_date
+        old_time = self.selected_time
+        
+        self.selected_date = new_date
+        self.selected_time = new_time
+        self.save()
+        
+        # Send reschedule notification
+        from core.tasks import send_booking_reschedule_notification
+        send_booking_reschedule_notification.delay(
+            self.id, old_date, old_time, rescheduled_by.id
+        )
+    
+    def assign_to(self, employee, assigned_by):
+        """Assign booking to an employee"""
+        if not self.can_be_assigned():
+            raise ValidationError("Cannot assign completed or cancelled bookings")
+        
+        old_assigned = self.assigned_to
+        self.assigned_to = employee
+        self.save()
+        
+        # Send assignment notification
+        from core.tasks import send_booking_assignment_notification
+        send_booking_assignment_notification.delay(
+            self.id, assigned_by.id, old_assigned.id if old_assigned else None
+        )
 
 class BookingAttachment(models.Model):
     booking = models.ForeignKey(
@@ -116,6 +165,12 @@ class BookingAttachment(models.Model):
 
 @receiver(post_save, sender=Booking)
 def booking_post_save(sender, instance, created, **kwargs):
-    """Send notifications when booking status changes"""
-    if not created:
-        instance.send_status_notification()
+    """Send notifications when booking is created or status changes"""
+    from core.tasks import send_booking_confirmation, send_booking_notification
+    
+    if created and instance.status == BookingStatus.CONFIRMED:
+        # Send confirmation email for new confirmed bookings
+        send_booking_confirmation.delay(instance.id)
+    elif not created:
+        # Send status update notifications for existing bookings
+        send_booking_notification.delay(instance.id)

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background-color: #fff3cd; padding: 20px; border-radius: 5px; border-left: 4px solid #ffc107; }
+        .details { margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px; }
+        .highlight { background-color: #d4edda; padding: 10px; border-radius: 3px; margin: 10px 0; }
+        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>📅 Booking Rescheduled</h2>
+        <p>Dear {{ booking.user.first_name|default:booking.user.email }},</p>
+        <p>Your booking has been rescheduled. Please find the updated details below.</p>
+    </div>
+
+    <div class="details">
+        <h3>Booking Information</h3>
+        <p><strong>Booking ID:</strong> {{ booking.book_id }}</p>
+        
+        <div style="display: flex; gap: 20px;">
+            <div style="flex: 1;">
+                <h4>Previous Schedule</h4>
+                <p>📅 {{ old_date|date:"F d, Y" }}</p>
+                <p>🕐 {{ old_time }}</p>
+            </div>
+            <div style="flex: 1;" class="highlight">
+                <h4>New Schedule</h4>
+                <p>📅 {{ booking.selected_date|date:"F d, Y" }}</p>
+                <p>🕐 {{ booking.selected_time }}</p>
+            </div>
+        </div>
+        
+        {% if booking.assigned_to %}
+        <p><strong>Assigned Priest:</strong> {{ booking.assigned_to.first_name }} {{ booking.assigned_to.last_name }}</p>
+        {% endif %}
+        
+        <p><strong>Rescheduled by:</strong> {{ rescheduled_by.first_name }} {{ rescheduled_by.last_name }} ({{ rescheduled_by.get_role_display }})</p>
+    </div>
+
+    <div class="details">
+        <h3>Service Details</h3>
+        {% if booking.cart.service_type == 'PUJA' %}
+            <p><strong>Service:</strong> {{ booking.cart.puja_service.name }}</p>
+            {% if booking.cart.package %}
+                <p><strong>Package:</strong> {{ booking.cart.package.name }}</p>
+            {% endif %}
+        {% elif booking.cart.service_type == 'ASTROLOGY' %}
+            <p><strong>Service:</strong> {{ booking.cart.astrology_service.name }}</p>
+        {% endif %}
+    </div>
+
+    {% if booking.address %}
+    <div class="details">
+        <h3>Service Address</h3>
+        <p>{{ booking.address.address_line_1 }}</p>
+        {% if booking.address.address_line_2 %}
+            <p>{{ booking.address.address_line_2 }}</p>
+        {% endif %}
+        <p>{{ booking.address.city }}, {{ booking.address.state }} - {{ booking.address.pincode }}</p>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        <p><strong>Important:</strong></p>
+        <ul>
+            <li>Please be available at the new scheduled time</li>
+            <li>Our priest will contact you 1 hour before the new scheduled time</li>
+            <li>No additional charges apply for this reschedule</li>
+        </ul>
+        
+        <p>For any queries, contact us at support@okpuja.com</p>
+        <p>🙏 Thank you for your understanding!</p>
+    </div>
+</body>
+</html>

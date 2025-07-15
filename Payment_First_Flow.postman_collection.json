@@ -1,0 +1,629 @@
+{
+	"info": {
+		"_postman_id": "payment-first-flow-collection",
+		"name": "Payment-First Booking Flow",
+		"description": "Complete API collection for testing the new payment-first booking flow in OkPuja backend",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"testuser@okpuja.com\",\n    \"password\": \"testpass123\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/login/",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Cart Management",
+			"item": [
+				{
+					"name": "Create Cart",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"service_type\": \"PUJA\",\n    \"puja_service\": 1,\n    \"package_id\": 1,\n    \"selected_date\": \"2025-07-20\",\n    \"selected_time\": \"10:30\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/cart/carts/",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"cart",
+								"carts",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Active Carts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/cart/carts/active/",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"cart",
+								"carts",
+								"active",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Payment-First Flow",
+			"item": [
+				{
+					"name": "Process Cart Payment (NEW)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"cart_id\": {{CART_ID}},\n    \"method\": \"PHONEPE\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/payments/process-cart/",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"payments",
+								"process-cart",
+								""
+							]
+						},
+						"description": "NEW ENDPOINT: Creates payment linked to cart (before booking creation)"
+					},
+					"response": [
+						{
+							"name": "Success Response",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{ACCESS_TOKEN}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"cart_id\": 123,\n    \"method\": \"PHONEPE\"\n}"
+								},
+								"url": {
+									"raw": "{{BASE_URL}}/api/payments/process-cart/",
+									"host": [
+										"{{BASE_URL}}"
+									],
+									"path": [
+										"api",
+										"payments",
+										"process-cart",
+										""
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"payment_id\": 456,\n    \"transaction_id\": \"TXN46B5EE6E7D\",\n    \"merchant_transaction_id\": \"MT7a8b9c0d1e2f3\",\n    \"amount\": \"999.00\",\n    \"currency\": \"INR\",\n    \"payment_url\": \"https://mercury-t2.phonepe.com/transact/pg-ui/...\",\n    \"status\": \"PENDING\",\n    \"cart_id\": 123\n}"
+						}
+					]
+				},
+				{
+					"name": "Check Booking Status (NEW)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/payments/{{PAYMENT_ID}}/check-booking/",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"payments",
+								"{{PAYMENT_ID}}",
+								"check-booking",
+								""
+							]
+						},
+						"description": "NEW ENDPOINT: Check if payment resulted in booking creation"
+					},
+					"response": [
+						{
+							"name": "Booking Created",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{ACCESS_TOKEN}}"
+									}
+								],
+								"url": {
+									"raw": "{{BASE_URL}}/api/payments/456/check-booking/",
+									"host": [
+										"{{BASE_URL}}"
+									],
+									"path": [
+										"api",
+										"payments",
+										"456",
+										"check-booking",
+										""
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"payment_status\": \"SUCCESS\",\n    \"booking_created\": true,\n    \"booking\": {\n        \"id\": 789,\n        \"book_id\": \"BK-449034CB\",\n        \"user\": {\n            \"id\": 1,\n            \"email\": \"user@example.com\"\n        },\n        \"selected_date\": \"2025-07-20\",\n        \"selected_time\": \"10:30:00\",\n        \"status\": \"CONFIRMED\",\n        \"total_amount\": \"999.00\"\n    }\n}"
+						},
+						{
+							"name": "Payment Failed",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{ACCESS_TOKEN}}"
+									}
+								],
+								"url": {
+									"raw": "{{BASE_URL}}/api/payments/456/check-booking/",
+									"host": [
+										"{{BASE_URL}}"
+									],
+									"path": [
+										"api",
+										"payments",
+										"456",
+										"check-booking",
+										""
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"success\": false,\n    \"payment_status\": \"FAILED\",\n    \"booking_created\": false,\n    \"message\": \"Payment status: Failed\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Payment Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/payments/{{PAYMENT_ID}}/",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"payments",
+								"{{PAYMENT_ID}}",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Check Payment Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/payments/{{PAYMENT_ID}}/status/",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"payments",
+								"{{PAYMENT_ID}}",
+								"status",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Booking Management",
+			"item": [
+				{
+					"name": "Get User Bookings",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/booking/bookings/",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"booking",
+								"bookings",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Booking Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/api/booking/bookings/{{BOOKING_ID}}/",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"booking",
+								"bookings",
+								"{{BOOKING_ID}}",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Webhook Testing (Admin Only)",
+			"item": [
+				{
+					"name": "PhonePe Webhook Simulation",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Basic {{PHONEPE_CALLBACK_AUTH}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"order_id\": \"{{MERCHANT_TRANSACTION_ID}}\",\n    \"state\": \"CHECKOUT_ORDER_COMPLETED\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/payments/webhook/phonepe/",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"payments",
+								"webhook",
+								"phonepe",
+								""
+							]
+						},
+						"description": "Simulates PhonePe webhook callback for testing"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Error Scenarios",
+			"item": [
+				{
+					"name": "Process Payment - Invalid Cart",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"cart_id\": 999999,\n    \"method\": \"PHONEPE\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/payments/process-cart/",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"payments",
+								"process-cart",
+								""
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Cart Not Found",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{ACCESS_TOKEN}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"cart_id\": 999999,\n    \"method\": \"PHONEPE\"\n}"
+								},
+								"url": {
+									"raw": "{{BASE_URL}}/api/payments/process-cart/",
+									"host": [
+										"{{BASE_URL}}"
+									],
+									"path": [
+										"api",
+										"payments",
+										"process-cart",
+										""
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"Active cart not found\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Process Payment - Amount Mismatch",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{ACCESS_TOKEN}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"cart_id\": {{CART_ID}},\n    \"amount\": \"500.00\",\n    \"method\": \"PHONEPE\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/payments/process-cart/",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"payments",
+								"process-cart",
+								""
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Amount Mismatch",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{ACCESS_TOKEN}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"cart_id\": 123,\n    \"amount\": \"500.00\",\n    \"method\": \"PHONEPE\"\n}"
+								},
+								"url": {
+									"raw": "{{BASE_URL}}/api/payments/process-cart/",
+									"host": [
+										"{{BASE_URL}}"
+									],
+									"path": [
+										"api",
+										"payments",
+										"process-cart",
+										""
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"amount\": [\"Payment amount must be exactly 999.00\"]\n}"
+						}
+					]
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "BASE_URL",
+			"value": "http://127.0.0.1:8000",
+			"type": "string"
+		},
+		{
+			"key": "ACCESS_TOKEN",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "CART_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "PAYMENT_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "BOOKING_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "MERCHANT_TRANSACTION_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "PHONEPE_CALLBACK_AUTH",
+			"value": "base64_encoded_username:password",
+			"type": "string"
+		}
+	]
+}

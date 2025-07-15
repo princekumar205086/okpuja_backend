@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background-color: #d1ecf1; padding: 20px; border-radius: 5px; border-left: 4px solid #17a2b8; }
+        .details { margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px; }
+        .priest-info { background-color: #d4edda; padding: 15px; border-radius: 5px; margin: 15px 0; }
+        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>👨‍🦱 Priest Assigned to Your Booking</h2>
+        <p>Dear {{ booking.user.first_name|default:booking.user.email }},</p>
+        <p>We have assigned a dedicated priest to handle your booking. Please find the details below.</p>
+    </div>
+
+    <div class="details">
+        <h3>Booking Information</h3>
+        <p><strong>Booking ID:</strong> {{ booking.book_id }}</p>
+        <p><strong>Date & Time:</strong> {{ booking.selected_date|date:"F d, Y" }} at {{ booking.selected_time }}</p>
+        <p><strong>Status:</strong> {{ booking.get_status_display }}</p>
+    </div>
+
+    <div class="priest-info">
+        <h3>Assigned Priest Details</h3>
+        <p><strong>Name:</strong> {{ booking.assigned_to.first_name }} {{ booking.assigned_to.last_name }}</p>
+        <p><strong>Email:</strong> {{ booking.assigned_to.email }}</p>
+        {% if booking.assigned_to.phone_number %}
+        <p><strong>Phone:</strong> {{ booking.assigned_to.phone_number }}</p>
+        {% endif %}
+        <p><strong>Experience:</strong> Certified priest with years of experience in traditional Hindu rituals</p>
+        
+        <p><em>{{ booking.assigned_to.first_name }} will contact you 1 hour before the scheduled time to confirm the arrangements.</em></p>
+    </div>
+
+    <div class="details">
+        <h3>Service Details</h3>
+        {% if booking.cart.service_type == 'PUJA' %}
+            <p><strong>Service:</strong> {{ booking.cart.puja_service.name }}</p>
+            {% if booking.cart.package %}
+                <p><strong>Package:</strong> {{ booking.cart.package.name }}</p>
+            {% endif %}
+        {% elif booking.cart.service_type == 'ASTROLOGY' %}
+            <p><strong>Service:</strong> {{ booking.cart.astrology_service.name }}</p>
+        {% endif %}
+    </div>
+
+    {% if booking.address %}
+    <div class="details">
+        <h3>Service Address</h3>
+        <p>{{ booking.address.address_line_1 }}</p>
+        {% if booking.address.address_line_2 %}
+            <p>{{ booking.address.address_line_2 }}</p>
+        {% endif %}
+        <p>{{ booking.address.city }}, {{ booking.address.state }} - {{ booking.address.pincode }}</p>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        <p><strong>What to Expect:</strong></p>
+        <ul>
+            <li>The assigned priest will arrive 15 minutes before the scheduled time</li>
+            <li>All necessary items for the ritual will be brought by the priest</li>
+            <li>You may prepare any specific items mentioned in your booking</li>
+            <li>Feel free to ask any questions about the ritual to the priest</li>
+        </ul>
+        
+        <p>For any urgent queries, contact us at support@okpuja.com</p>
+        <p>🙏 We wish you a blessed and peaceful experience!</p>
+    </div>
+</body>
+</html>

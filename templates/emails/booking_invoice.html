@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background-color: #f8f9fa; padding: 20px; border-radius: 5px; }
+        .invoice-details { margin: 20px 0; }
+        .service-details { background-color: #e9ecef; padding: 15px; border-radius: 5px; }
+        .amount { font-size: 18px; font-weight: bold; color: #28a745; }
+        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>🙏 Booking Confirmation & Invoice</h2>
+        <p>Dear {{ booking.user.first_name|default:booking.user.email }},</p>
+        <p>Thank you for booking with OkPuja! Your booking has been confirmed.</p>
+    </div>
+
+    <div class="invoice-details">
+        <h3>Booking Details</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td><strong>Booking ID:</strong></td>
+                <td>{{ booking.book_id }}</td>
+            </tr>
+            <tr>
+                <td><strong>Date & Time:</strong></td>
+                <td>{{ booking.selected_date|date:"F d, Y" }} at {{ booking.selected_time }}</td>
+            </tr>
+            <tr>
+                <td><strong>Status:</strong></td>
+                <td>{{ booking.get_status_display }}</td>
+            </tr>
+            {% if booking.assigned_to %}
+            <tr>
+                <td><strong>Assigned Priest:</strong></td>
+                <td>{{ booking.assigned_to.first_name }} {{ booking.assigned_to.last_name }}</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+
+    <div class="service-details">
+        <h3>Service Details</h3>
+        {% if booking.cart.service_type == 'PUJA' %}
+            <p><strong>Service:</strong> {{ booking.cart.puja_service.name }}</p>
+            {% if booking.cart.package %}
+                <p><strong>Package:</strong> {{ booking.cart.package.name }}</p>
+                <p><strong>Description:</strong> {{ booking.cart.package.description }}</p>
+            {% endif %}
+        {% elif booking.cart.service_type == 'ASTROLOGY' %}
+            <p><strong>Service:</strong> {{ booking.cart.astrology_service.name }}</p>
+            <p><strong>Description:</strong> {{ booking.cart.astrology_service.description }}</p>
+        {% endif %}
+        
+        {% if booking.cart.promo_code %}
+            <p><strong>Promo Code Applied:</strong> {{ booking.cart.promo_code.code }} ({{ booking.cart.promo_code.discount_percentage }}% off)</p>
+        {% endif %}
+    </div>
+
+    <div class="invoice-details">
+        <h3>Payment Summary</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td><strong>Amount Paid:</strong></td>
+                <td class="amount">₹{{ booking.total_amount }}</td>
+            </tr>
+            <tr>
+                <td><strong>Payment Status:</strong></td>
+                <td>Completed</td>
+            </tr>
+        </table>
+    </div>
+
+    {% if booking.address %}
+    <div class="invoice-details">
+        <h3>Service Address</h3>
+        <p>{{ booking.address.address_line_1 }}</p>
+        {% if booking.address.address_line_2 %}
+            <p>{{ booking.address.address_line_2 }}</p>
+        {% endif %}
+        <p>{{ booking.address.city }}, {{ booking.address.state }} - {{ booking.address.pincode }}</p>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        <p><strong>Important Notes:</strong></p>
+        <ul>
+            <li>Please be available at the scheduled time and address</li>
+            <li>If you need to reschedule, please contact us at least 24 hours in advance</li>
+            <li>Our priest will contact you 1 hour before the scheduled time</li>
+        </ul>
+        
+        <p>For any queries, contact us at:</p>
+        <p>📧 Email: support@okpuja.com</p>
+        <p>📞 Phone: +91-XXXXXXXXXX</p>
+        
+        <p>🙏 Thank you for choosing OkPuja!</p>
+    </div>
+</body>
+</html>

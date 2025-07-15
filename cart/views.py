@@ -58,3 +58,13 @@ class CartViewSet(viewsets.ModelViewSet):
         cart.promo_code = None
         cart.save()
         return Response(self.get_serializer(cart).data)
+
+    def create(self, request, *args, **kwargs):
+        """Create cart and return full cart details"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        cart = serializer.save(user=request.user)
+        
+        # Return full cart details using the read serializer
+        response_serializer = CartSerializer(cart)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)

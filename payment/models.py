@@ -29,11 +29,31 @@ class PaymentMethod(models.TextChoices):
     COD = "COD", "Cash on Delivery"
 
 class Payment(models.Model):
+    # Make booking nullable to allow payment creation before booking
     booking = models.ForeignKey(
         'booking.Booking',
         on_delete=models.PROTECT,
         related_name="payments",
-        db_index=True
+        db_index=True,
+        null=True,
+        blank=True,
+        help_text="Booking created after successful payment"
+    )
+    # Add cart field to link payment to cart before booking creation
+    cart = models.ForeignKey(
+        'cart.Cart',
+        on_delete=models.PROTECT,
+        related_name="payments",
+        db_index=True,
+        help_text="Cart being purchased"
+    )
+    # Add user field for direct user reference
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="payments",
+        db_index=True,
+        help_text="User making the payment"
     )
     transaction_id = models.CharField(
         max_length=100,
@@ -101,6 +121,8 @@ class Payment(models.Model):
         indexes = [
             models.Index(fields=['status', 'created_at']),
             models.Index(fields=['booking', 'status']),
+            models.Index(fields=['cart', 'status']),
+            models.Index(fields=['user', 'status']),
         ]
         verbose_name = "Payment"
         verbose_name_plural = "Payments"
@@ -113,7 +135,91 @@ class Payment(models.Model):
             self.merchant_transaction_id = self._generate_merchant_transaction_id()
         if not self.transaction_id:
             self.transaction_id = self._generate_transaction_id()
+        
+        # Check if the status is being updated to SUCCESS
+        status_changed_to_success = False
+        if self.pk is not None:
+            try:
+                orig = Payment.objects.get(pk=self.pk)
+                if orig.status != PaymentStatus.SUCCESS and self.status == PaymentStatus.SUCCESS:
+                    status_changed_to_success = True
+            except Payment.DoesNotExist:
+                pass
+        
         super().save(*args, **kwargs)
+        
+        # Create booking after saving if status changed to SUCCESS
+        if status_changed_to_success and not self.booking:
+            try:
+                self.create_booking_from_cart()
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to create booking for payment {self.id}: {str(e)}")
+
+    def create_booking_from_cart(self):
+        """Create booking after successful payment"""
+        from booking.models import Booking, BookingStatus
+        from accounts.models import Address
+        from django.db import transaction
+        from datetime import datetime
+        
+        if self.status != PaymentStatus.SUCCESS:
+            raise ValueError("Can only create booking from successful payments")
+        
+        if self.booking:
+            raise ValueError("Booking already exists for this payment")
+        
+        if not self.cart:
+            raise ValueError("No cart associated with this payment")
+        
+        with transaction.atomic():
+            # Find the user's default address or create one if needed
+            default_address = Address.objects.filter(user=self.user, is_default=True).first()
+            if not default_address:
+                default_address = Address.objects.filter(user=self.user).order_by('-created_at').first()
+                if not default_address:
+                    # Create a basic address if none exists
+                    default_address = Address.objects.create(
+                        user=self.user,
+                        address_line_1="Default Address",
+                        city="Unknown",
+                        state="Unknown",
+                        pincode="000000",
+                        is_default=True
+                    )
+
+            # Parse time from cart
+            selected_time_str = self.cart.selected_time
+            try:
+                # Handle different time formats
+                if "AM" in selected_time_str or "PM" in selected_time_str:
+                    parsed_time = datetime.strptime(selected_time_str, '%I:%M %p').time()
+                else:
+                    parsed_time = datetime.strptime(selected_time_str, '%H:%M').time()
+            except ValueError:
+                # Fallback to default time
+                parsed_time = datetime.strptime("10:00", '%H:%M').time()
+            
+            # Create booking from cart data
+            booking = Booking.objects.create(
+                user=self.user,
+                cart=self.cart,
+                selected_date=self.cart.selected_date,
+                selected_time=parsed_time,
+                address=default_address,
+                status=BookingStatus.CONFIRMED
+            )
+            
+            # Link payment to booking
+            self.booking = booking
+            Payment.objects.filter(pk=self.pk).update(booking=booking)
+            
+            # Mark cart as converted
+            self.cart.status = 'CONVERTED'
+            self.cart.save()
+            
+            return booking
 
     def _generate_merchant_transaction_id(self):
         """Generate unique merchant transaction ID"""
@@ -142,6 +248,64 @@ class Payment(models.Model):
         """Trigger payment status notification"""
         from core.tasks import send_payment_notification
         send_payment_notification.delay(self.id)
+    
+    def create_booking_from_cart(self):
+        """Create booking after successful payment"""
+        from booking.models import Booking
+        from django.db import transaction
+        from datetime import datetime
+        
+        if self.status != PaymentStatus.SUCCESS:
+            raise ValueError("Can only create booking from successful payments")
+        
+        if self.booking:
+            raise ValueError("Booking already exists for this payment")
+        
+        if not self.cart:
+            raise ValueError("No cart associated with this payment")
+        
+        with transaction.atomic():
+            # Parse time from cart (assuming it's stored as string)
+            selected_time = self.cart.selected_time
+            if isinstance(selected_time, str):
+                try:
+                    # Try to parse as time format (HH:MM or HH:MM:SS)
+                    if ':' in selected_time:
+                        time_parts = selected_time.split(':')
+                        if len(time_parts) == 2:
+                            selected_time = datetime.strptime(selected_time, '%H:%M').time()
+                        elif len(time_parts) == 3:
+                            selected_time = datetime.strptime(selected_time, '%H:%M:%S').time()
+                    else:
+                        # If no colon, treat as hour only
+                        selected_time = datetime.strptime(f"{selected_time}:00", '%H:%M').time()
+                except ValueError:
+                    # If parsing fails, use a default time
+                    selected_time = datetime.strptime("10:00", '%H:%M').time()
+            
+            # Create booking from cart data
+            booking = Booking.objects.create(
+                user=self.user,
+                cart=self.cart,
+                selected_date=self.cart.selected_date,
+                selected_time=selected_time,
+                address=self.user.addresses.filter(is_default=True).first(),
+                status='CONFIRMED'  # Since payment is successful
+            )
+            
+            # Link payment to booking
+            self.booking = booking
+            self.save()
+            
+            # Mark cart as converted
+            self.cart.status = 'CONVERTED'
+            self.cart.save()
+            
+            # Send booking confirmation
+            from core.tasks import send_booking_confirmation
+            send_booking_confirmation.delay(booking.id)
+            
+            return booking
 
 class Refund(models.Model):
     payment = models.ForeignKey(

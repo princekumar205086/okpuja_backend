@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from django.utils import timezone
 import logging
 
 from .models import Payment, Refund, PaymentMethod, PaymentStatus
@@ -25,6 +26,9 @@ from core.tasks import (
     send_payment_status_notification,
     send_refund_initiated_notification
 )
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +56,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False) or not self.request.user.is_authenticated:
             return self.queryset.none()
-        return self.queryset.filter(booking__user=self.request.user)
+        return self.queryset.filter(user=self.request.user)
 
     def create(self, request, *args, **kwargs):
         """
@@ -206,6 +210,188 @@ class PaymentViewSet(viewsets.ModelViewSet):
             logger.error(f"Refund initiation failed: {str(e)}")
             return Response(
                 {'error': 'Refund initiation failed', 'details': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=False, methods=['post'], url_path='process-cart')
+    def process_cart_payment(self, request):
+        """
+        Process payment for cart items - main endpoint for payment-first flow
+        Request: { "cart_id": 123, "method": "PHONEPE" }
+        Response: { "success": True, "payment_url": "...", "payment_id": 456 }
+        """
+        from cart.models import Cart
+        
+        try:
+            cart_id = request.data.get('cart_id')
+            if not cart_id:
+                return Response(
+                    {'error': 'cart_id is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Validate cart
+            try:
+                cart = Cart.objects.get(
+                    id=cart_id,
+                    user=request.user,
+                    status='ACTIVE'
+                )
+            except Cart.DoesNotExist:
+                return Response(
+                    {'error': 'Active cart not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Create payment data
+            payment_data = {
+                'cart_id': cart_id,
+                'amount': cart.total_price,
+                'method': request.data.get('method', 'PHONEPE'),
+                'currency': 'INR'
+            }
+            
+            # Create payment using serializer
+            serializer = PaymentCreateSerializer(
+                data=payment_data,
+                context={'request': request}
+            )
+            serializer.is_valid(raise_exception=True)
+            
+            with transaction.atomic():
+                payment = serializer.save()
+                
+                # Get PhonePe gateway
+                gateway = get_payment_gateway('phonepe')
+                
+                # Initiate payment with gateway
+                gateway_response = gateway.initiate_payment(payment)
+                
+                # Send payment initiated notification
+                send_payment_initiated_notification.delay(payment.id)
+                
+                return Response({
+                    'success': True,
+                    'payment_id': payment.id,
+                    'transaction_id': payment.transaction_id,
+                    'merchant_transaction_id': payment.merchant_transaction_id,
+                    'amount': payment.amount,
+                    'currency': payment.currency,
+                    'payment_url': gateway_response.get('checkout_url'),
+                    'status': payment.status,
+                    'cart_id': cart.id
+                }, status=status.HTTP_201_CREATED)
+                
+        except Exception as e:
+            logger.error(f"Cart payment processing failed: {str(e)}")
+            return Response(
+                {'error': 'Payment processing failed', 'details': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=True, methods=['get'], url_path='check-booking')
+    def check_booking_status(self, request, pk=None):
+        """
+        Check if payment has resulted in booking creation
+        Returns booking details if payment was successful and booking created
+        """
+        payment = self.get_object()
+        
+        if payment.status == PaymentStatus.SUCCESS and payment.booking:
+            from booking.serializers import BookingSerializer
+            booking_serializer = BookingSerializer(payment.booking)
+            return Response({
+                'success': True,
+                'payment_status': payment.status,
+                'booking_created': True,
+                'booking': booking_serializer.data
+            })
+        elif payment.status == PaymentStatus.SUCCESS and not payment.booking:
+            return Response({
+                'success': True,
+                'payment_status': payment.status,
+                'booking_created': False,
+                'message': 'Payment successful but booking creation pending'
+            })
+        else:
+            return Response({
+                'success': False,
+                'payment_status': payment.status,
+                'booking_created': False,
+                'message': f'Payment status: {payment.get_status_display()}'
+            })
+
+    @action(detail=True, methods=['post'], url_path='simulate-success')
+    def simulate_payment_success(self, request, pk=None):
+        """
+        DEVELOPMENT ONLY: Simulate payment success to test booking creation
+        This endpoint manually marks payment as successful and creates booking
+        """
+        from django.conf import settings
+        
+        # Only allow in development/debug mode
+        if not settings.DEBUG:
+            return Response(
+                {'error': 'This endpoint is only available in development mode'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        payment = self.get_object()
+        
+        if payment.status != PaymentStatus.PENDING:
+            return Response(
+                {'error': f'Payment status is {payment.status}, can only simulate success for PENDING payments'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            with transaction.atomic():
+                # Update payment status to SUCCESS
+                old_status = payment.status
+                payment.status = PaymentStatus.SUCCESS
+                
+                # Add simulation info to gateway response
+                payment.gateway_response = payment.gateway_response or {}
+                payment.gateway_response.update({
+                    'simulation': {
+                        'simulated_at': str(timezone.now()),
+                        'simulated_by': request.user.email,
+                        'note': 'Payment success simulated for development testing'
+                    }
+                })
+                payment.save()
+                
+                # Create booking if no booking exists yet
+                booking = None
+                if not payment.booking:
+                    booking = payment.create_booking_from_cart()
+                    logger.info(f"Booking {booking.book_id} created via simulation for payment {payment.transaction_id}")
+                
+                # Send notifications
+                if old_status != payment.status:
+                    send_payment_status_notification.delay(payment.id)
+                
+                response_data = {
+                    'success': True,
+                    'message': 'Payment success simulated successfully',
+                    'payment_id': payment.id,
+                    'transaction_id': payment.transaction_id,
+                    'status': payment.status,
+                    'booking_created': booking is not None
+                }
+                
+                if booking:
+                    response_data.update({
+                        'booking_id': booking.id,
+                        'booking_reference': booking.book_id
+                    })
+                
+                return Response(response_data, status=status.HTTP_200_OK)
+                
+        except Exception as e:
+            logger.error(f"Payment simulation failed: {str(e)}")
+            return Response(
+                {'error': 'Payment simulation failed', 'details': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
