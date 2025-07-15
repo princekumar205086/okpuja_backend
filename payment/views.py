@@ -277,7 +277,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
                     'merchant_transaction_id': payment.merchant_transaction_id,
                     'amount': payment.amount,
                     'currency': payment.currency,
-                    'payment_url': gateway_response.get('checkout_url'),
+                    'payment_url': gateway_response.get('payment_url'),
                     'status': payment.status,
                     'cart_id': cart.id
                 }, status=status.HTTP_201_CREATED)
