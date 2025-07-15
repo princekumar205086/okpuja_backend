@@ -1,45 +1,43 @@
+import json
+import hashlib
+import base64
+import requests
+import uuid
+import datetime
 import logging
-from uuid import uuid4
 from django.conf import settings
-from django.urls import reverse
 from django.utils import timezone
-from phonepe.sdk.pg.payments.v2.standard_checkout_client import StandardCheckoutClient
-from phonepe.sdk.pg.payments.v2.models.request.standard_checkout_pay_request import StandardCheckoutPayRequest
-from phonepe.sdk.pg.env import Env
 
 logger = logging.getLogger(__name__)
 
-# Define a custom PhonePe exception if the official one is not available
+# Define a custom PhonePe exception
 class PhonePeException(Exception):
     """Custom PhonePe exception for error handling"""
     pass
 
-logger = logging.getLogger(__name__)
-
 class PhonePeGateway:
     def __init__(self):
-        """Initialize PhonePe Gateway with latest SDK"""
-        self.client_id = settings.PHONEPE_CLIENT_ID
-        self.client_secret = settings.PHONEPE_CLIENT_SECRET
-        self.client_version = settings.PHONEPE_CLIENT_VERSION
+        """Initialize PhonePe Gateway with direct API approach"""
+        self.merchant_id = settings.PHONEPE_MERCHANT_ID
+        self.merchant_key = settings.PHONEPE_MERCHANT_KEY
+        self.salt_index = settings.PHONEPE_SALT_INDEX
+        self.base_url = settings.PHONEPE_BASE_URL
         
-        # Set environment (UAT for testing, PRODUCTION for live)
-        self.env = Env.SANDBOX if settings.PHONEPE_ENV == 'UAT' else Env.PRODUCTION
-        
-        # Initialize the PhonePe client
-        self.client = StandardCheckoutClient.get_instance(
-            client_id=self.client_id,
-            client_secret=self.client_secret,
-            client_version=self.client_version,
-            env=self.env
-        )
-        
-        self.callback_username = settings.PHONEPE_CALLBACK_USERNAME
-        self.callback_password = settings.PHONEPE_CALLBACK_PASSWORD
+    def generate_transaction_id(self):
+        """Generate a unique transaction ID"""
+        uuid_part = str(uuid.uuid4()).split('-')[0].upper()
+        now = datetime.datetime.now().strftime('%Y%m%d')
+        return f"TRX{now}{uuid_part}"
+    
+    def generate_checksum(self, data, endpoint="/pg/v1/pay"):
+        """Generate checksum for PhonePe API"""
+        checksum_str = data + endpoint + self.merchant_key
+        checksum = hashlib.sha256(checksum_str.encode()).hexdigest() + '###' + str(self.salt_index)
+        return checksum
 
     def initiate_payment(self, payment):
         """
-        Initiate payment using PhonePe's latest SDK
+        Initiate payment using PhonePe direct API
         
         Args:
             payment: Payment model instance
@@ -48,94 +46,108 @@ class PhonePeGateway:
             dict: Response containing checkout URL and payment details
         """
         try:
-            # Use merchant_transaction_id as unique order ID
-            unique_order_id = payment.merchant_transaction_id
+            # Prepare callback URLs
+            callback_url = f"{settings.PHONEPE_CALLBACK_URL}"
+            redirect_url = f"{settings.PHONEPE_SUCCESS_REDIRECT_URL}?payment_id={payment.id}"
             
-            # Amount in paise (multiply by 100 as PhonePe expects paise)
-            amount_in_paise = int(payment.amount * 100)
-            
-            # Set redirect URL (where user goes after payment)
-            ui_redirect_url = payment.redirect_url or settings.PHONEPE_SUCCESS_REDIRECT_URL
-            
-            # Build the payment request
-            standard_pay_request = StandardCheckoutPayRequest.build_request(
-                merchant_order_id=unique_order_id,
-                amount=amount_in_paise,
-                redirect_url=ui_redirect_url
-            )
-            
-            # Initiate payment
-            standard_pay_response = self.client.pay(standard_pay_request)
-            
-            # Extract checkout URL
-            checkout_page_url = standard_pay_response.redirect_url
-            
-            # Update payment with PhonePe response
-            payment.gateway_response = {
-                'checkout_url': checkout_page_url,
-                'merchant_order_id': unique_order_id,
-                'amount': amount_in_paise,
-                'redirect_url': ui_redirect_url,
-                'response_data': standard_pay_response.__dict__ if hasattr(standard_pay_response, '__dict__') else str(standard_pay_response)
-            }
-            payment.save()
-            
-            logger.info(f"PhonePe payment initiated successfully for order: {unique_order_id}")
-            
-            return {
-                'success': True,
-                'checkout_url': checkout_page_url,
-                'merchant_order_id': unique_order_id,
-                'amount': payment.amount,
-                'currency': payment.currency
+            # Create payload
+            payload = {
+                "merchantId": self.merchant_id,
+                "merchantTransactionId": payment.merchant_transaction_id,
+                "merchantUserId": f"USR{payment.user.id}",
+                "amount": int(payment.amount * 100),  # Convert to paisa
+                "redirectUrl": redirect_url,
+                "redirectMode": "POST",
+                "callbackUrl": callback_url,
+                "mobileNumber": getattr(payment.user, 'phone_number', None) or "9000000000",
+                "paymentInstrument": {
+                    "type": "PAY_PAGE"
+                }
             }
             
-        except PhonePeException as e:
-            logger.error(f"PhonePe payment initiation failed: {str(e)}")
-            raise Exception(f"PhonePe payment failed: {str(e)}")
+            # Encode payload
+            data = base64.b64encode(json.dumps(payload).encode()).decode()
+            checksum = self.generate_checksum(data)
+            
+            final_payload = {
+                "request": data,
+            }
+            
+            headers = {
+                'Content-Type': 'application/json',
+                'X-VERIFY': checksum,
+                'X-MERCHANT-ID': self.merchant_id,
+            }
+            
+            # Make API call
+            api_url = f"{self.base_url}/pg/v1/pay"
+            response = requests.post(api_url, headers=headers, json=final_payload)
+            response_data = response.json()
+            
+            logger.info(f"PhonePe API Response: {response_data}")
+            
+            if response_data.get('success'):
+                payment_url = response_data['data']['instrumentResponse']['redirectInfo']['url']
+                
+                # Update payment with gateway response
+                payment.gateway_response = response_data
+                payment.save()
+                
+                return {
+                    'success': True,
+                    'payment_url': payment_url,
+                    'transaction_id': payment.transaction_id,
+                    'merchant_transaction_id': payment.merchant_transaction_id
+                }
+            else:
+                error_msg = response_data.get('message', 'Payment initiation failed')
+                logger.error(f"PhonePe payment initiation failed: {error_msg}")
+                raise PhonePeException(f"Payment initiation failed: {error_msg}")
+                
+        except requests.RequestException as e:
+            logger.error(f"PhonePe API request failed: {str(e)}")
+            raise PhonePeException(f"API request failed: {str(e)}")
         except Exception as e:
-            logger.error(f"Payment initiation error: {str(e)}")
-            raise Exception(f"Payment initiation failed: {str(e)}")
+            logger.error(f"PhonePe payment initiation error: {str(e)}")
+            raise PhonePeException(f"Payment initiation failed: {str(e)}")
 
-    def check_payment_status(self, merchant_order_id):
+    def check_payment_status(self, merchant_transaction_id):
         """
-        Check payment status using PhonePe's latest SDK
+        Check payment status using PhonePe API
         
         Args:
-            merchant_order_id: Unique order identifier
+            merchant_transaction_id: Merchant transaction ID
             
         Returns:
             dict: Payment status response
         """
         try:
-            # Get order status from PhonePe
-            order_status_response = self.client.get_order_status(merchant_order_id=merchant_order_id)
+            endpoint = f"/pg/v1/status/{self.merchant_id}/{merchant_transaction_id}"
+            checksum = self.generate_checksum("", endpoint)
             
-            # Extract order state
-            order_state = order_status_response.state
-            
-            logger.info(f"PhonePe status check for order {merchant_order_id}: {order_state}")
-            
-            return {
-                'success': True,
-                'status': order_state,
-                'merchant_order_id': merchant_order_id,
-                'response_data': order_status_response.__dict__ if hasattr(order_status_response, '__dict__') else str(order_status_response)
+            headers = {
+                'Content-Type': 'application/json',
+                'X-VERIFY': checksum,
+                'X-MERCHANT-ID': self.merchant_id
             }
             
-        except PhonePeException as e:
-            logger.error(f"PhonePe status check failed: {str(e)}")
-            raise Exception(f"Status check failed: {str(e)}")
+            api_url = f"{self.base_url}{endpoint}"
+            response = requests.get(api_url, headers=headers)
+            response_data = response.json()
+            
+            logger.info(f"PhonePe status check response: {response_data}")
+            return response_data
+            
         except Exception as e:
             logger.error(f"Status check error: {str(e)}")
             raise Exception(f"Status check failed: {str(e)}")
 
-    def process_webhook(self, authorization_header, callback_body_string):
+    def process_webhook(self, headers, callback_body_string):
         """
-        Process PhonePe webhook callback using latest SDK
+        Process PhonePe webhook callback
         
         Args:
-            authorization_header: Authorization header from PhonePe
+            headers: Full request headers from PhonePe
             callback_body_string: Raw callback body as string
             
         Returns:
@@ -144,76 +156,68 @@ class PhonePeGateway:
         from .models import Payment, PaymentStatus
         
         try:
-            # Validate callback using PhonePe SDK
-            callback_response = self.client.validate_callback(
-                username=self.callback_username,
-                password=self.callback_password,
-                callback_header_data=authorization_header,
-                callback_response_data=callback_body_string
-            )
+            # Parse the callback data
+            callback_data = json.loads(callback_body_string)
             
-            # Extract order details
-            order_id = callback_response.order_id
-            state = callback_response.state
+            # Extract checksum for validation
+            x_verify_header = headers.get('X-VERIFY')
+            if not x_verify_header:
+                logger.error("Webhook validation failed: Missing X-VERIFY header")
+                raise Exception("Invalid webhook callback: Missing X-VERIFY header")
+            
+            # Decode the response if it's base64 encoded
+            if 'response' in callback_data:
+                decoded_response = json.loads(base64.b64decode(callback_data['response']).decode('utf-8'))
+            else:
+                decoded_response = callback_data
+            
+            merchant_transaction_id = decoded_response.get('data', {}).get('merchantTransactionId')
+            
+            if not merchant_transaction_id:
+                logger.error("No merchant transaction ID in callback")
+                raise Exception("Invalid callback: No merchant transaction ID")
             
             # Find payment by merchant_transaction_id
             try:
-                payment = Payment.objects.get(merchant_transaction_id=order_id)
+                payment = Payment.objects.get(merchant_transaction_id=merchant_transaction_id)
             except Payment.DoesNotExist:
-                logger.error(f"Payment not found for order ID: {order_id}")
-                raise Exception(f"Payment not found for order ID: {order_id}")
+                logger.error(f"Payment not found for merchant transaction ID: {merchant_transaction_id}")
+                raise Exception(f"Payment not found for merchant transaction ID: {merchant_transaction_id}")
             
-            # Map PhonePe states to our payment statuses
-            status_mapping = {
-                'CHECKOUT_ORDER_COMPLETED': PaymentStatus.SUCCESS,
-                'CHECKOUT_ORDER_FAILED': PaymentStatus.FAILED,
-                'CHECKOUT_TRANSACTION_ATTEMPT_FAILED': PaymentStatus.FAILED,
-            }
+            # Update payment status based on callback
+            transaction_data = decoded_response.get('data', {})
+            state = transaction_data.get('state')
             
-            # Update payment status
-            old_status = payment.status
-            payment.status = status_mapping.get(state, PaymentStatus.PENDING)
+            if state == 'COMPLETED':
+                payment.status = PaymentStatus.SUCCESS
+            elif state in ['FAILED', 'DECLINED']:
+                payment.status = PaymentStatus.FAILED
+            elif state == 'PENDING':
+                payment.status = PaymentStatus.PENDING
             
             # Update gateway response with callback data
             payment.gateway_response = payment.gateway_response or {}
             payment.gateway_response.update({
                 'webhook_callback': {
-                    'order_id': order_id,
-                    'state': state,
-                    'callback_response': callback_response.__dict__ if hasattr(callback_response, '__dict__') else str(callback_response),
+                    'decoded_response': decoded_response,
                     'timestamp': str(timezone.now())
                 }
             })
             
+            # This save will trigger the booking creation via the overridden save method
             payment.save()
             
-            # Create booking if payment is successful and no booking exists yet
-            if payment.status == PaymentStatus.SUCCESS and not payment.booking:
-                try:
-                    booking = payment.create_booking_from_cart()
-                    logger.info(f"Booking {booking.book_id} created successfully for payment {payment.transaction_id}")
-                except Exception as e:
-                    logger.error(f"Failed to create booking from payment {payment.transaction_id}: {str(e)}")
-            
-            # Send notification if status changed
-            if old_status != payment.status:
-                payment.send_notification()
-            
-            logger.info(f"PhonePe webhook processed successfully for order: {order_id}, status: {state}")
+            logger.info(f"PhonePe webhook processed for merchant transaction: {merchant_transaction_id}, status: {payment.status}")
             
             return payment
             
-        except PhonePeException as e:
-            logger.error(f"PhonePe webhook validation failed: {str(e)}")
-            raise Exception(f"Invalid webhook callback: {str(e)}")
         except Exception as e:
             logger.error(f"Webhook processing failed: {str(e)}")
             raise Exception(f"Webhook processing failed: {str(e)}")
 
     def initiate_refund(self, refund):
         """
-        Initiate refund using PhonePe (if supported by SDK)
-        Note: Check PhonePe documentation for refund API availability
+        Initiate refund using PhonePe API
         
         Args:
             refund: Refund model instance
@@ -221,15 +225,45 @@ class PhonePeGateway:
         Returns:
             dict: Refund response
         """
-        # Note: As of the current SDK documentation, refund functionality 
-        # might need to be implemented separately or through PhonePe's merchant dashboard
-        logger.warning("Refund functionality needs to be implemented based on PhonePe's refund API")
-        
-        return {
-            'success': False,
-            'message': 'Refund needs to be processed through PhonePe merchant dashboard',
-            'refund_id': refund.refund_id
-        }
+        try:
+            refund_payload = {
+                "merchantId": self.merchant_id,
+                "merchantTransactionId": refund.refund_id,
+                "originalTransactionId": refund.payment.merchant_transaction_id,
+                "amount": int(refund.amount * 100),  # Convert to paisa
+                "callbackUrl": settings.PHONEPE_CALLBACK_URL
+            }
+            
+            data = base64.b64encode(json.dumps(refund_payload).encode()).decode()
+            checksum = self.generate_checksum(data, "/pg/v1/refund")
+            
+            final_payload = {
+                "request": data,
+            }
+            
+            headers = {
+                'Content-Type': 'application/json',
+                'X-VERIFY': checksum,
+                'X-MERCHANT-ID': self.merchant_id,
+            }
+            
+            api_url = f"{self.base_url}/pg/v1/refund"
+            response = requests.post(api_url, headers=headers, json=final_payload)
+            response_data = response.json()
+            
+            logger.info(f"PhonePe refund response: {response_data}")
+            
+            if response_data.get('success'):
+                refund.gateway_response = response_data
+                refund.save()
+                return response_data
+            else:
+                error_msg = response_data.get('message', 'Refund initiation failed')
+                raise PhonePeException(f"Refund failed: {error_msg}")
+                
+        except Exception as e:
+            logger.error(f"PhonePe refund error: {str(e)}")
+            raise PhonePeException(f"Refund failed: {str(e)}")
 
 
 def get_payment_gateway(name='phonepe'):
@@ -248,6 +282,6 @@ def get_payment_gateway(name='phonepe'):
     
     gateway_class = gateways.get(name.lower())
     if not gateway_class:
-        raise ValueError(f"Unsupported payment gateway: {name}")
+        raise ValueError(f"Unknown payment gateway: {name}")
     
     return gateway_class()

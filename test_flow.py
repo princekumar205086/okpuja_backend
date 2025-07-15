@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'okpuja_backend.settings')
 django.setup()
 
-BASE_URL = 'http://127.0.0.1:8000/api'
+BASE_URL = 'http://127.0.0.1:8001/api'
 TEST_USER = {
     'email': 'asliprinceraj@gmail.com',
     'password': 'testpass123'

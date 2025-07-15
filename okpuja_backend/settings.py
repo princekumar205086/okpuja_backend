@@ -169,9 +169,15 @@ OTP_LENGTH = int(os.getenv('OTP_LENGTH', 6))
 
 # PhonePe Payment Gateway Configuration
 PHONEPE_ENV = os.getenv('PHONEPE_ENV', 'UAT')  # UAT for testing, PRODUCTION for live
-PHONEPE_CLIENT_ID = os.getenv('PHONEPE_CLIENT_ID', '')
-PHONEPE_CLIENT_SECRET = os.getenv('PHONEPE_CLIENT_SECRET', '')
-PHONEPE_CLIENT_VERSION = int(os.getenv('PHONEPE_CLIENT_VERSION', 1))
+PHONEPE_MERCHANT_ID = os.getenv('PHONEPE_MERCHANT_ID', '')
+PHONEPE_MERCHANT_KEY = os.getenv('PHONEPE_MERCHANT_KEY', '')
+PHONEPE_SALT_INDEX = int(os.getenv('PHONEPE_SALT_INDEX', 1))
+
+# PhonePe API URLs
+if PHONEPE_ENV == 'PRODUCTION':
+    PHONEPE_BASE_URL = 'https://api.phonepe.com/apis/hermes'
+else:
+    PHONEPE_BASE_URL = 'https://api-preprod.phonepe.com/apis/hermes'
 
 # PhonePe URLs
 PHONEPE_REDIRECT_URL = os.getenv('PHONEPE_REDIRECT_URL', 'http://localhost:8000/api/payments/webhook/phonepe/')
@@ -181,10 +187,6 @@ PHONEPE_SUCCESS_REDIRECT_URL = os.getenv('PHONEPE_SUCCESS_REDIRECT_URL', 'http:/
 
 # Frontend Base URL
 FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'http://localhost:3000')
-
-# PhonePe Callback Authentication
-PHONEPE_CALLBACK_USERNAME = os.getenv('PHONEPE_CALLBACK_USERNAME', '')
-PHONEPE_CALLBACK_PASSWORD = os.getenv('PHONEPE_CALLBACK_PASSWORD', '')
 
 
 # Documentation
