@@ -32,7 +32,7 @@ def test_production_api_call_exactly():
     
     # Test WITHOUT address_id first (since our local test didn't include it)
     payment_data = {
-        'cart_id': 28,
+        'cart_id': 29,
         'method': 'PHONEPE'
     }
     

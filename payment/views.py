@@ -60,7 +60,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """
-        Create a new payment and initiate payment gateway process
+        Create a new payment and initiate payment gateway process with enhanced error handling
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -69,38 +69,108 @@ class PaymentViewSet(viewsets.ModelViewSet):
             with transaction.atomic():
                 payment = serializer.save()
                 
-                # Get PhonePe gateway
-                gateway = get_payment_gateway('phonepe')
+                logger.info(f"🎯 Starting payment creation for payment ID: {payment.id}")
+                logger.info(f"💰 Amount: ₹{payment.amount}")
+                logger.info(f"👤 User: {request.user.email} (ID: {request.user.id})")
+                logger.info(f"🔗 Transaction ID: {payment.transaction_id}")
                 
-                # Initiate payment with gateway
-                response = gateway.initiate_payment(payment)
-                
-                # Send payment initiated notification
-                send_payment_initiated_notification.delay(payment.id)
-                
-                # Prepare response
-                response_serializer = PaymentInitiationResponseSerializer({
-                    'success': True,
-                    'payment_id': payment.id,
-                    'merchant_transaction_id': payment.merchant_transaction_id,
-                    'transaction_id': payment.transaction_id,
-                    'amount': payment.amount,
-                    'currency': payment.currency,
-                    'payment_url': response.get('checkout_url'),
-                    'status': payment.status
-                })
-                
-                return Response(
-                    response_serializer.data,
-                    status=status.HTTP_201_CREATED
-                )
+                # Enhanced PhonePe processing with comprehensive error handling
+                try:
+                    # Get PhonePe gateway
+                    gateway = get_payment_gateway('phonepe')
+                    
+                    # Initiate payment with gateway
+                    response = gateway.initiate_payment(payment)
+                    
+                    # Send payment initiated notification
+                    send_payment_initiated_notification.delay(payment.id)
+                    
+                    # Prepare response
+                    response_serializer = PaymentInitiationResponseSerializer({
+                        'success': True,
+                        'payment_id': payment.id,
+                        'merchant_transaction_id': payment.merchant_transaction_id,
+                        'transaction_id': payment.transaction_id,
+                        'amount': payment.amount,
+                        'currency': payment.currency,
+                        'payment_url': response.get('payment_url') or response.get('checkout_url'),
+                        'status': payment.status
+                    })
+                    
+                    logger.info(f"✅ Payment created and initiated successfully!")
+                    
+                    return Response(
+                        response_serializer.data,
+                        status=status.HTTP_201_CREATED
+                    )
+                    
+                except Exception as gateway_error:
+                    # Enhanced error categorization and response
+                    error_str = str(gateway_error)
+                    error_type = type(gateway_error).__name__
+                    
+                    logger.error(f"❌ PhonePe Gateway Error in create: {error_str}")
+                    logger.error(f"🔍 Error Type: {error_type}")
+                    
+                    # Categorize the error for better user feedback
+                    if '[Errno 111] Connection refused' in error_str:
+                        error_category = 'CONNECTION_REFUSED'
+                        user_message = 'Unable to connect to payment gateway. Our technical team has been notified.'
+                        admin_message = 'PhonePe API connection refused - network connectivity issue detected.'
+                    elif 'Timeout' in error_str or 'timeout' in error_str.lower():
+                        error_category = 'TIMEOUT'
+                        user_message = 'Payment gateway is temporarily slow. Please try again.'
+                        admin_message = 'PhonePe API timeout - network latency issue.'
+                    elif 'SSL' in error_str or 'ssl' in error_str.lower():
+                        error_category = 'SSL_ERROR'
+                        user_message = 'Secure connection error. Please try again.'
+                        admin_message = 'SSL/TLS error connecting to PhonePe API.'
+                    elif 'DNS' in error_str or 'Name or service not known' in error_str:
+                        error_category = 'DNS_ERROR'
+                        user_message = 'Unable to reach payment gateway. Please check your connection.'
+                        admin_message = 'DNS resolution failed for PhonePe API.'
+                    else:
+                        error_category = 'UNKNOWN_ERROR'
+                        user_message = 'Payment initiation failed. Please try again or contact support.'
+                        admin_message = f'Unexpected payment error: {error_str}'
+                    
+                    # Detailed error response
+                    error_response = {
+                        'error': 'Payment initiation failed',
+                        'error_category': error_category,
+                        'user_message': user_message,
+                        'payment_id': payment.id,
+                        'transaction_id': payment.transaction_id,
+                        'debug_info': {
+                            'error_type': error_type,
+                            'admin_message': admin_message,
+                            'timestamp': timezone.now().isoformat()
+                        }
+                    }
+                    
+                    # In debug mode, add more debugging info
+                    if settings.DEBUG:
+                        error_response['debug_info']['full_error'] = error_str
+                        error_response['debug_options'] = {
+                            'simulate_payment_url': f'/api/payments/payments/{payment.id}/simulate-success/',
+                            'debug_connectivity_url': '/api/payments/payments/debug-connectivity/',
+                        }
+                    
+                    return Response(error_response, status=status.HTTP_400_BAD_REQUEST)
                 
         except Exception as e:
-            logger.error(f"Payment initiation failed: {str(e)}")
-            return Response(
-                {'error': 'Payment initiation failed', 'details': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            logger.error(f"💥 Critical error in payment creation: {str(e)}")
+            logger.error(f"🔍 Error Type: {type(e).__name__}")
+            
+            return Response({
+                'error': 'Critical payment system error',
+                'user_message': 'Unable to create payment. Please try again later.',
+                'debug_info': {
+                    'error_type': type(e).__name__,
+                    'error_details': str(e),
+                    'timestamp': timezone.now().isoformat()
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['get'])
     def status(self, request, pk=None):
@@ -216,7 +286,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='process-cart')
     def process_cart_payment(self, request):
         """
-        Process payment for cart items - main endpoint for payment-first flow
+        Process payment for cart items - main endpoint for payment-first flow with enhanced error handling
         Request: { "cart_id": 123, "method": "PHONEPE" }
         Response: { "success": True, "payment_url": "...", "payment_id": 456 }
         """
@@ -243,6 +313,13 @@ class PaymentViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_404_NOT_FOUND
                 )
             
+            # Validate cart total
+            if cart.total_price <= 0:
+                return Response(
+                    {'error': f'Invalid cart total: ₹{cart.total_price}. Please check cart items and packages.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
             # Create payment data
             payment_data = {
                 'cart_id': cart_id,
@@ -261,33 +338,119 @@ class PaymentViewSet(viewsets.ModelViewSet):
             with transaction.atomic():
                 payment = serializer.save()
                 
-                # Get PhonePe gateway
-                gateway = get_payment_gateway('phonepe')
+                logger.info(f"🎯 Starting payment processing for cart {cart_id}")
+                logger.info(f"💰 Amount: ₹{payment.amount}")
+                logger.info(f"👤 User: {request.user.email} (ID: {request.user.id})")
+                logger.info(f"🆔 Payment ID: {payment.id}")
+                logger.info(f"🔗 Transaction ID: {payment.transaction_id}")
                 
-                # Initiate payment with gateway
-                gateway_response = gateway.initiate_payment(payment)
-                
-                # Send payment initiated notification
-                send_payment_initiated_notification.delay(payment.id)
-                
-                return Response({
-                    'success': True,
-                    'payment_id': payment.id,
-                    'transaction_id': payment.transaction_id,
-                    'merchant_transaction_id': payment.merchant_transaction_id,
-                    'amount': payment.amount,
-                    'currency': payment.currency,
-                    'payment_url': gateway_response.get('payment_url'),
-                    'status': payment.status,
-                    'cart_id': cart.id
-                }, status=status.HTTP_201_CREATED)
+                # Enhanced PhonePe processing with comprehensive error handling
+                try:
+                    # Get PhonePe gateway
+                    gateway = get_payment_gateway('phonepe')
+                    
+                    # Initiate payment with gateway
+                    gateway_response = gateway.initiate_payment(payment)
+                    
+                    # Send payment initiated notification
+                    send_payment_initiated_notification.delay(payment.id)
+                    
+                    logger.info(f"✅ Payment processed successfully!")
+                    logger.info(f"🔗 Payment URL: {gateway_response.get('payment_url', 'N/A')}")
+                    
+                    return Response({
+                        'success': True,
+                        'payment_id': payment.id,
+                        'transaction_id': payment.transaction_id,
+                        'merchant_transaction_id': payment.merchant_transaction_id,
+                        'amount': payment.amount,
+                        'currency': payment.currency,
+                        'payment_url': gateway_response.get('payment_url'),
+                        'checkout_url': gateway_response.get('checkout_url'),
+                        'status': payment.status,
+                        'cart_id': cart.id,
+                        'phonepe_transaction_id': gateway_response.get('phonepe_transaction_id'),
+                        'message': 'Payment initiated successfully'
+                    }, status=status.HTTP_201_CREATED)
+                    
+                except Exception as gateway_error:
+                    # Enhanced error categorization and fallback handling
+                    error_str = str(gateway_error)
+                    error_type = type(gateway_error).__name__
+                    
+                    logger.error(f"❌ PhonePe Gateway Error: {error_str}")
+                    logger.error(f"🔍 Error Type: {error_type}")
+                    
+                    # Categorize the error for better user feedback
+                    if '[Errno 111] Connection refused' in error_str:
+                        error_category = 'CONNECTION_REFUSED'
+                        user_message = 'Unable to connect to payment gateway. Please try again in a few moments.'
+                        admin_message = 'PhonePe API connection refused - check network connectivity, firewall rules, or contact hosting provider.'
+                    elif 'Timeout' in error_str or 'timeout' in error_str.lower():
+                        error_category = 'TIMEOUT'
+                        user_message = 'Payment gateway is taking too long to respond. Please try again.'
+                        admin_message = 'PhonePe API timeout - increase timeout settings or check network latency.'
+                    elif 'SSL' in error_str or 'ssl' in error_str.lower():
+                        error_category = 'SSL_ERROR'
+                        user_message = 'Secure connection to payment gateway failed. Please try again.'
+                        admin_message = 'SSL/TLS error connecting to PhonePe API - check certificates and SSL settings.'
+                    elif 'DNS' in error_str or 'Name or service not known' in error_str:
+                        error_category = 'DNS_ERROR'
+                        user_message = 'Unable to reach payment gateway. Please check your internet connection.'
+                        admin_message = 'DNS resolution failed for PhonePe API - check DNS settings.'
+                    elif 'Invalid' in error_str or 'Bad Request' in error_str:
+                        error_category = 'INVALID_REQUEST'
+                        user_message = 'Payment request is invalid. Please try again or contact support.'
+                        admin_message = f'Invalid payment request: {error_str}'
+                    else:
+                        error_category = 'UNKNOWN_ERROR'
+                        user_message = 'Payment processing failed. Please try again or contact support.'
+                        admin_message = f'Unknown payment error: {error_str}'
+                    
+                    # Log detailed error information for debugging
+                    logger.error(f"🏷️  Error Category: {error_category}")
+                    logger.error(f"👥 User Message: {user_message}")
+                    logger.error(f"🔧 Admin Message: {admin_message}")
+                    
+                    # For development/testing: offer payment simulation option
+                    response_data = {
+                        'error': 'Payment processing failed',
+                        'error_category': error_category,
+                        'user_message': user_message,
+                        'payment_id': payment.id,
+                        'transaction_id': payment.transaction_id,
+                        'cart_id': cart.id,
+                        'debug_info': {
+                            'error_type': error_type,
+                            'error_details': error_str,
+                            'admin_message': admin_message,
+                            'timestamp': timezone.now().isoformat()
+                        }
+                    }
+                    
+                    # In debug mode, offer simulation endpoint
+                    if settings.DEBUG:
+                        response_data['debug_options'] = {
+                            'simulate_payment_url': f'/api/payments/payments/{payment.id}/simulate-success/',
+                            'debug_connectivity_url': '/api/payments/payments/debug-connectivity/',
+                            'message': 'Development mode: Use simulate-success endpoint to complete payment for testing'
+                        }
+                    
+                    return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
                 
         except Exception as e:
-            logger.error(f"Cart payment processing failed: {str(e)}")
-            return Response(
-                {'error': 'Payment processing failed', 'details': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            logger.error(f"💥 Critical error in cart payment processing: {str(e)}")
+            logger.error(f"🔍 Error Type: {type(e).__name__}")
+            
+            return Response({
+                'error': 'Critical payment system error',
+                'user_message': 'Unable to process payment. Please try again later or contact support.',
+                'debug_info': {
+                    'error_type': type(e).__name__,
+                    'error_details': str(e),
+                    'timestamp': timezone.now().isoformat()
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['get'], url_path='check-booking')
     def check_booking_status(self, request, pk=None):
@@ -394,6 +557,248 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 {'error': 'Payment simulation failed', 'details': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+    @action(detail=False, methods=['get', 'post'], url_path='debug-connectivity', permission_classes=[])
+    def debug_connectivity(self, request):
+        """
+        Debug PhonePe connectivity from production server with comprehensive testing
+        REMOVE THIS ENDPOINT AFTER DEBUGGING
+        """
+        try:
+            import requests
+            import socket
+            from urllib.parse import urlparse
+            import json
+            import base64
+            
+            debug_info = {
+                'timestamp': timezone.now().isoformat(),
+                'server_info': {},
+                'network_tests': {},
+                'phonepe_config': {},
+                'api_test': {},
+                'payment_simulation': {}
+            }
+            
+            # 1. Server information
+            try:
+                debug_info['server_info'] = {
+                    'hostname': socket.gethostname(),
+                    'fqdn': socket.getfqdn(),
+                }
+            except Exception as e:
+                debug_info['server_info']['error'] = str(e)
+            
+            # 2. PhonePe configuration
+            debug_info['phonepe_config'] = {
+                'merchant_id': getattr(settings, 'PHONEPE_MERCHANT_ID', 'NOT_SET'),
+                'base_url': getattr(settings, 'PHONEPE_BASE_URL', 'NOT_SET'),
+                'salt_index': getattr(settings, 'PHONEPE_SALT_INDEX', 'NOT_SET'),
+                'timeout': getattr(settings, 'PHONEPE_TIMEOUT', 'NOT_SET'),
+                'max_retries': getattr(settings, 'PHONEPE_MAX_RETRIES', 'NOT_SET'),
+                'ssl_verify': getattr(settings, 'PHONEPE_SSL_VERIFY', 'NOT_SET'),
+                'callback_url': getattr(settings, 'PHONEPE_CALLBACK_URL', 'NOT_SET'),
+                'success_redirect_url': getattr(settings, 'PHONEPE_SUCCESS_REDIRECT_URL', 'NOT_SET'),
+            }
+            
+            # 3. Enhanced network connectivity tests
+            test_urls = [
+                'https://google.com',
+                'https://api.phonepe.com',
+                'https://api.phonepe.com/apis/hermes',
+                'https://api.phonepe.com/apis/hermes/pg/v1/pay',
+                'https://api-preprod.phonepe.com/apis/hermes',
+                'https://httpbin.org/status/200'  # Test general HTTP connectivity
+            ]
+            
+            for url in test_urls:
+                try:
+                    parsed_url = urlparse(url)
+                    
+                    # Test DNS resolution
+                    ip = socket.gethostbyname(parsed_url.hostname)
+                    
+                    # Test HTTP connectivity with multiple methods
+                    get_response = requests.get(url, timeout=15, verify=True)
+                    
+                    debug_info['network_tests'][url] = {
+                        'dns_ip': ip,
+                        'get_status': get_response.status_code,
+                        'get_headers': dict(get_response.headers),
+                        'reachable': True,
+                        'response_time_ms': get_response.elapsed.total_seconds() * 1000
+                    }
+                    
+                    # For PhonePe endpoints, also test POST
+                    if 'phonepe.com' in url and url.endswith('/pay'):
+                        try:
+                            post_response = requests.post(url, json={}, timeout=15, verify=True)
+                            debug_info['network_tests'][url]['post_status'] = post_response.status_code
+                            debug_info['network_tests'][url]['post_response'] = post_response.text[:200]
+                        except Exception as post_e:
+                            debug_info['network_tests'][url]['post_error'] = str(post_e)
+                    
+                except socket.gaierror as e:
+                    debug_info['network_tests'][url] = {
+                        'error': f'DNS resolution failed: {str(e)}',
+                        'error_type': 'DNS_ERROR',
+                        'reachable': False
+                    }
+                except requests.exceptions.ConnectionError as e:
+                    debug_info['network_tests'][url] = {
+                        'error': f'Connection failed: {str(e)}',
+                        'error_type': 'CONNECTION_ERROR',
+                        'reachable': False
+                    }
+                except requests.exceptions.Timeout as e:
+                    debug_info['network_tests'][url] = {
+                        'error': f'Timeout: {str(e)}',
+                        'error_type': 'TIMEOUT_ERROR',
+                        'reachable': False
+                    }
+                except Exception as e:
+                    debug_info['network_tests'][url] = {
+                        'error': f'Test failed: {str(e)}',
+                        'error_type': 'UNKNOWN_ERROR',
+                        'reachable': False
+                    }
+            
+            # 4. Test PhonePe gateway initialization and simulation
+            try:
+                from payment.gateways import PhonePeGateway
+                gateway = PhonePeGateway()
+                debug_info['api_test']['gateway_init'] = 'SUCCESS'
+                debug_info['api_test']['gateway_config'] = {
+                    'merchant_id': gateway.merchant_id,
+                    'base_url': gateway.base_url,
+                    'timeout': gateway.timeout,
+                    'max_retries': gateway.max_retries,
+                    'ssl_verify': gateway.ssl_verify
+                }
+                
+                # 5. Test payment simulation if POST request with test data
+                if request.method == 'POST' and request.data.get('test_payment'):
+                    try:
+                        # Create a mock payment for testing
+                        from payment.models import Payment, PaymentStatus
+                        from django.contrib.auth import get_user_model
+                        User = get_user_model()
+                        
+                        # Use the requesting user or create a test scenario
+                        test_user = request.user if request.user.is_authenticated else User.objects.first()
+                        
+                        if test_user:
+                            # Create test payment data (don't save to database)
+                            import uuid
+                            test_payment_data = {
+                                'user': test_user,
+                                'amount': 10.00,  # Test with ₹10
+                                'transaction_id': f"TEST_{uuid.uuid4().hex[:8].upper()}",
+                                'merchant_transaction_id': f"MERCH_TEST_{uuid.uuid4().hex[:8].upper()}",
+                                'status': PaymentStatus.PENDING
+                            }
+                            
+                            # Mock payment object for testing
+                            class MockPayment:
+                                def __init__(self, data):
+                                    for key, value in data.items():
+                                        setattr(self, key, value)
+                                    self.id = 999999  # Test ID
+                                
+                                def save(self):
+                                    pass  # Don't actually save
+                            
+                            mock_payment = MockPayment(test_payment_data)
+                            
+                            # Test the payment initiation without saving
+                            try:
+                                result = gateway.initiate_payment(mock_payment)
+                                debug_info['payment_simulation'] = {
+                                    'status': 'SUCCESS',
+                                    'result': result,
+                                    'test_amount': test_payment_data['amount'],
+                                    'test_transaction_id': test_payment_data['transaction_id']
+                                }
+                            except Exception as payment_e:
+                                debug_info['payment_simulation'] = {
+                                    'status': 'FAILED',
+                                    'error': str(payment_e),
+                                    'error_type': type(payment_e).__name__,
+                                    'test_amount': test_payment_data['amount'],
+                                    'test_transaction_id': test_payment_data['transaction_id']
+                                }
+                        else:
+                            debug_info['payment_simulation']['error'] = 'No user available for testing'
+                    
+                    except Exception as sim_e:
+                        debug_info['payment_simulation'] = {
+                            'status': 'ERROR',
+                            'error': str(sim_e),
+                            'error_type': type(sim_e).__name__
+                        }
+                
+            except Exception as e:
+                debug_info['api_test']['gateway_init'] = f'FAILED: {str(e)}'
+                debug_info['api_test']['error_type'] = type(e).__name__
+            
+            # 6. System diagnostics
+            debug_info['system_info'] = {
+                'python_version': f"{__import__('sys').version_info.major}.{__import__('sys').version_info.minor}",
+                'requests_version': requests.__version__,
+                'django_debug': settings.DEBUG,
+                'environment': getattr(settings, 'ENVIRONMENT', 'unknown')
+            }
+            
+            # 7. Recommendations based on test results
+            recommendations = []
+            
+            # Check for common issues
+            phonepe_reachable = any(
+                test.get('reachable', False) 
+                for url, test in debug_info['network_tests'].items() 
+                if 'phonepe.com' in url
+            )
+            
+            if not phonepe_reachable:
+                recommendations.append("❌ PhonePe API is not reachable - check firewall/proxy settings")
+            else:
+                recommendations.append("✅ PhonePe API is reachable")
+            
+            if debug_info['api_test'].get('gateway_init') == 'SUCCESS':
+                recommendations.append("✅ PhonePe Gateway initialized successfully")
+            else:
+                recommendations.append("❌ PhonePe Gateway initialization failed - check configuration")
+            
+            # Check payment simulation results
+            if 'payment_simulation' in debug_info:
+                if debug_info['payment_simulation'].get('status') == 'SUCCESS':
+                    recommendations.append("✅ Payment simulation successful - PhonePe integration working")
+                elif debug_info['payment_simulation'].get('status') == 'FAILED':
+                    error_type = debug_info['payment_simulation'].get('error_type', 'Unknown')
+                    if 'Connection' in error_type:
+                        recommendations.append("❌ Payment simulation failed due to connection issues")
+                    else:
+                        recommendations.append(f"❌ Payment simulation failed: {error_type}")
+            
+            debug_info['recommendations'] = recommendations
+            debug_info['test_summary'] = {
+                'total_endpoints_tested': len(debug_info['network_tests']),
+                'reachable_endpoints': sum(1 for test in debug_info['network_tests'].values() if test.get('reachable', False)),
+                'gateway_working': debug_info['api_test'].get('gateway_init') == 'SUCCESS'
+            }
+            
+            return Response(debug_info, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'error': 'Debug endpoint failed',
+                'details': str(e),
+                'type': type(e).__name__,
+                'recommendations': [
+                    "❌ Debug endpoint itself failed - check server logs",
+                    "Try running: python manage.py debug_phonepe"
+                ]
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class PaymentWebhookView(APIView):
     """

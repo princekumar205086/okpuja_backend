@@ -18,7 +18,7 @@ def test_cart_details_production():
     
     # Get cart 28 details
     print("Fetching cart 28 details from production...")
-    cart_response = requests.get('https://api.okpuja.com/api/cart/carts/28/', headers=headers)
+    cart_response = requests.get('https://api.okpuja.com/api/cart/carts/29/', headers=headers)
     
     if cart_response.status_code == 200:
         cart = cart_response.json()

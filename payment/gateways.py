@@ -21,7 +21,14 @@ class PhonePeGateway:
         self.merchant_id = settings.PHONEPE_MERCHANT_ID
         self.merchant_key = settings.PHONEPE_MERCHANT_KEY
         self.salt_index = settings.PHONEPE_SALT_INDEX
-        self.base_url = settings.PHONEPE_BASE_URL
+        self.base_url = getattr(settings, 'PHONEPE_BASE_URL', 'https://api.phonepe.com/apis/hermes')
+        
+        # Connection settings for production server issues
+        self.timeout = int(getattr(settings, 'PHONEPE_TIMEOUT', 60))
+        self.max_retries = int(getattr(settings, 'PHONEPE_MAX_RETRIES', 3))
+        self.ssl_verify = getattr(settings, 'PHONEPE_SSL_VERIFY', 'True').lower() == 'true'
+        
+        logger.info(f"PhonePe Gateway initialized: merchant_id={self.merchant_id}, base_url={self.base_url}, timeout={self.timeout}s, retries={self.max_retries}")
         
     def generate_transaction_id(self):
         """Generate a unique transaction ID"""
@@ -37,7 +44,7 @@ class PhonePeGateway:
 
     def initiate_payment(self, payment):
         """
-        Initiate payment using PhonePe direct API
+        Initiate payment using PhonePe direct API with enhanced production resilience
         
         Args:
             payment: Payment model instance
@@ -46,24 +53,43 @@ class PhonePeGateway:
             dict: Response containing checkout URL and payment details
         """
         try:
-            # Prepare callback URLs
-            callback_url = f"{settings.PHONEPE_CALLBACK_URL}"
-            redirect_url = f"{settings.PHONEPE_SUCCESS_REDIRECT_URL}?payment_id={payment.id}"
+            # Prepare callback URLs with better fallback handling
+            try:
+                callback_url = f"{settings.PHONEPE_CALLBACK_URL}"
+                redirect_url = f"{settings.PHONEPE_SUCCESS_REDIRECT_URL}?payment_id={payment.id}"
+            except AttributeError:
+                # Fallback for missing settings
+                callback_url = "https://api.okpuja.com/api/payments/webhook/phonepe/"
+                redirect_url = f"https://api.okpuja.com/payment/success?payment_id={payment.id}"
+                logger.warning("Using fallback URLs for PhonePe callbacks")
             
-            # Create payload
+            # Enhanced user phone handling
+            user_phone = None
+            if hasattr(payment.user, 'phone_number') and payment.user.phone_number:
+                user_phone = payment.user.phone_number
+            elif hasattr(payment.user, 'phone') and payment.user.phone:
+                user_phone = payment.user.phone
+            else:
+                user_phone = "9000000000"  # Default fallback
+            
+            # Create payload with enhanced validation
             payload = {
                 "merchantId": self.merchant_id,
                 "merchantTransactionId": payment.merchant_transaction_id,
                 "merchantUserId": f"USR{payment.user.id}",
-                "amount": int(payment.amount * 100),  # Convert to paisa
+                "amount": int(float(payment.amount) * 100),  # Convert to paisa with explicit float conversion
                 "redirectUrl": redirect_url,
                 "redirectMode": "POST",
                 "callbackUrl": callback_url,
-                "mobileNumber": getattr(payment.user, 'phone_number', None) or "9000000000",
+                "mobileNumber": user_phone,
                 "paymentInstrument": {
                     "type": "PAY_PAGE"
                 }
             }
+            
+            # Validate payload before encoding
+            if payload["amount"] <= 0:
+                raise PhonePeException(f"Invalid payment amount: {payment.amount}")
             
             # Encode payload
             data = base64.b64encode(json.dumps(payload).encode()).decode()
@@ -77,47 +103,138 @@ class PhonePeGateway:
                 'Content-Type': 'application/json',
                 'X-VERIFY': checksum,
                 'X-MERCHANT-ID': self.merchant_id,
+                'User-Agent': 'OkPuja-Backend/1.0',
+                'Accept': 'application/json'
             }
             
-            # Make API call
-            api_url = f"{self.base_url}/pg/v1/pay"
-            logger.info(f"Making PhonePe API call to: {api_url}")
-            logger.info(f"Headers: {headers}")
-            logger.info(f"Payload: {final_payload}")
+            # Multiple API endpoint fallbacks for production resilience
+            api_endpoints = [
+                f"{self.base_url}/pg/v1/pay",
+                "https://api.phonepe.com/apis/hermes/pg/v1/pay",
+                "https://api-preprod.phonepe.com/apis/hermes/pg/v1/pay"  # Preprod as last resort
+            ]
             
-            response = requests.post(api_url, headers=headers, json=final_payload)
-            logger.info(f"PhonePe API Status: {response.status_code}")
-            logger.info(f"PhonePe API Response Text: {response.text}")
+            logger.info(f"Starting PhonePe payment initiation for transaction: {payment.merchant_transaction_id}")
+            logger.info(f"Amount: ₹{payment.amount} (₹{payload['amount']/100})")
+            logger.info(f"User: {payment.user.email} (ID: {payment.user.id})")
             
-            response_data = response.json()
-            logger.info(f"PhonePe API Response: {response_data}")
-            
-            if response_data.get('success'):
-                payment_url = response_data['data']['instrumentResponse']['redirectInfo']['url']
+            # Try multiple endpoints and attempts
+            for endpoint_idx, api_url in enumerate(api_endpoints):
+                logger.info(f"Trying endpoint {endpoint_idx + 1}/{len(api_endpoints)}: {api_url}")
                 
-                # Update payment with gateway response
-                payment.gateway_response = response_data
-                payment.save()
-                
-                return {
-                    'success': True,
-                    'payment_url': payment_url,
-                    'transaction_id': payment.transaction_id,
-                    'merchant_transaction_id': payment.merchant_transaction_id
-                }
-            else:
-                error_msg = response_data.get('message', 'Payment initiation failed')
-                error_code = response_data.get('code', 'UNKNOWN')
-                logger.error(f"PhonePe payment initiation failed: {error_msg} (Code: {error_code})")
-                logger.error(f"Full response: {response_data}")
-                raise PhonePeException(f"Payment initiation failed: {error_msg}")
-                
-        except requests.RequestException as e:
-            logger.error(f"PhonePe API request failed: {str(e)}")
-            raise PhonePeException(f"API request failed: {str(e)}")
+                for attempt in range(self.max_retries):
+                    try:
+                        # Progressive timeout increase for retries
+                        timeout = self.timeout + (attempt * 30)
+                        logger.info(f"PhonePe API attempt {attempt + 1}/{self.max_retries} with timeout {timeout}s")
+                        
+                        # Enhanced session configuration for production
+                        session = requests.Session()
+                        session.verify = self.ssl_verify
+                        
+                        # Set connection pool parameters for better reliability
+                        adapter = requests.adapters.HTTPAdapter(
+                            pool_connections=1,
+                            pool_maxsize=1,
+                            max_retries=0  # We handle retries manually
+                        )
+                        session.mount('https://', adapter)
+                        session.mount('http://', adapter)
+                        
+                        response = session.post(
+                            api_url, 
+                            headers=headers, 
+                            json=final_payload,
+                            timeout=timeout
+                        )
+                        
+                        logger.info(f"PhonePe API Status: {response.status_code}")
+                        logger.info(f"PhonePe API Response: {response.text[:500]}...")  # Log first 500 chars
+                        
+                        if response.status_code == 200:
+                            response_data = response.json()
+                            
+                            if response_data.get('success'):
+                                payment_url = response_data['data']['instrumentResponse']['redirectInfo']['url']
+                                
+                                # Update payment with gateway response
+                                payment.gateway_response = response_data
+                                payment.phonepe_payment_id = response_data.get('data', {}).get('transactionId')
+                                payment.save()
+                                
+                                logger.info(f"✅ PhonePe payment initiated successfully!")
+                                logger.info(f"Payment URL: {payment_url}")
+                                
+                                return {
+                                    'success': True,
+                                    'payment_url': payment_url,
+                                    'checkout_url': payment_url,  # Alternative key name
+                                    'transaction_id': payment.transaction_id,
+                                    'merchant_transaction_id': payment.merchant_transaction_id,
+                                    'phonepe_transaction_id': response_data.get('data', {}).get('transactionId')
+                                }
+                            else:
+                                error_msg = response_data.get('message', 'Payment initiation failed')
+                                error_code = response_data.get('code', 'UNKNOWN')
+                                logger.error(f"PhonePe payment failed: {error_msg} (Code: {error_code})")
+                                logger.error(f"Full response: {response_data}")
+                                
+                                # Don't retry for business logic errors
+                                if error_code in ['BAD_REQUEST', 'INVALID_MERCHANT', 'AMOUNT_LIMIT_EXCEEDED']:
+                                    raise PhonePeException(f"PhonePe Error: {error_msg} (Code: {error_code})")
+                                
+                                # Retry for other errors
+                                if attempt == self.max_retries - 1:
+                                    raise PhonePeException(f"PhonePe Error: {error_msg} (Code: {error_code})")
+                                continue
+                        else:
+                            logger.error(f"PhonePe API HTTP Error: {response.status_code} - {response.text}")
+                            if attempt == self.max_retries - 1 and endpoint_idx == len(api_endpoints) - 1:
+                                raise PhonePeException(f"PhonePe API HTTP Error: {response.status_code}")
+                            continue  # Retry
+                            
+                    except requests.exceptions.ConnectionError as e:
+                        logger.error(f"PhonePe API Connection Error (endpoint {endpoint_idx + 1}, attempt {attempt + 1}): {str(e)}")
+                        if attempt == self.max_retries - 1 and endpoint_idx == len(api_endpoints) - 1:
+                            raise PhonePeException(f"Cannot connect to PhonePe API after trying all endpoints. Network issue detected. Error: {str(e)}")
+                        continue  # Retry
+                        
+                    except requests.exceptions.Timeout as e:
+                        logger.error(f"PhonePe API Timeout (endpoint {endpoint_idx + 1}, attempt {attempt + 1}): {str(e)}")
+                        if attempt == self.max_retries - 1 and endpoint_idx == len(api_endpoints) - 1:
+                            raise PhonePeException(f"PhonePe API timeout after trying all endpoints. Error: {str(e)}")
+                        continue  # Retry
+                        
+                    except requests.exceptions.SSLError as e:
+                        logger.error(f"PhonePe API SSL Error (endpoint {endpoint_idx + 1}, attempt {attempt + 1}): {str(e)}")
+                        if attempt == self.max_retries - 1 and endpoint_idx == len(api_endpoints) - 1:
+                            raise PhonePeException(f"SSL connection error to PhonePe API. Error: {str(e)}")
+                        continue  # Retry
+                        
+                    except requests.RequestException as e:
+                        logger.error(f"PhonePe API Request Error (endpoint {endpoint_idx + 1}, attempt {attempt + 1}): {str(e)}")
+                        if attempt == self.max_retries - 1 and endpoint_idx == len(api_endpoints) - 1:
+                            raise PhonePeException(f"Network error connecting to PhonePe API: {str(e)}")
+                        continue  # Retry
+                        
+                    except json.JSONDecodeError as e:
+                        logger.error(f"PhonePe API Invalid JSON Response (endpoint {endpoint_idx + 1}, attempt {attempt + 1}): {str(e)}")
+                        if attempt == self.max_retries - 1 and endpoint_idx == len(api_endpoints) - 1:
+                            raise PhonePeException(f"Invalid response from PhonePe API: {str(e)}")
+                        continue  # Retry
+                        
+                    except Exception as e:
+                        logger.error(f"Unexpected error during PhonePe API call (endpoint {endpoint_idx + 1}, attempt {attempt + 1}): {str(e)}")
+                        if attempt == self.max_retries - 1 and endpoint_idx == len(api_endpoints) - 1:
+                            raise PhonePeException(f"Unexpected error during payment initiation: {str(e)}")
+                        continue  # Retry
+                        
+        except PhonePeException:
+            # Re-raise PhonePe specific exceptions as-is
+            raise
         except Exception as e:
-            logger.error(f"PhonePe payment initiation error: {str(e)}")
-            raise PhonePeException(f"Payment initiation failed: {str(e)}")
+            logger.error(f"Critical error in PhonePe payment initiation: {str(e)}")
+            raise PhonePeException(f"Critical payment system error: {str(e)}")
 
     def check_payment_status(self, merchant_transaction_id):
         """
