@@ -81,9 +81,15 @@ class PhonePeGateway:
             
             # Make API call
             api_url = f"{self.base_url}/pg/v1/pay"
-            response = requests.post(api_url, headers=headers, json=final_payload)
-            response_data = response.json()
+            logger.info(f"Making PhonePe API call to: {api_url}")
+            logger.info(f"Headers: {headers}")
+            logger.info(f"Payload: {final_payload}")
             
+            response = requests.post(api_url, headers=headers, json=final_payload)
+            logger.info(f"PhonePe API Status: {response.status_code}")
+            logger.info(f"PhonePe API Response Text: {response.text}")
+            
+            response_data = response.json()
             logger.info(f"PhonePe API Response: {response_data}")
             
             if response_data.get('success'):
@@ -101,7 +107,9 @@ class PhonePeGateway:
                 }
             else:
                 error_msg = response_data.get('message', 'Payment initiation failed')
-                logger.error(f"PhonePe payment initiation failed: {error_msg}")
+                error_code = response_data.get('code', 'UNKNOWN')
+                logger.error(f"PhonePe payment initiation failed: {error_msg} (Code: {error_code})")
+                logger.error(f"Full response: {response_data}")
                 raise PhonePeException(f"Payment initiation failed: {error_msg}")
                 
         except requests.RequestException as e:

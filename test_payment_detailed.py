@@ -44,7 +44,7 @@ def test_payment_detailed():
     
     try:
         response = requests.post(
-            'https://api.okpuja.com/api/payments/process-cart/',
+            'https://api.okpuja.com/api/payments/payments/process-cart/',
             headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'},
             json=payment_data,
             timeout=60
