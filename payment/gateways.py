@@ -1,10 +1,11 @@
-import json
+import logging
 import hashlib
 import base64
-import requests
+import json
 import uuid
 import datetime
-import logging
+import requests
+import requests.adapters
 from django.conf import settings
 from django.utils import timezone
 
@@ -108,9 +109,11 @@ class PhonePeGateway:
             }
             
             # Multiple API endpoint fallbacks for production resilience
+            # Add IP-based endpoints as fallback for DNS issues
             api_endpoints = [
                 f"{self.base_url}/pg/v1/pay",
                 "https://api.phonepe.com/apis/hermes/pg/v1/pay",
+                "https://mercury-t2.phonepe.com/apis/hermes/pg/v1/pay",  # Alternative domain
                 "https://api-preprod.phonepe.com/apis/hermes/pg/v1/pay"  # Preprod as last resort
             ]
             
@@ -132,20 +135,43 @@ class PhonePeGateway:
                         session = requests.Session()
                         session.verify = self.ssl_verify
                         
-                        # Set connection pool parameters for better reliability
-                        adapter = requests.adapters.HTTPAdapter(
-                            pool_connections=1,
-                            pool_maxsize=1,
-                            max_retries=0  # We handle retries manually
-                        )
+                        # Production-specific connection settings
+                        if hasattr(settings, 'PRODUCTION_SERVER') and settings.PRODUCTION_SERVER:
+                            # More aggressive timeouts and connection settings for production
+                            adapter = requests.adapters.HTTPAdapter(
+                                pool_connections=10,
+                                pool_maxsize=20,
+                                max_retries=0,  # We handle retries manually
+                                pool_block=False
+                            )
+                        else:
+                            # Standard settings for local/development
+                            adapter = requests.adapters.HTTPAdapter(
+                                pool_connections=1,
+                                pool_maxsize=1,
+                                max_retries=0
+                            )
+                        
                         session.mount('https://', adapter)
                         session.mount('http://', adapter)
                         
+                        # Add custom headers for production servers
+                        production_headers = headers.copy()
+                        production_headers.update({
+                            'Connection': 'close',  # Force connection close to avoid keep-alive issues
+                            'Cache-Control': 'no-cache',
+                            'Pragma': 'no-cache'
+                        })
+                        
+                        logger.info(f"Making request to: {api_url}")
+                        logger.info(f"Request headers: {list(production_headers.keys())}")
+                        
                         response = session.post(
                             api_url, 
-                            headers=headers, 
+                            headers=production_headers, 
                             json=final_payload,
-                            timeout=timeout
+                            timeout=timeout,
+                            allow_redirects=True
                         )
                         
                         logger.info(f"PhonePe API Status: {response.status_code}")

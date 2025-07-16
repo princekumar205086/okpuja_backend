@@ -12,3 +12,4 @@ twilio==9.6.3
 django-cors-headers==4.7.0
 django_otp==1.6.1
 django-filter==25.1
+dnspython==2.6.1

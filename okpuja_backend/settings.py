@@ -167,6 +167,9 @@ IMAGEKIT_URL_ENDPOINT = os.getenv('IMAGEKIT_URL_ENDPOINT', '')
 OTP_EXPIRE_MINUTES = int(os.getenv('OTP_EXPIRE_MINUTES', 15))
 OTP_LENGTH = int(os.getenv('OTP_LENGTH', 6))
 
+# Production server flag
+PRODUCTION_SERVER = os.getenv('PRODUCTION_SERVER', 'False') == 'True'
+
 # PhonePe Payment Gateway Configuration
 PHONEPE_ENV = os.getenv('PHONEPE_ENV', 'UAT')  # UAT for testing, PRODUCTION for live
 PHONEPE_MERCHANT_ID = os.getenv('PHONEPE_MERCHANT_ID', '')
