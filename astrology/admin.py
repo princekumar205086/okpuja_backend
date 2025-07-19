@@ -1,6 +1,6 @@
 from django.contrib import admin
+from django.utils.safestring import mark_safe
 from .models import AstrologyService, AstrologyBooking
-from imagekit.admin import AdminThumbnail
 
 @admin.register(AstrologyService)
 class AstrologyServiceAdmin(admin.ModelAdmin):
@@ -8,7 +8,23 @@ class AstrologyServiceAdmin(admin.ModelAdmin):
     list_filter = ('service_type', 'is_active')
     search_fields = ('title', 'description')
     readonly_fields = ('image_preview', 'created_at', 'updated_at')
-    image_preview = AdminThumbnail(image_field='image_thumbnail')
+
+    def image_preview(self, obj):
+        """Display image preview in admin"""
+        # Use thumbnail if available, fallback to main image
+        image_url = obj.image_thumbnail_url or obj.image_url
+        if image_url:
+            try:
+                return mark_safe(
+                    f'<img src="{image_url}" width="50" height="50" '
+                    f'style="object-fit: cover; border-radius: 4px;" '
+                    f'onerror="this.style.display=\'none\'; this.nextSibling.style.display=\'inline\';" />'
+                    f'<span style="display:none; color: #666;">Invalid Image URL</span>'
+                )
+            except Exception:
+                return "Invalid Image URL"
+        return "No Image"
+    image_preview.short_description = "Image Preview"
 
     fieldsets = (
         (None, {
@@ -18,7 +34,7 @@ class AstrologyServiceAdmin(admin.ModelAdmin):
             'fields': ('description',)
         }),
         ('Images', {
-            'fields': ('image', 'image_preview')
+            'fields': ('image_url', 'image_thumbnail_url', 'image_card_url', 'image_preview')
         }),
         ('Metadata', {
             'fields': ('created_at', 'updated_at'),

@@ -18,6 +18,11 @@ class CartSerializer(serializers.ModelSerializer):
         decimal_places=2, 
         read_only=True
     )
+    can_delete = serializers.BooleanField(
+        source='can_be_deleted',
+        read_only=True,
+        help_text="Indicates if cart can be safely deleted"
+    )
     
     class Meta:
         model = Cart
@@ -25,7 +30,7 @@ class CartSerializer(serializers.ModelSerializer):
             'id', 'cart_id', 'user', 'service_type', 
             'puja_service', 'package', 'astrology_service',
             'selected_date', 'selected_time', 'promo_code',
-            'status', 'created_at', 'updated_at', 'total_price'
+            'status', 'created_at', 'updated_at', 'total_price', 'can_delete'
         ]
         read_only_fields = ['user', 'cart_id', 'status', 'created_at', 'updated_at']
 

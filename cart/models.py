@@ -83,6 +83,14 @@ class Cart(models.Model):
 
     def save(self, *args, **kwargs):
         self.full_clean()
+        
+        # Single cart logic: deactivate other active carts for this user
+        if self.status == self.StatusChoices.ACTIVE:
+            Cart.objects.filter(
+                user=self.user, 
+                status=self.StatusChoices.ACTIVE
+            ).exclude(pk=self.pk).update(status=self.StatusChoices.INACTIVE)
+        
         super().save(*args, **kwargs)
 
     @property
@@ -105,3 +113,37 @@ class Cart(models.Model):
         if self.promo_code.discount_type == 'PERCENTAGE':
             return base_price * (1 - self.promo_code.discount / 100)
         return base_price - self.promo_code.discount
+    
+    def can_be_deleted(self):
+        """Check if cart can be safely deleted"""
+        # Cart can be deleted if:
+        # 1. No payments exist, OR
+        # 2. All payments are FAILED/CANCELLED, OR
+        # 3. Cart is CONVERTED and has successful booking
+        from payment.models import Payment, PaymentStatus
+        
+        payments = Payment.objects.filter(cart=self)
+        if not payments.exists():
+            return True
+            
+        # Check if all payments are failed/cancelled
+        failed_statuses = [PaymentStatus.FAILED, PaymentStatus.CANCELLED]
+        if all(p.status in failed_statuses for p in payments):
+            return True
+            
+        # Check if cart is converted with successful booking
+        if self.status == self.StatusChoices.CONVERTED:
+            successful_payments = payments.filter(status=PaymentStatus.SUCCESS)
+            if successful_payments.exists() and successful_payments.first().booking:
+                return True
+                
+        return False
+    
+    def clear_if_converted(self):
+        """Clear cart data if it's converted to booking"""
+        if self.status == self.StatusChoices.CONVERTED and self.can_be_deleted():
+            # Set cart reference to null in payments before deletion
+            Payment.objects.filter(cart=self).update(cart=None)
+            self.delete()
+            return True
+        return False

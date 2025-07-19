@@ -42,10 +42,12 @@ class Payment(models.Model):
     # Add cart field to link payment to cart before booking creation
     cart = models.ForeignKey(
         'cart.Cart',
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
         related_name="payments",
         db_index=True,
-        help_text="Cart being purchased"
+        null=True,
+        blank=True,
+        help_text="Cart being purchased (can be cleared after successful booking)"
     )
     # Add user field for direct user reference
     user = models.ForeignKey(
@@ -218,6 +220,12 @@ class Payment(models.Model):
             # Mark cart as converted
             self.cart.status = 'CONVERTED'
             self.cart.save()
+            
+            # Optionally clear cart reference after successful booking
+            # This allows safe cart deletion while preserving payment history
+            if booking and booking.status == BookingStatus.CONFIRMED:
+                # Clear cart reference from this payment to allow cart deletion
+                Payment.objects.filter(pk=self.pk).update(cart=None)
             
             return booking
 
