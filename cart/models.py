@@ -119,8 +119,11 @@ class Cart(models.Model):
         # Cart can be deleted if:
         # 1. No payments exist, OR
         # 2. All payments are FAILED/CANCELLED, OR
-        # 3. Cart is CONVERTED and has successful booking
+        # 3. Cart is CONVERTED and has successful booking, OR
+        # 4. Pending payments are older than 30 minutes (auto-cleanup)
         from payment.models import Payment, PaymentStatus
+        from django.utils import timezone
+        from datetime import timedelta
         
         payments = Payment.objects.filter(cart=self)
         if not payments.exists():
@@ -136,8 +139,95 @@ class Cart(models.Model):
             successful_payments = payments.filter(status=PaymentStatus.SUCCESS)
             if successful_payments.exists() and successful_payments.first().booking:
                 return True
+        
+        # Check for pending payments older than 30 minutes
+        pending_payments = payments.filter(status=PaymentStatus.PENDING)
+        if pending_payments.exists():
+            cutoff_time = timezone.now() - timedelta(minutes=30)
+            old_pending_payments = pending_payments.filter(created_at__lt=cutoff_time)
+            
+            # If all pending payments are old, cart can be deleted
+            if old_pending_payments.count() == pending_payments.count():
+                return True
                 
         return False
+    
+    def get_deletion_info(self):
+        """Get detailed information about why cart cannot be deleted and when it can be"""
+        from payment.models import Payment, PaymentStatus
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        payments = Payment.objects.filter(cart=self)
+        if not payments.exists():
+            return {"can_delete": True, "reason": "No payments associated"}
+            
+        # Check for pending payments
+        pending_payments = payments.filter(status=PaymentStatus.PENDING)
+        if pending_payments.exists():
+            cutoff_time = timezone.now() - timedelta(minutes=30)
+            newest_payment = pending_payments.order_by('-created_at').first()
+            
+            if newest_payment.created_at < cutoff_time:
+                return {
+                    "can_delete": True, 
+                    "reason": "Pending payments are older than 30 minutes"
+                }
+            else:
+                # Calculate remaining wait time
+                wait_until = newest_payment.created_at + timedelta(minutes=30)
+                remaining_minutes = int((wait_until - timezone.now()).total_seconds() / 60)
+                remaining_minutes = max(0, remaining_minutes)  # Don't show negative time
+                
+                return {
+                    "can_delete": False,
+                    "reason": "pending_payment_wait",
+                    "message": f"Cart has pending payment(s). Please wait {remaining_minutes} more minute(s) before deletion or complete the payment.",
+                    "wait_time_minutes": remaining_minutes,
+                    "retry_after": wait_until.isoformat(),
+                    "payment_count": pending_payments.count(),
+                    "latest_payment_age_minutes": int((timezone.now() - newest_payment.created_at).total_seconds() / 60)
+                }
+        
+        # Other reasons cart cannot be deleted
+        if self.status == self.StatusChoices.CONVERTED:
+            return {
+                "can_delete": False,
+                "reason": "Cart is already converted to booking"
+            }
+            
+        return {
+            "can_delete": self.can_be_deleted(),
+            "reason": "Cart has active payments"
+        }
+    
+    def auto_cleanup_old_payments(self):
+        """Auto-cleanup pending payments older than 30 minutes"""
+        from payment.models import Payment, PaymentStatus
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        cutoff_time = timezone.now() - timedelta(minutes=30)
+        old_pending_payments = Payment.objects.filter(
+            cart=self,
+            status=PaymentStatus.PENDING,
+            created_at__lt=cutoff_time
+        )
+        
+        if old_pending_payments.exists():
+            # Mark old pending payments as cancelled
+            updated_count = old_pending_payments.update(
+                status=PaymentStatus.CANCELLED,
+                updated_at=timezone.now()
+            )
+            
+            return {
+                "cleaned_up": True,
+                "payments_cancelled": updated_count,
+                "message": f"Auto-cancelled {updated_count} pending payment(s) older than 30 minutes"
+            }
+        
+        return {"cleaned_up": False, "payments_cancelled": 0}
     
     def clear_if_converted(self):
         """Clear cart data if it's converted to booking"""
