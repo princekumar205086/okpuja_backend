@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'cms',
     'gallery',
     'misc',
+    'db_manager',  # Database backup/restore app
     'corsheaders',
     'rest_framework_simplejwt.token_blacklist'
     
@@ -211,3 +212,10 @@ ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin@123')
 
 # Employee Registration Code (set this in your .env for security)
 EMPLOYEE_REGISTRATION_CODE = os.getenv('EMPLOYEE_REGISTRATION_CODE', 'EMP2025OK5')
+
+# Database Backup Configuration
+DB_BACKUP_STORAGE_TYPE = os.getenv('DB_BACKUP_STORAGE_TYPE', 'LOCAL')  # LOCAL, GDRIVE, SYSTEM
+DB_BACKUP_PATH = os.getenv('DB_BACKUP_PATH', 'backups/')
+DB_BACKUP_RETENTION_DAYS = int(os.getenv('DB_BACKUP_RETENTION_DAYS', 7))
+DB_BACKUP_MAX_FILES = int(os.getenv('DB_BACKUP_MAX_FILES', 10))
+DB_BACKUP_AUTO_ENABLED = os.getenv('DB_BACKUP_AUTO_ENABLED', 'True') == 'True'

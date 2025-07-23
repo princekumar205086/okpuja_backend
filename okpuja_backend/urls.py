@@ -42,6 +42,7 @@ urlpatterns = [
     path('api/cms/', include('cms.urls')),
    path('api/gallery/', include('gallery.urls')),
    path('api/misc/', include('misc.urls')),
+   path('api/db-manager/', include('db_manager.urls')),  # Database backup/restore endpoints
 ]
 
 if settings.DEBUG:
