@@ -1,4 +1,5 @@
 from django.db import models
+from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.utils.text import slugify
 from imagekit.models import ImageSpecField
@@ -185,7 +186,7 @@ class GalleryView(models.Model):
         null=True,
         blank=True
     )
-    ip_address = models.GenericIPAddressField()
+    ip_address = models.GenericIPAddressField(protocol='both', unpack_ipv4=False)
     user_agent = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

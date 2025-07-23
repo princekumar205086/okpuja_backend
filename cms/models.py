@@ -2,7 +2,10 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinLengthValidator
 from django.conf import settings
+from django.utils import timezone
+from django.urls import reverse
 import uuid
+import os
 
 def cms_document_upload_path(instance, filename):
     ext = filename.split('.')[-1]
@@ -190,7 +193,7 @@ class UserConsent(models.Model):
         on_delete=models.CASCADE,
         related_name='user_consents'
     )
-    ip_address = models.GenericIPAddressField()
+    ip_address = models.GenericIPAddressField(protocol='both', unpack_ipv4=False)
     user_agent = models.CharField(max_length=255)
     consented_at = models.DateTimeField(auto_now_add=True)
 

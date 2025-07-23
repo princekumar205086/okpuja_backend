@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils.text import slugify
+from django.utils import timezone
+from django.urls import reverse
 from imagekit.models import ImageSpecField
 from imagekit.processors import ResizeToFill, ResizeToFit
 import uuid
@@ -258,7 +260,9 @@ class ContactUs(models.Model):
     ip_address = models.GenericIPAddressField(
         _('IP address'),
         blank=True,
-        null=True
+        null=True,
+        protocol='both',
+        unpack_ipv4=False
     )
     user_agent = models.CharField(
         _('user agent'),

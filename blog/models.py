@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.utils.text import slugify
 from django.urls import reverse
+from django.utils import timezone
 from imagekit.models import ImageSpecField
 from imagekit.processors import ResizeToFill
 import uuid
@@ -377,7 +378,9 @@ class BlogView(models.Model):
     ip_address = models.GenericIPAddressField(
         verbose_name='IP Address',
         null=True,
-        blank=True
+        blank=True,
+        protocol='both',
+        unpack_ipv4=False
     )
     user_agent = models.CharField(
         max_length=255,
