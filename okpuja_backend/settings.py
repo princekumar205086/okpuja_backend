@@ -11,7 +11,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key-for-dev')
 
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,api.okpuja.com,157.173.221.192').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,api.okpuja.com,backend.okpuja.com,157.173.221.192').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -72,6 +72,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://api.okpuja.com",
     "https://okpuja.in",
     "https://www.okpuja.in",
+    "https://backend.okpuja.com"
 ]
 
 TEMPLATES = [
