@@ -10,7 +10,7 @@ def test_production_api_call_exactly():
     
     # 1. Login to get token
     print("1. Getting authentication token...")
-    login_response = requests.post('https://api.okpuja.com/api/auth/login/', json={
+    login_response = requests.post('https://backend.okpuja.com/api/auth/login/', json={
         'email': 'asliprinceraj@gmail.com',
         'password': 'testpass123'
     })
@@ -40,7 +40,7 @@ def test_production_api_call_exactly():
     
     try:
         response = requests.post(
-            'https://api.okpuja.com/api/payments/payments/process-cart/',
+            'https://backend.okpuja.com/api/payments/payments/process-cart/',
             headers=headers,
             json=payment_data,
             timeout=60
@@ -61,7 +61,7 @@ def test_production_api_call_exactly():
             payment_data['address_id'] = 2
             
             response2 = requests.post(
-                'https://api.okpuja.com/api/payments/payments/process-cart/',
+                'https://backend.okpuja.com/api/payments/payments/process-cart/',
                 headers=headers,
                 json=payment_data,
                 timeout=60

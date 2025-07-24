@@ -18,18 +18,59 @@ class PhonePeException(Exception):
 
 class PhonePeGateway:
     def __init__(self):
-        """Initialize PhonePe Gateway with direct API approach"""
+        """Initialize PhonePe Gateway with enhanced production server handling"""
         self.merchant_id = settings.PHONEPE_MERCHANT_ID
         self.merchant_key = settings.PHONEPE_MERCHANT_KEY
         self.salt_index = settings.PHONEPE_SALT_INDEX
         self.base_url = getattr(settings, 'PHONEPE_BASE_URL', 'https://api.phonepe.com/apis/hermes')
         
-        # Connection settings for production server issues
-        self.timeout = int(getattr(settings, 'PHONEPE_TIMEOUT', 60))
-        self.max_retries = int(getattr(settings, 'PHONEPE_MAX_RETRIES', 3))
+        # Enhanced connection settings for production server issues
+        self.timeout = int(getattr(settings, 'PHONEPE_TIMEOUT', 90))  # Increased timeout
+        self.max_retries = int(getattr(settings, 'PHONEPE_MAX_RETRIES', 5))  # More retries
         self.ssl_verify = getattr(settings, 'PHONEPE_SSL_VERIFY', 'True').lower() == 'true'
         
-        logger.info(f"PhonePe Gateway initialized: merchant_id={self.merchant_id}, base_url={self.base_url}, timeout={self.timeout}s, retries={self.max_retries}")
+        # Production server detection
+        self.is_production = getattr(settings, 'PRODUCTION_SERVER', False)
+        
+        # Define multiple API endpoints for fallback
+        self.api_endpoints = [
+            'https://api.phonepe.com/apis/hermes',
+            'https://mercury-t2.phonepe.com/apis/hermes',
+            'https://api-preprod.phonepe.com/apis/hermes',  # Fallback to UAT if prod fails
+        ]
+        
+        logger.info(f"PhonePe Gateway initialized: merchant_id={self.merchant_id}, base_url={self.base_url}, timeout={self.timeout}s, retries={self.max_retries}, production={self.is_production}")
+        
+    def test_connectivity(self):
+        """Test connectivity to PhonePe API endpoints"""
+        connectivity_results = []
+        
+        for endpoint_base in self.api_endpoints:
+            test_url = f"{endpoint_base}/health" if "/apis/hermes" in endpoint_base else endpoint_base
+            try:
+                response = requests.get(test_url, timeout=10, verify=self.ssl_verify)
+                connectivity_results.append({
+                    'endpoint': endpoint_base,
+                    'status': 'connected',
+                    'response_code': response.status_code
+                })
+                logger.info(f"✅ {endpoint_base}: Connected (Status: {response.status_code})")
+            except requests.exceptions.ConnectionError:
+                connectivity_results.append({
+                    'endpoint': endpoint_base,
+                    'status': 'connection_refused',
+                    'error': 'Connection refused'
+                })
+                logger.error(f"❌ {endpoint_base}: Connection refused")
+            except Exception as e:
+                connectivity_results.append({
+                    'endpoint': endpoint_base,
+                    'status': 'error',
+                    'error': str(e)
+                })
+                logger.error(f"❌ {endpoint_base}: {str(e)}")
+        
+        return connectivity_results
         
     def generate_transaction_id(self):
         """Generate a unique transaction ID"""
@@ -60,8 +101,8 @@ class PhonePeGateway:
                 redirect_url = f"{settings.PHONEPE_SUCCESS_REDIRECT_URL}?payment_id={payment.id}"
             except AttributeError:
                 # Fallback for missing settings
-                callback_url = "https://api.okpuja.com/api/payments/webhook/phonepe/"
-                redirect_url = f"https://api.okpuja.com/payment/success?payment_id={payment.id}"
+                callback_url = "https://backend.okpuja.com/api/payments/webhook/phonepe/"
+                redirect_url = f"https://backend.okpuja.com/payment/success?payment_id={payment.id}"
                 logger.warning("Using fallback URLs for PhonePe callbacks")
             
             # Enhanced user phone handling
@@ -109,13 +150,24 @@ class PhonePeGateway:
             }
             
             # Multiple API endpoint fallbacks for production resilience
-            # Add IP-based endpoints as fallback for DNS issues
-            api_endpoints = [
-                f"{self.base_url}/pg/v1/pay",
+            # Use all available endpoints and try each one
+            api_endpoints = []
+            
+            # Add configured base URL first
+            if self.base_url:
+                api_endpoints.append(f"{self.base_url}/pg/v1/pay")
+            
+            # Add fallback endpoints
+            fallback_endpoints = [
                 "https://api.phonepe.com/apis/hermes/pg/v1/pay",
-                "https://mercury-t2.phonepe.com/apis/hermes/pg/v1/pay",  # Alternative domain
-                "https://api-preprod.phonepe.com/apis/hermes/pg/v1/pay"  # Preprod as last resort
+                "https://mercury-t2.phonepe.com/apis/hermes/pg/v1/pay",
+                "https://api-preprod.phonepe.com/apis/hermes/pg/v1/pay"  # UAT fallback
             ]
+            
+            # Add fallbacks that aren't already in the list
+            for endpoint in fallback_endpoints:
+                if endpoint not in api_endpoints:
+                    api_endpoints.append(endpoint)
             
             logger.info(f"Starting PhonePe payment initiation for transaction: {payment.merchant_transaction_id}")
             logger.info(f"Amount: ₹{payment.amount} (₹{payload['amount']/100})")
@@ -136,43 +188,50 @@ class PhonePeGateway:
                         session.verify = self.ssl_verify
                         
                         # Production-specific connection settings
-                        if hasattr(settings, 'PRODUCTION_SERVER') and settings.PRODUCTION_SERVER:
-                            # More aggressive timeouts and connection settings for production
-                            adapter = requests.adapters.HTTPAdapter(
-                                pool_connections=10,
-                                pool_maxsize=20,
-                                max_retries=0,  # We handle retries manually
-                                pool_block=False
-                            )
-                        else:
-                            # Standard settings for local/development
-                            adapter = requests.adapters.HTTPAdapter(
-                                pool_connections=1,
-                                pool_maxsize=1,
-                                max_retries=0
-                            )
+                        adapter = requests.adapters.HTTPAdapter(
+                            pool_connections=5,
+                            pool_maxsize=10,
+                            max_retries=0,  # We handle retries manually
+                            pool_block=False
+                        )
                         
                         session.mount('https://', adapter)
                         session.mount('http://', adapter)
                         
-                        # Add custom headers for production servers
+                        # Production server optimized headers
                         production_headers = headers.copy()
                         production_headers.update({
-                            'Connection': 'close',  # Force connection close to avoid keep-alive issues
+                            'Connection': 'close',  # Force connection close
                             'Cache-Control': 'no-cache',
-                            'Pragma': 'no-cache'
+                            'Pragma': 'no-cache',
+                            'Accept-Encoding': 'gzip, deflate',
+                            'DNT': '1'
                         })
+                        
+                        # Special handling for production servers with network restrictions
+                        if self.is_production:
+                            # Use different user agent for production
+                            production_headers['User-Agent'] = 'OkPuja-Production/1.0 (Linux; Backend)'
+                            # Disable keep-alive completely
+                            production_headers['Connection'] = 'close'
                         
                         logger.info(f"Making request to: {api_url}")
                         logger.info(f"Request headers: {list(production_headers.keys())}")
+                        logger.info(f"Timeout: {timeout}s, SSL Verify: {session.verify}")
                         
-                        response = session.post(
-                            api_url, 
-                            headers=production_headers, 
-                            json=final_payload,
-                            timeout=timeout,
-                            allow_redirects=True
-                        )
+                        # Make the request with enhanced error handling
+                        try:
+                            response = session.post(
+                                api_url, 
+                                headers=production_headers, 
+                                json=final_payload,
+                                timeout=timeout,
+                                allow_redirects=True,
+                                stream=False  # Don't stream to avoid connection issues
+                            )
+                        finally:
+                            # Always close the session
+                            session.close()
                         
                         logger.info(f"PhonePe API Status: {response.status_code}")
                         logger.info(f"PhonePe API Response: {response.text[:500]}...")  # Log first 500 chars

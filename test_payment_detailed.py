@@ -10,7 +10,7 @@ def test_payment_detailed():
     
     # 1. Login
     print("1. Logging in...")
-    login_response = requests.post('https://api.okpuja.com/api/auth/login/', json={
+    login_response = requests.post('https://backend.okpuja.com/api/auth/login/', json={
         'email': 'asliprinceraj@gmail.com',
         'password': 'testpass123'
     })
@@ -26,7 +26,7 @@ def test_payment_detailed():
     print("2. Getting cart 28 details...")
     headers = {'Authorization': f'Bearer {token}'}
     
-    cart_response = requests.get('https://api.okpuja.com/api/cart/carts/28/', headers=headers)
+    cart_response = requests.get('https://backend.okpuja.com/api/cart/carts/28/', headers=headers)
     if cart_response.status_code == 200:
         cart = cart_response.json()
         print(f"Cart details: Service={cart.get('puja_service', {}).get('title')}, Package={cart.get('package', {}).get('id')}, Total=₹{cart.get('total_price')}")
@@ -44,7 +44,7 @@ def test_payment_detailed():
     
     try:
         response = requests.post(
-            'https://api.okpuja.com/api/payments/payments/process-cart/',
+            'https://backend.okpuja.com/api/payments/payments/process-cart/',
             headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'},
             json=payment_data,
             timeout=60

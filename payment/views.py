@@ -484,6 +484,117 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 'message': f'Payment status: {payment.get_status_display()}'
             })
 
+    @action(detail=False, methods=['get'], url_path='debug-connectivity', permission_classes=[IsAdminUser])
+    def debug_connectivity(self, request):
+        """
+        Debug endpoint to test PhonePe API connectivity
+        Admin only - helps diagnose network connectivity issues
+        """
+        try:
+            from .gateways import PhonePeGateway
+            gateway = PhonePeGateway()
+            
+            # Test connectivity
+            connectivity_results = gateway.test_connectivity()
+            
+            # Test DNS resolution
+            import socket
+            dns_results = []
+            hostnames = ['api.phonepe.com', 'api-preprod.phonepe.com', 'mercury-t2.phonepe.com']
+            
+            for hostname in hostnames:
+                try:
+                    ip = socket.gethostbyname(hostname)
+                    dns_results.append({'hostname': hostname, 'ip': ip, 'status': 'resolved'})
+                except Exception as e:
+                    dns_results.append({'hostname': hostname, 'error': str(e), 'status': 'failed'})
+            
+            # Get system info
+            import platform
+            import sys
+            system_info = {
+                'python_version': sys.version,
+                'platform': platform.platform(),
+                'hostname': platform.node(),
+                'production_flag': getattr(settings, 'PRODUCTION_SERVER', False),
+                'debug_mode': settings.DEBUG,
+                'phonepe_env': getattr(settings, 'PHONEPE_ENV', 'NOT SET')
+            }
+            
+            return Response({
+                'connectivity_test': connectivity_results,
+                'dns_resolution': dns_results,
+                'system_info': system_info,
+                'timestamp': timezone.now().isoformat(),
+                'status': 'debug_complete'
+            })
+            
+        except Exception as e:
+            return Response({
+                'error': 'Debug test failed',
+                'error_details': str(e),
+                'timestamp': timezone.now().isoformat()
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['post'], url_path='simulate-success')
+    def simulate_payment_success(self, request, pk=None):
+        """
+        Simulate payment success for testing when PhonePe API is unavailable
+        Only works in DEBUG mode
+        """
+        if not settings.DEBUG:
+            return Response({
+                'error': 'This endpoint is only available in DEBUG mode'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        payment = self.get_object()
+        
+        if payment.status != PaymentStatus.PENDING:
+            return Response({
+                'error': f'Payment is not in PENDING status. Current status: {payment.status}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Simulate successful payment
+            payment.status = PaymentStatus.SUCCESS
+            payment.gateway_response = {
+                'simulated': True,
+                'timestamp': timezone.now().isoformat(),
+                'message': 'Payment success simulated for testing'
+            }
+            payment.save()
+            
+            # Trigger booking creation (if cart exists)
+            if hasattr(payment, 'cart') and payment.cart:
+                from booking.models import Booking
+                from booking.utils import create_bookings_from_cart
+                
+                # Create bookings from cart
+                bookings = create_bookings_from_cart(payment.cart, payment)
+                
+                return Response({
+                    'success': True,
+                    'message': 'Payment success simulated',
+                    'payment_id': payment.id,
+                    'payment_status': payment.status,
+                    'bookings_created': len(bookings),
+                    'booking_ids': [b.id for b in bookings]
+                })
+            else:
+                return Response({
+                    'success': True,
+                    'message': 'Payment success simulated (no cart found)',
+                    'payment_id': payment.id,
+                    'payment_status': payment.status
+                })
+                
+        except Exception as e:
+            logger.error(f"Error simulating payment success: {str(e)}")
+            return Response({
+                'error': 'Failed to simulate payment success',
+                'details': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     @action(detail=True, methods=['post'], url_path='simulate-success')
     def simulate_payment_success(self, request, pk=None):
         """

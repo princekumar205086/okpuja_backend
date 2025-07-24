@@ -9,31 +9,31 @@
   PHONEPE_CLIENT_ID=your_production_client_id
   PHONEPE_CLIENT_SECRET=73e5f6e1-1da3-403e-8168-da15fdffbd7d
   
-  PHONEPE_REDIRECT_URL=https://api.okpuja.com/api/payments/webhook/phonepe/
-  PHONEPE_CALLBACK_URL=https://api.okpuja.com/api/payments/webhook/phonepe/
+  PHONEPE_REDIRECT_URL=https://backend.okpuja.com/api/payments/webhook/phonepe/
+  PHONEPE_CALLBACK_URL=https://backend.okpuja.com/api/payments/webhook/phonepe/
   PHONEPE_FAILED_REDIRECT_URL=https://okpuja.com/failedbooking
   PHONEPE_SUCCESS_REDIRECT_URL=https://okpuja.com/confirmbooking/
   FRONTEND_BASE_URL=https://okpuja.com
   
   DEBUG=False
-  ALLOWED_HOSTS=okpuja.com,api.okpuja.com,www.okpuja.com
+  ALLOWED_HOSTS=okpuja.com,backend.okpuja.com,www.okpuja.com
   ```
 
 ### 2. SSL/HTTPS Setup
 - [ ] SSL certificate installed for `okpuja.com`
-- [ ] SSL certificate installed for `api.okpuja.com`
+- [ ] SSL certificate installed for `backend.okpuja.com`
 - [ ] Force HTTPS redirect configured
 - [ ] Test SSL using: https://www.ssllabs.com/ssltest/
 
 ### 3. DNS Configuration
 - [ ] `okpuja.com` points to frontend server
-- [ ] `api.okpuja.com` points to Django backend server
+- [ ] `backend.okpuja.com` points to Django backend server
 - [ ] `www.okpuja.com` redirects to `okpuja.com`
 - [ ] DNS propagation completed (test with: `nslookup okpuja.com`)
 
 ### 4. PhonePe Dashboard Configuration
 - [ ] Login to PhonePe Production Dashboard
-- [ ] Update webhook URL to: `https://api.okpuja.com/api/payments/webhook/phonepe/`
+- [ ] Update webhook URL to: `https://backend.okpuja.com/api/payments/webhook/phonepe/`
 - [ ] Configure callback authentication username/password
 - [ ] Update environment variables with callback credentials
 - [ ] Test webhook connection from PhonePe dashboard
@@ -64,13 +64,13 @@ python manage.py test_phonepe
 ```nginx
 server {
     listen 80;
-    server_name api.okpuja.com;
+    server_name backend.okpuja.com;
     return 301 https://$server_name$request_uri;
 }
 
 server {
     listen 443 ssl;
-    server_name api.okpuja.com;
+    server_name backend.okpuja.com;
     
     ssl_certificate /path/to/ssl/certificate.crt;
     ssl_certificate_key /path/to/ssl/private.key;
@@ -133,8 +133,8 @@ sudo systemctl status okpuja-backend
 ## Post-Deployment Testing
 
 ### 1. Basic Health Checks
-- [ ] API accessible at `https://api.okpuja.com`
-- [ ] Admin panel accessible at `https://api.okpuja.com/admin/`
+- [ ] API accessible at `https://backend.okpuja.com`
+- [ ] Admin panel accessible at `https://backend.okpuja.com/admin/`
 - [ ] Frontend accessible at `https://okpuja.com`
 - [ ] HTTPS working correctly (no mixed content warnings)
 
@@ -144,14 +144,14 @@ sudo systemctl status okpuja-backend
 python manage.py test_phonepe
 
 # Test payment flow (if you have test data)
-curl -X POST https://api.okpuja.com/api/payments/payments/ \
+curl -X POST https://backend.okpuja.com/api/payments/payments/ \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{"booking": 1, "amount": "100.00", "method": "PHONEPE"}'
 ```
 
 ### 3. Webhook Testing
-- [ ] Test webhook endpoint: `https://api.okpuja.com/api/payments/webhook/phonepe/`
+- [ ] Test webhook endpoint: `https://backend.okpuja.com/api/payments/webhook/phonepe/`
 - [ ] Verify webhook can receive POST requests
 - [ ] Check logs for any webhook processing errors
 - [ ] Test from PhonePe dashboard webhook test feature
@@ -211,7 +211,7 @@ If issues occur after deployment:
    ```bash
    # Switch back to UAT environment
    sed -i 's/PHONEPE_ENV=PRODUCTION/PHONEPE_ENV=UAT/' .env
-   sed -i 's/api.okpuja.com/localhost:8000/g' .env
+   sed -i 's/backend.okpuja.com/localhost:8000/g' .env
    sudo systemctl restart okpuja-backend
    ```
 

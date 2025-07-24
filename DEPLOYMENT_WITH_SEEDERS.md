@@ -25,7 +25,7 @@
 ### Run Seeders Individually:
 ```bash
 # Navigate to project directory
-cd /opt/api.okpuja.com
+cd /opt/backend.okpuja.com
 source venv/bin/activate
 
 # Seed blog data (clear previous data)
@@ -37,7 +37,7 @@ python manage.py seed_puja_data --clear --categories 12 --services 50 --packages
 
 ### Full Database Reset with Fresh Data:
 ```bash
-cd /opt/api.okpuja.com
+cd /opt/backend.okpuja.com
 source venv/bin/activate
 
 # Reset database (optional - only if needed)
@@ -159,16 +159,16 @@ After deployment, verify the data:
 
 ```bash
 # Check user count
-curl https://api.okpuja.com/api/accounts/users/ | jq '.count'
+curl https://backend.okpuja.com/api/accounts/users/ | jq '.count'
 
 # Check blog categories
-curl https://api.okpuja.com/api/blog/categories/ | jq '.results[].name'
+curl https://backend.okpuja.com/api/blog/categories/ | jq '.results[].name'
 
 # Check puja services
-curl https://api.okpuja.com/api/puja/services/ | jq '.count'
+curl https://backend.okpuja.com/api/puja/services/ | jq '.count'
 
 # Check bookings
-curl https://api.okpuja.com/api/puja/bookings/ | jq '.count'
+curl https://backend.okpuja.com/api/puja/bookings/ | jq '.count'
 ```
 
 ## 🎉 CONCLUSION

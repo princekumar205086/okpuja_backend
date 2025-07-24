@@ -10,7 +10,7 @@ def test_production_phonepe_connectivity():
     
     # Login to get a session on production
     print("1. Logging into production...")
-    login_response = requests.post('https://api.okpuja.com/api/auth/login/', json={
+    login_response = requests.post('https://backend.okpuja.com/api/auth/login/', json={
         'email': 'asliprinceraj@gmail.com',
         'password': 'testpass123'
     })
@@ -33,7 +33,7 @@ def test_production_phonepe_connectivity():
         
         try:
             response = requests.post(
-                'https://api.okpuja.com/api/payments/payments/process-cart/',
+                'https://backend.okpuja.com/api/payments/payments/process-cart/',
                 headers=headers,
                 json=payment_data,
                 timeout=30

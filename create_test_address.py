@@ -7,7 +7,7 @@ def create_address_for_user():
     
     # Login first
     print("1. Logging in...")
-    login_response = requests.post('https://api.okpuja.com/api/accounts/login/', json={
+    login_response = requests.post('https://backend.okpuja.com/api/accounts/login/', json={
         'email': 'asliprinceraj@gmail.com',
         'password': 'testpass123'
     })
@@ -28,7 +28,7 @@ def create_address_for_user():
     # Check existing addresses
     print("2. Checking existing addresses...")
     headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
-    addresses_response = requests.get('https://api.okpuja.com/api/accounts/addresses/', headers=headers)
+    addresses_response = requests.get('https://backend.okpuja.com/api/accounts/addresses/', headers=headers)
     
     print(f"Addresses status: {addresses_response.status_code}")
     print(f"Addresses response: {addresses_response.text}")
@@ -46,7 +46,7 @@ def create_address_for_user():
         'landmark': 'Near Test Market'
     }
     
-    create_response = requests.post('https://api.okpuja.com/api/accounts/addresses/', 
+    create_response = requests.post('https://backend.okpuja.com/api/accounts/addresses/', 
                                   headers=headers, json=address_data)
     print(f"Create address status: {create_response.status_code}")
     print(f"Create response: {create_response.text}")

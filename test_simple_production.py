@@ -6,7 +6,7 @@ Test cart creation without promo code to avoid negative pricing
 import requests
 import json
 
-PRODUCTION_BASE_URL = 'https://api.okpuja.com/api'
+PRODUCTION_BASE_URL = 'https://backend.okpuja.com/api'
 TEST_EMAIL = 'asliprinceraj@gmail.com'
 TEST_PASSWORD = 'testpass123'
 

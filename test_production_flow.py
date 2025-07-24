@@ -8,7 +8,7 @@ import json
 import time
 
 # Production API Configuration
-PRODUCTION_BASE_URL = 'https://api.okpuja.com/api'
+PRODUCTION_BASE_URL = 'https://backend.okpuja.com/api'
 
 # Test User Credentials
 TEST_EMAIL = 'asliprinceraj@gmail.com'

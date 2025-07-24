@@ -32,8 +32,8 @@ PHONEPE_SUCCESS_REDIRECT_URL=http://localhost:3000/confirmbooking/
 FRONTEND_BASE_URL=http://localhost:3000
 
 # Production URLs (uncomment for production deployment)
-# PHONEPE_REDIRECT_URL=https://api.okpuja.com/api/payments/webhook/phonepe/
-# PHONEPE_CALLBACK_URL=https://api.okpuja.com/api/payments/webhook/phonepe/
+# PHONEPE_REDIRECT_URL=https://backend.okpuja.com/api/payments/webhook/phonepe/
+# PHONEPE_CALLBACK_URL=https://backend.okpuja.com/api/payments/webhook/phonepe/
 # PHONEPE_FAILED_REDIRECT_URL=https://okpuja.com/failedbooking
 # PHONEPE_SUCCESS_REDIRECT_URL=https://okpuja.com/confirmbooking/
 # FRONTEND_BASE_URL=https://okpuja.com
@@ -146,7 +146,7 @@ In your PhonePe dashboard, configure:
 - Webhook URL: `http://localhost:8000/api/payments/webhook/phonepe/`
 
 **For Production:**
-- Webhook URL: `https://api.okpuja.com/api/payments/webhook/phonepe/`
+- Webhook URL: `https://backend.okpuja.com/api/payments/webhook/phonepe/`
 
 Set authentication username and password and update environment variables with these credentials.
 
@@ -163,30 +163,30 @@ PHONEPE_CLIENT_SECRET=73e5f6e1-1da3-403e-8168-da15fdffbd7d
 PHONEPE_CLIENT_VERSION=1
 
 # Production URLs
-PHONEPE_REDIRECT_URL=https://api.okpuja.com/api/payments/webhook/phonepe/
-PHONEPE_CALLBACK_URL=https://api.okpuja.com/api/payments/webhook/phonepe/
+PHONEPE_REDIRECT_URL=https://backend.okpuja.com/api/payments/webhook/phonepe/
+PHONEPE_CALLBACK_URL=https://backend.okpuja.com/api/payments/webhook/phonepe/
 PHONEPE_FAILED_REDIRECT_URL=https://okpuja.com/failedbooking
 PHONEPE_SUCCESS_REDIRECT_URL=https://okpuja.com/confirmbooking/
 FRONTEND_BASE_URL=https://okpuja.com
 
 # Other production settings
 DEBUG=False
-ALLOWED_HOSTS=okpuja.com,api.okpuja.com,www.okpuja.com
+ALLOWED_HOSTS=okpuja.com,backend.okpuja.com,www.okpuja.com
 ```
 
 ### SSL Certificate Requirements
 - **HTTPS Required**: PhonePe requires HTTPS for production webhooks
-- Ensure your domain `okpuja.com` and `api.okpuja.com` have valid SSL certificates
+- Ensure your domain `okpuja.com` and `backend.okpuja.com` have valid SSL certificates
 - Test webhook connectivity from PhonePe dashboard after deployment
 
 ### DNS Configuration
 Make sure your DNS points to your server:
 - `okpuja.com` → Your frontend application
-- `api.okpuja.com` → Your Django backend API
+- `backend.okpuja.com` → Your Django backend API
 
 ### PhonePe Dashboard Production Setup
 1. Login to PhonePe Business Dashboard (Production)
-2. Update webhook URL to: `https://api.okpuja.com/api/payments/webhook/phonepe/`
+2. Update webhook URL to: `https://backend.okpuja.com/api/payments/webhook/phonepe/`
 3. Configure callback authentication credentials
 4. Test the connection from dashboard
 

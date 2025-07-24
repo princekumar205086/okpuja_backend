@@ -20,7 +20,7 @@ jobs:
       - name: Deploy to VPS
         run: |
           ssh -o StrictHostKeyChecking=no root@157.173.221.192 << 'ENDSSH'
-            cd /opt/api.okpuja.com
+            cd /opt/backend.okpuja.com
             git fetch origin main
             git reset --hard origin/main  # Always use repo HEAD, discard local changes
             source venv/bin/activate

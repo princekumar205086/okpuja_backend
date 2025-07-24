@@ -86,7 +86,7 @@ contact_name=f'{user.profile.first_name} {user.profile.last_name}' if hasattr(us
 ### 1. Blog Data Seeder
 ```bash
 # Navigate to your project directory
-cd /opt/api.okpuja.com
+cd /opt/backend.okpuja.com
 
 # Run the fixed blog seeder
 python manage.py seed_blog_data --clear
