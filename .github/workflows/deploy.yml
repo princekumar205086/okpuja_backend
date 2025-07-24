@@ -27,6 +27,13 @@ jobs:
             pip install -r requirements.txt
             python manage.py makemigrations --noinput
             python manage.py migrate --noinput
+            
+            # Seed database with fresh test data (clear previous data)
+            echo "🌱 Seeding database with fresh test data..."
+            python manage.py seed_blog_data --clear --categories 8 --posts 50 --users 10
+            python manage.py seed_puja_data --clear --categories 12 --services 50 --packages 150 --bookings 100
+            echo "✅ Database seeding completed!"
+            
             python manage.py collectstatic --noinput
             systemctl restart nginx
             systemctl restart gunicorn_api_okpuja

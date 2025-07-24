@@ -157,8 +157,15 @@ class Command(BaseCommand):
         ]
         
         categories = []
+        
+        # Get admin user for categories (or first user if no admin exists)
+        admin_user = User.objects.filter(is_staff=True).first()
+        if not admin_user:
+            admin_user = User.objects.first()
+        
         for i, data in enumerate(category_data[:count]):
             category = BlogCategory.objects.create(
+                user=admin_user,  # Add required user field
                 name=data['name'],
                 description=data['description'],
                 meta_title=f"{data['name']} | Hindu Spiritual Guidance | OkPuja",
