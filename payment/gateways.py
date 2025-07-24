@@ -183,55 +183,19 @@ class PhonePeGateway:
                         timeout = self.timeout + (attempt * 30)
                         logger.info(f"PhonePe API attempt {attempt + 1}/{self.max_retries} with timeout {timeout}s")
                         
-                        # Enhanced session configuration for production
-                        session = requests.Session()
-                        session.verify = self.ssl_verify
+                        # Direct request approach (bypasses Django session/adapter issues)
+                        # This matches the working diagnostic script exactly
+                        logger.info(f"Making direct request to: {api_url}")
+                        logger.info(f"Request headers: {list(headers.keys())}")
+                        logger.info(f"Timeout: {timeout}s")
                         
-                        # Production-specific connection settings
-                        adapter = requests.adapters.HTTPAdapter(
-                            pool_connections=5,
-                            pool_maxsize=10,
-                            max_retries=0,  # We handle retries manually
-                            pool_block=False
+                        response = requests.post(
+                            api_url,
+                            headers=headers,
+                            json=final_payload,
+                            timeout=timeout,
+                            verify=True  # Always verify SSL in production
                         )
-                        
-                        session.mount('https://', adapter)
-                        session.mount('http://', adapter)
-                        
-                        # Production server optimized headers
-                        production_headers = headers.copy()
-                        production_headers.update({
-                            'Connection': 'close',  # Force connection close
-                            'Cache-Control': 'no-cache',
-                            'Pragma': 'no-cache',
-                            'Accept-Encoding': 'gzip, deflate',
-                            'DNT': '1'
-                        })
-                        
-                        # Special handling for production servers with network restrictions
-                        if self.is_production:
-                            # Use different user agent for production
-                            production_headers['User-Agent'] = 'OkPuja-Production/1.0 (Linux; Backend)'
-                            # Disable keep-alive completely
-                            production_headers['Connection'] = 'close'
-                        
-                        logger.info(f"Making request to: {api_url}")
-                        logger.info(f"Request headers: {list(production_headers.keys())}")
-                        logger.info(f"Timeout: {timeout}s, SSL Verify: {session.verify}")
-                        
-                        # Make the request with enhanced error handling
-                        try:
-                            response = session.post(
-                                api_url, 
-                                headers=production_headers, 
-                                json=final_payload,
-                                timeout=timeout,
-                                allow_redirects=True,
-                                stream=False  # Don't stream to avoid connection issues
-                            )
-                        finally:
-                            # Always close the session
-                            session.close()
                         
                         logger.info(f"PhonePe API Status: {response.status_code}")
                         logger.info(f"PhonePe API Response: {response.text[:500]}...")  # Log first 500 chars
