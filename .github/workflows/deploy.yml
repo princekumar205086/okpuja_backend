@@ -20,108 +20,15 @@ jobs:
       - name: Deploy to VPS
         run: |
           ssh -o StrictHostKeyChecking=no root@157.173.221.192 << 'ENDSSH'
-            # Update system packages
-            apt update -y
-            
-            # Install required packages
-            apt install -y python3 python3-pip python3-venv python3-full git nginx supervisor curl
-            
-            # Create application directory if it doesn't exist
-            mkdir -p /opt/backend.okpuja.com
-            cd /opt/backend.okpuja.com
-            
-            # Initialize git repository if not exists
-            if [ ! -d ".git" ]; then
-              git init
-              git remote add origin https://github.com/princekumar205086/okpuja_backend.git
-            fi
-            
-            # Fetch and reset to latest
+            cd /opt/api.okpuja.com
             git fetch origin main
-            git reset --hard origin/main
-            
-            # Create virtual environment if it doesn't exist
-            if [ ! -d "venv" ]; then
-              python3 -m venv venv
-            fi
-            
-            # Activate virtual environment and install dependencies
+            git reset --hard origin/main  # Always use repo HEAD, discard local changes
             source venv/bin/activate
-            pip install --upgrade pip
             pip install -r requirements.txt
-            
-            # Run Django management commands
             python manage.py makemigrations --noinput
             python manage.py migrate --noinput
             python manage.py collectstatic --noinput
-            
-            # Create Gunicorn configuration
-            mkdir -p /etc/supervisor/conf.d
-            cat > /etc/supervisor/conf.d/gunicorn_api_okpuja.conf << 'GUNICORN_EOF'
-          [program:gunicorn_api_okpuja]
-          command=/opt/backend.okpuja.com/venv/bin/gunicorn --workers 3 --bind unix:/opt/backend.okpuja.com/gunicorn.sock okpuja_backend.wsgi:application
-          directory=/opt/backend.okpuja.com
-          user=www-data
-          autostart=true
-          autorestart=true
-          redirect_stderr=true
-          stdout_logfile=/var/log/gunicorn_api_okpuja.log
-          GUNICORN_EOF
-            
-            # Create Nginx configuration
-            mkdir -p /etc/nginx/sites-available
-            cat > /etc/nginx/sites-available/backend.okpuja.com << 'NGINX_EOF'
-          server {
-              listen 80;
-              server_name backend.okpuja.com 157.173.221.192;
-          
-              location / {
-                  proxy_pass http://unix:/opt/backend.okpuja.com/gunicorn.sock;
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto $scheme;
-                  proxy_connect_timeout 60s;
-                  proxy_send_timeout 60s;
-                  proxy_read_timeout 60s;
-              }
-          
-              location /static/ {
-                  alias /opt/backend.okpuja.com/staticfiles/;
-                  expires 30d;
-                  add_header Cache-Control "public, immutable";
-              }
-          
-              location /media/ {
-                  alias /opt/backend.okpuja.com/media/;
-                  expires 30d;
-                  add_header Cache-Control "public, immutable";
-              }
-          }
-          NGINX_EOF
-            
-            # Enable site and remove default
-            mkdir -p /etc/nginx/sites-enabled
-            ln -sf /etc/nginx/sites-available/backend.okpuja.com /etc/nginx/sites-enabled/
-            rm -f /etc/nginx/sites-enabled/default
-            
-            # Set proper permissions
-            chown -R www-data:www-data /opt/backend.okpuja.com
-            chmod -R 755 /opt/backend.okpuja.com
-            
-            # Test and restart services
-            nginx -t
-            supervisorctl reread
-            supervisorctl update
-            supervisorctl restart gunicorn_api_okpuja
             systemctl restart nginx
-            
-            # Show status
-            echo "=== Deployment Complete ==="
-            supervisorctl status gunicorn_api_okpuja
-            systemctl is-active nginx
-            
-            # Health check
-            sleep 3
-            curl -I http://localhost/ || echo "Application starting..."
+            systemctl restart gunicorn_api_okpuja
+            sudo systemctl restart nginx
           ENDSSH
