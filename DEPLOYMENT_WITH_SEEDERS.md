@@ -2,16 +2,21 @@
 
 ## ✅ ISSUES FIXED
 
-### 1. Blog Seeder Fixed
+### 1. Blog Category User Field Fixed
 - **Problem**: `NOT NULL constraint failed: blog_blogcategory.user_id`
 - **Solution**: Added required `user` field to `BlogCategory.objects.create()`
 - **File**: `blog/management/commands/seed_blog_data.py`
 
-### 2. Puja Seeder Working
+### 2. Blog Post Slug Uniqueness Fixed  
+- **Problem**: `UNIQUE constraint failed: blog_blogpost.slug`
+- **Solution**: Generated unique slugs with counter suffix (e.g., "title-1", "title-2")
+- **File**: `blog/management/commands/seed_blog_data.py`
+
+### 3. Puja Seeder Working
 - **Status**: ✅ Already working perfectly
 - **Results**: Created 12 categories, 50 services, 150 packages, 89 bookings
 
-### 3. Deployment Workflow Updated
+### 4. Deployment Workflow Updated
 - **File**: `.github/workflows/deploy.yml`
 - **Added**: Automatic database seeding on deployment
 

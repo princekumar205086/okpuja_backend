@@ -6,9 +6,11 @@ Generates realistic content for categories, tags, posts, comments, likes, and vi
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.utils.text import slugify
 from django.db import transaction
 from datetime import timedelta
 import random
+import uuid
 from faker import Faker
 
 from blog.models import BlogCategory, BlogTag, BlogPost, BlogComment, BlogLike, BlogView
@@ -82,6 +84,19 @@ class Command(BaseCommand):
         User.objects.filter(email__contains='testuser').delete()
         
         self.stdout.write(self.style.SUCCESS('Existing data cleared.'))
+    
+    def generate_unique_slug(self, title, model_class):
+        """Generate a unique slug for the given title and model class"""
+        base_slug = slugify(title)
+        slug = base_slug
+        counter = 1
+        
+        # Keep trying until we find a unique slug
+        while model_class.objects.filter(slug=slug).exists():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+        
+        return slug
     
     def create_users(self, count):
         """Create test users"""
@@ -246,13 +261,17 @@ class Command(BaseCommand):
             
             title = template['title_template'].format(topic=topic)
             
+            # Generate unique slug for this post
+            unique_slug = self.generate_unique_slug(title, BlogPost)
+            
             # Generate content
             content = self.generate_blog_content(topic, title)
             excerpt = fake.text(max_nb_chars=200)
             
-            # Create the post
+            # Create the post with explicit unique slug
             post = BlogPost.objects.create(
                 title=title,
+                slug=unique_slug,  # Set unique slug explicitly
                 content=content,
                 excerpt=excerpt,
                 user=random.choice(users),
