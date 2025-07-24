@@ -12,7 +12,7 @@ schema_view = get_schema_view(
       title="OKPUJA API",
       default_version='v1',
       description="API for Hindu Puja and Astrology Services",
-      terms_of_service="https://www.okpuja.com/terms/",
+      terms_of_service="https://okpuja.com/terms/",
       contact=openapi.Contact(email="contact@okpuja.com"),
       license=openapi.License(name="BSD License"),
    ),

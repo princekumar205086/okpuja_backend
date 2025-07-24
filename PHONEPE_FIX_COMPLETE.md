@@ -5,7 +5,7 @@
 You're getting a "Connection refused" error when trying to connect to PhonePe API from your production server (`https://backend.okpuja.com`). This is a **network connectivity issue**, not a URL whitelisting problem.
 
 ### Key Points:
-- ✅ **Frontend URL whitelisting is correct**: Your frontend `https://www.okpuja.com` should be whitelisted in PhonePe dashboard
+- ✅ **Frontend URL whitelisting is correct**: Your frontend `https://okpuja.com` should be whitelisted in PhonePe dashboard
 - ❌ **Backend URL whitelisting is NOT required**: PhonePe doesn't need to whitelist your backend for outbound API calls
 - ❌ **Network connectivity issue**: Your server cannot reach PhonePe API endpoints
 
@@ -54,8 +54,8 @@ PHONEPE_MAX_RETRIES=5
 
 # Your actual URLs
 PHONEPE_CALLBACK_URL=https://backend.okpuja.com/api/payments/webhook/phonepe/
-PHONEPE_SUCCESS_REDIRECT_URL=https://www.okpuja.com/confirmbooking/
-PHONEPE_FAILED_REDIRECT_URL=https://www.okpuja.com/failedbooking
+PHONEPE_SUCCESS_REDIRECT_URL=https://okpuja.com/confirmbooking/
+PHONEPE_FAILED_REDIRECT_URL=https://okpuja.com/failedbooking
 ```
 
 ### Step 2: Contact Your Hosting Provider

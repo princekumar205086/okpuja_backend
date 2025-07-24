@@ -17,10 +17,10 @@ DEBUG=False                    # Production mode
 PRODUCTION_SERVER=True         # Enhanced connection handling
 PHONEPE_TIMEOUT=120           # Increased from 60s
 PHONEPE_MAX_RETRIES=5         # Increased from 3
-PHONEPE_SUCCESS_REDIRECT_URL=https://www.okpuja.com/confirmbooking/  # Added www
-PHONEPE_FAILED_REDIRECT_URL=https://www.okpuja.com/failedbooking     # Added www
+PHONEPE_SUCCESS_REDIRECT_URL=https://okpuja.com/confirmbooking/  # Added www
+PHONEPE_FAILED_REDIRECT_URL=https://okpuja.com/failedbooking     # Added www
 ALLOWED_HOSTS=localhost,127.0.0.1,api.okpuja.com,backend.okpuja.com,157.173.221.192
-CORS_ALLOWED_ORIGINS=https://www.okpuja.com,https://okpuja.com,https://api.okpuja.com,https://backend.okpuja.com
+CORS_ALLOWED_ORIGINS=https://okpuja.com,https://okpuja.com,https://api.okpuja.com,https://backend.okpuja.com
 ```
 
 ### 2. Enhanced Gateway Connection Handling
@@ -44,15 +44,15 @@ CORS_ALLOWED_ORIGINS=https://www.okpuja.com,https://okpuja.com,https://api.okpuj
 
 ### Step 2: Verify PhonePe Dashboard Configuration
 Ensure in your PhonePe Business Dashboard:
-- ✅ Domain whitelist: `https://www.okpuja.com` 
+- ✅ Domain whitelist: `https://okpuja.com` 
 - ✅ Webhook URL: `https://backend.okpuja.com/api/payments/webhook/phonepe/`
-- ✅ Success redirect: `https://www.okpuja.com/confirmbooking/`
-- ✅ Failed redirect: `https://www.okpuja.com/failedbooking`
+- ✅ Success redirect: `https://okpuja.com/confirmbooking/`
+- ✅ Failed redirect: `https://okpuja.com/failedbooking`
 
 ### Step 3: Test Payment Flow
 Use your frontend to test the complete payment flow:
 
-1. **Add items to cart** on `https://www.okpuja.com`
+1. **Add items to cart** on `https://okpuja.com`
 2. **Proceed to checkout** 
 3. **Process payment** - should hit `https://backend.okpuja.com/api/payments/payments/process-cart/`
 4. **Complete payment** on PhonePe page

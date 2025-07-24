@@ -171,7 +171,7 @@ FRONTEND_BASE_URL=https://okpuja.com
 
 # Other production settings
 DEBUG=False
-ALLOWED_HOSTS=okpuja.com,backend.okpuja.com,www.okpuja.com
+ALLOWED_HOSTS=okpuja.com,backend.okpuja.com,okpuja.com
 ```
 
 ### SSL Certificate Requirements

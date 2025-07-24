@@ -26,7 +26,7 @@ print(f"   DEBUG: {getattr(settings, 'DEBUG', True)}")
 print(f"\n🌐 Testing Basic Connectivity:")
 test_urls = [
     'https://api.phonepe.com',
-    'https://www.okpuja.com'
+    'https://okpuja.com'
 ]
 
 for url in test_urls:

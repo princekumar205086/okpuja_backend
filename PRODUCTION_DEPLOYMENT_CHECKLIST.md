@@ -16,7 +16,7 @@
   FRONTEND_BASE_URL=https://okpuja.com
   
   DEBUG=False
-  ALLOWED_HOSTS=okpuja.com,backend.okpuja.com,www.okpuja.com
+  ALLOWED_HOSTS=okpuja.com,backend.okpuja.com,okpuja.com
   ```
 
 ### 2. SSL/HTTPS Setup
@@ -28,7 +28,7 @@
 ### 3. DNS Configuration
 - [ ] `okpuja.com` points to frontend server
 - [ ] `backend.okpuja.com` points to Django backend server
-- [ ] `www.okpuja.com` redirects to `okpuja.com`
+- [ ] `okpuja.com` redirects to `okpuja.com`
 - [ ] DNS propagation completed (test with: `nslookup okpuja.com`)
 
 ### 4. PhonePe Dashboard Configuration
