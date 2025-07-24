@@ -89,13 +89,21 @@ class Command(BaseCommand):
         
         users = []
         for i in range(count):
+            # Create user
             user = User.objects.create_user(
                 email=f'testuser{i+1}@okpuja.com',
                 password='testpass123',
-                first_name=fake.first_name(),
-                last_name=fake.last_name(),
-                phone=fake.phone_number()[:15]  # Limit phone number length
+                phone=f'+91987654{i:04d}'  # Valid Indian phone format
             )
+            
+            # Create user profile with name
+            from accounts.models import UserProfile
+            UserProfile.objects.create(
+                user=user,
+                first_name=fake.first_name(),
+                last_name=fake.last_name()
+            )
+            
             users.append(user)
         
         self.stdout.write(self.style.SUCCESS(f'Created {len(users)} users.'))
