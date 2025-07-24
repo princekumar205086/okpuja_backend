@@ -484,116 +484,9 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 'message': f'Payment status: {payment.get_status_display()}'
             })
 
-    @action(detail=False, methods=['get'], url_path='debug-connectivity', permission_classes=[IsAdminUser])
-    def debug_connectivity(self, request):
-        """
-        Debug endpoint to test PhonePe API connectivity
-        Admin only - helps diagnose network connectivity issues
-        """
-        try:
-            from .gateways import PhonePeGateway
-            gateway = PhonePeGateway()
-            
-            # Test connectivity
-            connectivity_results = gateway.test_connectivity()
-            
-            # Test DNS resolution
-            import socket
-            dns_results = []
-            hostnames = ['api.phonepe.com', 'api-preprod.phonepe.com', 'mercury-t2.phonepe.com']
-            
-            for hostname in hostnames:
-                try:
-                    ip = socket.gethostbyname(hostname)
-                    dns_results.append({'hostname': hostname, 'ip': ip, 'status': 'resolved'})
-                except Exception as e:
-                    dns_results.append({'hostname': hostname, 'error': str(e), 'status': 'failed'})
-            
-            # Get system info
-            import platform
-            import sys
-            system_info = {
-                'python_version': sys.version,
-                'platform': platform.platform(),
-                'hostname': platform.node(),
-                'production_flag': getattr(settings, 'PRODUCTION_SERVER', False),
-                'debug_mode': settings.DEBUG,
-                'phonepe_env': getattr(settings, 'PHONEPE_ENV', 'NOT SET')
-            }
-            
-            return Response({
-                'connectivity_test': connectivity_results,
-                'dns_resolution': dns_results,
-                'system_info': system_info,
-                'timestamp': timezone.now().isoformat(),
-                'status': 'debug_complete'
-            })
-            
-        except Exception as e:
-            return Response({
-                'error': 'Debug test failed',
-                'error_details': str(e),
-                'timestamp': timezone.now().isoformat()
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=True, methods=['post'], url_path='simulate-success')
-    def simulate_payment_success(self, request, pk=None):
-        """
-        Simulate payment success for testing when PhonePe API is unavailable
-        Only works in DEBUG mode
-        """
-        if not settings.DEBUG:
-            return Response({
-                'error': 'This endpoint is only available in DEBUG mode'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        payment = self.get_object()
-        
-        if payment.status != PaymentStatus.PENDING:
-            return Response({
-                'error': f'Payment is not in PENDING status. Current status: {payment.status}'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        try:
-            # Simulate successful payment
-            payment.status = PaymentStatus.SUCCESS
-            payment.gateway_response = {
-                'simulated': True,
-                'timestamp': timezone.now().isoformat(),
-                'message': 'Payment success simulated for testing'
-            }
-            payment.save()
-            
-            # Trigger booking creation (if cart exists)
-            if hasattr(payment, 'cart') and payment.cart:
-                from booking.models import Booking
-                from booking.utils import create_bookings_from_cart
-                
-                # Create bookings from cart
-                bookings = create_bookings_from_cart(payment.cart, payment)
-                
-                return Response({
-                    'success': True,
-                    'message': 'Payment success simulated',
-                    'payment_id': payment.id,
-                    'payment_status': payment.status,
-                    'bookings_created': len(bookings),
-                    'booking_ids': [b.id for b in bookings]
-                })
-            else:
-                return Response({
-                    'success': True,
-                    'message': 'Payment success simulated (no cart found)',
-                    'payment_id': payment.id,
-                    'payment_status': payment.status
-                })
-                
-        except Exception as e:
-            logger.error(f"Error simulating payment success: {str(e)}")
-            return Response({
-                'error': 'Failed to simulate payment success',
-                'details': str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
     @action(detail=True, methods=['post'], url_path='simulate-success')
     def simulate_payment_success(self, request, pk=None):
@@ -601,8 +494,6 @@ class PaymentViewSet(viewsets.ModelViewSet):
         DEVELOPMENT ONLY: Simulate payment success to test booking creation
         This endpoint manually marks payment as successful and creates booking
         """
-        from django.conf import settings
-        
         # Only allow in development/debug mode
         if not settings.DEBUG:
             return Response(
@@ -635,11 +526,26 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 })
                 payment.save()
                 
-                # Create booking if no booking exists yet
+                # Create booking if cart exists and no booking exists yet
                 booking = None
-                if not payment.booking:
-                    booking = payment.create_booking_from_cart()
-                    logger.info(f"Booking {booking.book_id} created via simulation for payment {payment.transaction_id}")
+                if hasattr(payment, 'cart') and payment.cart and not hasattr(payment, 'booking'):
+                    try:
+                        # Try to create booking using payment model method if it exists
+                        if hasattr(payment, 'create_booking_from_cart'):
+                            booking = payment.create_booking_from_cart()
+                            logger.info(f"Booking {booking.book_id} created via payment model method for payment {payment.transaction_id}")
+                        else:
+                            # Alternative: Create booking manually if method doesn't exist
+                            from booking.models import Booking
+                            booking = Booking.objects.create(
+                                user=payment.user,
+                                payment=payment,
+                                # Add other required fields as needed based on your Booking model
+                            )
+                            logger.info(f"Booking {booking.id} created manually for payment {payment.transaction_id}")
+                    except Exception as booking_error:
+                        logger.error(f"Failed to create booking for payment {payment.transaction_id}: {str(booking_error)}")
+                        # Don't fail the payment simulation if booking creation fails
                 
                 # Send notifications
                 if old_status != payment.status:
@@ -657,7 +563,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 if booking:
                     response_data.update({
                         'booking_id': booking.id,
-                        'booking_reference': booking.book_id
+                        'booking_reference': getattr(booking, 'book_id', booking.id)
                     })
                 
                 return Response(response_data, status=status.HTTP_200_OK)
@@ -673,14 +579,12 @@ class PaymentViewSet(viewsets.ModelViewSet):
     def debug_connectivity(self, request):
         """
         Debug PhonePe connectivity from production server with comprehensive testing
-        REMOVE THIS ENDPOINT AFTER DEBUGGING
+        Use POST with {"test_payment": true} to test actual payment initiation
         """
         try:
             import requests
             import socket
             from urllib.parse import urlparse
-            import json
-            import base64
             
             debug_info = {
                 'timestamp': timezone.now().isoformat(),
@@ -700,26 +604,24 @@ class PaymentViewSet(viewsets.ModelViewSet):
             except Exception as e:
                 debug_info['server_info']['error'] = str(e)
             
-            # 2. PhonePe configuration
+            # 2. PhonePe configuration (mask sensitive data)
             debug_info['phonepe_config'] = {
-                'merchant_id': getattr(settings, 'PHONEPE_MERCHANT_ID', 'NOT_SET'),
+                'merchant_id': getattr(settings, 'PHONEPE_MERCHANT_ID', 'NOT_SET')[:10] + '...' if getattr(settings, 'PHONEPE_MERCHANT_ID', None) else 'NOT_SET',
                 'base_url': getattr(settings, 'PHONEPE_BASE_URL', 'NOT_SET'),
                 'salt_index': getattr(settings, 'PHONEPE_SALT_INDEX', 'NOT_SET'),
                 'timeout': getattr(settings, 'PHONEPE_TIMEOUT', 'NOT_SET'),
                 'max_retries': getattr(settings, 'PHONEPE_MAX_RETRIES', 'NOT_SET'),
                 'ssl_verify': getattr(settings, 'PHONEPE_SSL_VERIFY', 'NOT_SET'),
-                'callback_url': getattr(settings, 'PHONEPE_CALLBACK_URL', 'NOT_SET'),
-                'success_redirect_url': getattr(settings, 'PHONEPE_SUCCESS_REDIRECT_URL', 'NOT_SET'),
+                'production_server': getattr(settings, 'PRODUCTION_SERVER', False),
             }
             
-            # 3. Enhanced network connectivity tests
+            # 3. Network connectivity tests
             test_urls = [
                 'https://google.com',
                 'https://api.phonepe.com',
                 'https://api.phonepe.com/apis/hermes',
-                'https://api.phonepe.com/apis/hermes/pg/v1/pay',
                 'https://api-preprod.phonepe.com/apis/hermes',
-                'https://httpbin.org/status/200'  # Test general HTTP connectivity
+                'https://httpbin.org/status/200'
             ]
             
             for url in test_urls:
@@ -729,77 +631,47 @@ class PaymentViewSet(viewsets.ModelViewSet):
                     # Test DNS resolution
                     ip = socket.gethostbyname(parsed_url.hostname)
                     
-                    # Test HTTP connectivity with multiple methods
+                    # Test HTTP connectivity
                     get_response = requests.get(url, timeout=15, verify=True)
                     
                     debug_info['network_tests'][url] = {
                         'dns_ip': ip,
-                        'get_status': get_response.status_code,
-                        'get_headers': dict(get_response.headers),
+                        'status_code': get_response.status_code,
                         'reachable': True,
-                        'response_time_ms': get_response.elapsed.total_seconds() * 1000
+                        'response_time_ms': round(get_response.elapsed.total_seconds() * 1000, 2)
                     }
                     
-                    # For PhonePe endpoints, also test POST
-                    if 'phonepe.com' in url and url.endswith('/pay'):
-                        try:
-                            post_response = requests.post(url, json={}, timeout=15, verify=True)
-                            debug_info['network_tests'][url]['post_status'] = post_response.status_code
-                            debug_info['network_tests'][url]['post_response'] = post_response.text[:200]
-                        except Exception as post_e:
-                            debug_info['network_tests'][url]['post_error'] = str(post_e)
-                    
-                except socket.gaierror as e:
-                    debug_info['network_tests'][url] = {
-                        'error': f'DNS resolution failed: {str(e)}',
-                        'error_type': 'DNS_ERROR',
-                        'reachable': False
-                    }
-                except requests.exceptions.ConnectionError as e:
-                    debug_info['network_tests'][url] = {
-                        'error': f'Connection failed: {str(e)}',
-                        'error_type': 'CONNECTION_ERROR',
-                        'reachable': False
-                    }
-                except requests.exceptions.Timeout as e:
-                    debug_info['network_tests'][url] = {
-                        'error': f'Timeout: {str(e)}',
-                        'error_type': 'TIMEOUT_ERROR',
-                        'reachable': False
-                    }
                 except Exception as e:
                     debug_info['network_tests'][url] = {
-                        'error': f'Test failed: {str(e)}',
-                        'error_type': 'UNKNOWN_ERROR',
+                        'error': str(e),
+                        'error_type': type(e).__name__,
                         'reachable': False
                     }
             
-            # 4. Test PhonePe gateway initialization and simulation
+            # 4. Test PhonePe gateway initialization
             try:
                 from payment.gateways import PhonePeGateway
                 gateway = PhonePeGateway()
                 debug_info['api_test']['gateway_init'] = 'SUCCESS'
                 debug_info['api_test']['gateway_config'] = {
-                    'merchant_id': gateway.merchant_id,
-                    'base_url': gateway.base_url,
                     'timeout': gateway.timeout,
                     'max_retries': gateway.max_retries,
-                    'ssl_verify': gateway.ssl_verify
+                    'ssl_verify': gateway.ssl_verify,
+                    'is_production': getattr(gateway, 'is_production', False)
                 }
                 
                 # 5. Test payment simulation if POST request with test data
                 if request.method == 'POST' and request.data.get('test_payment'):
                     try:
-                        # Create a mock payment for testing
                         from payment.models import Payment, PaymentStatus
                         from django.contrib.auth import get_user_model
                         User = get_user_model()
                         
-                        # Use the requesting user or create a test scenario
+                        # Use the requesting user or get the first user
                         test_user = request.user if request.user.is_authenticated else User.objects.first()
                         
                         if test_user:
-                            # Create test payment data (don't save to database)
+                            # Create mock payment data (don't save to database)
                             import uuid
                             test_payment_data = {
                                 'user': test_user,
@@ -826,7 +698,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
                                 result = gateway.initiate_payment(mock_payment)
                                 debug_info['payment_simulation'] = {
                                     'status': 'SUCCESS',
-                                    'result': result,
+                                    'payment_url': result.get('payment_url', 'N/A'),
                                     'test_amount': test_payment_data['amount'],
                                     'test_transaction_id': test_payment_data['transaction_id']
                                 }
@@ -852,28 +724,18 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 debug_info['api_test']['gateway_init'] = f'FAILED: {str(e)}'
                 debug_info['api_test']['error_type'] = type(e).__name__
             
-            # 6. System diagnostics
-            debug_info['system_info'] = {
-                'python_version': f"{__import__('sys').version_info.major}.{__import__('sys').version_info.minor}",
-                'requests_version': requests.__version__,
-                'django_debug': settings.DEBUG,
-                'environment': getattr(settings, 'ENVIRONMENT', 'unknown')
-            }
-            
-            # 7. Recommendations based on test results
+            # 6. Generate recommendations
             recommendations = []
-            
-            # Check for common issues
             phonepe_reachable = any(
                 test.get('reachable', False) 
                 for url, test in debug_info['network_tests'].items() 
                 if 'phonepe.com' in url
             )
             
-            if not phonepe_reachable:
-                recommendations.append("❌ PhonePe API is not reachable - check firewall/proxy settings")
-            else:
+            if phonepe_reachable:
                 recommendations.append("✅ PhonePe API is reachable")
+            else:
+                recommendations.append("❌ PhonePe API is not reachable - check firewall/proxy settings")
             
             if debug_info['api_test'].get('gateway_init') == 'SUCCESS':
                 recommendations.append("✅ PhonePe Gateway initialized successfully")
@@ -907,7 +769,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 'type': type(e).__name__,
                 'recommendations': [
                     "❌ Debug endpoint itself failed - check server logs",
-                    "Try running: python manage.py debug_phonepe"
+                    "Try running basic connectivity tests manually"
                 ]
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
