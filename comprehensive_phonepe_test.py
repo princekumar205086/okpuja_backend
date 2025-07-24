@@ -80,12 +80,11 @@ def run_comprehensive_test():
     # Test 4: Create Test User and Payment
     print("\n👤 TEST 4: Test Payment Creation")
     try:
-        # Get or create test user
+        # Get or create test user (using only fields that exist in your User model)
         user, created = User.objects.get_or_create(
             email='test@okpuja.com',
             defaults={
-                'first_name': 'Test',
-                'last_name': 'User',
+                'name': 'Test User',  # Using 'name' instead of first_name/last_name
                 'is_active': True
             }
         )
