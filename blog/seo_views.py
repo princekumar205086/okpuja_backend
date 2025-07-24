@@ -182,7 +182,7 @@ class BlogPostViewSet(viewsets.ModelViewSet):
         post = self.get_object()
         comments = post.comments.filter(
             is_approved=True, 
-            parent_comment__isnull=True
+            parent__isnull=True
         ).select_related('user').order_by('-created_at')
         
         serializer = SEOBlogCommentSerializer(

@@ -353,7 +353,7 @@ class Command(BaseCommand):
                     BlogComment.objects.create(
                         post=post,
                         user=random.choice(users),
-                        parent_comment=comment,
+                        parent=comment,
                         content="Thank you for your comment! I'm glad you found it helpful.",
                         is_approved=True,
                         created_at=comment.created_at + timedelta(hours=random.randint(1, 48))
