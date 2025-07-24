@@ -1,0 +1,24 @@
+🚨 EMERGENCY FIX REQUIRED - SWAGGER STILL FAILING 🚨
+
+The issue is CONFIRMED: Gunicorn workers have cached the OLD code!
+
+🔥 CRITICAL COMMANDS - RUN ON SERVER IMMEDIATELY:
+================================================
+
+sudo systemctl stop gunicorn_api_okpuja
+sudo systemctl stop nginx
+sudo pkill -9 -f gunicorn
+sudo pkill -9 -f 'python.*manage.py'
+sleep 5
+ps aux | grep gunicorn
+sudo systemctl start gunicorn_api_okpuja
+sleep 15
+sudo systemctl start nginx
+
+Then test in Swagger immediately!
+
+WHY: The -9 flag FORCE-KILLS cached processes
+RESULT: Fresh workers load the FIXED code
+TIME: 2-3 minutes to complete
+
+This WILL fix the Swagger API error! 🎯
