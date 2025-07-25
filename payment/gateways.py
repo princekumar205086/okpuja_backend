@@ -314,10 +314,10 @@ class PhonePeGateway:
 
     def process_webhook(self, headers, callback_body_string):
         """
-        Process PhonePe webhook callback
+        Process PhonePe webhook callback with enhanced error handling
         
         Args:
-            headers: Full request headers from PhonePe
+            headers: Full request headers from PhonePe (can be string or dict)
             callback_body_string: Raw callback body as string
             
         Returns:
@@ -326,37 +326,136 @@ class PhonePeGateway:
         from .models import Payment, PaymentStatus
         
         try:
-            # Parse the callback data
-            callback_data = json.loads(callback_body_string)
+            logger.info(f"🔔 Processing PhonePe webhook callback")
+            logger.info(f"📝 Raw callback body: {callback_body_string[:200]}...")
+            logger.info(f"📋 Headers: {str(headers)[:200]}...")
             
-            # Extract checksum for validation
-            x_verify_header = headers.get('X-VERIFY')
+            # Handle empty callback body
+            if not callback_body_string or callback_body_string.strip() == '':
+                logger.error("❌ Empty callback body received")
+                raise Exception("Webhook processing failed: Empty callback body")
+            
+            # Parse the callback data
+            try:
+                callback_data = json.loads(callback_body_string)
+                logger.info(f"✅ Parsed callback data successfully")
+            except json.JSONDecodeError as e:
+                logger.error(f"❌ JSON parsing failed: {str(e)}")
+                logger.error(f"📝 Raw body that failed to parse: {callback_body_string}")
+                raise Exception(f"Webhook processing failed: Invalid JSON - {str(e)}")
+            
+            # Handle headers (can be string from Authorization header or dict from request.headers)
+            x_verify_header = None
+            if isinstance(headers, dict):
+                x_verify_header = headers.get('X-VERIFY') or headers.get('x-verify')
+            elif isinstance(headers, str):
+                # If headers is the authorization string directly
+                x_verify_header = headers
+            
             if not x_verify_header:
-                logger.error("Webhook validation failed: Missing X-VERIFY header")
-                raise Exception("Invalid webhook callback: Missing X-VERIFY header")
+                logger.warning("⚠️ Missing X-VERIFY header - proceeding without validation in development")
+                if not settings.DEBUG:
+                    raise Exception("Invalid webhook callback: Missing X-VERIFY header")
             
             # Decode the response if it's base64 encoded
+            decoded_response = None
             if 'response' in callback_data:
-                decoded_response = json.loads(base64.b64decode(callback_data['response']).decode('utf-8'))
+                try:
+                    decoded_response = json.loads(base64.b64decode(callback_data['response']).decode('utf-8'))
+                    logger.info(f"✅ Decoded base64 response successfully")
+                except Exception as e:
+                    logger.error(f"❌ Failed to decode base64 response: {str(e)}")
+                    decoded_response = callback_data
             else:
                 decoded_response = callback_data
+                logger.info(f"📄 Using callback data directly (not base64 encoded)")
             
-            merchant_transaction_id = decoded_response.get('data', {}).get('merchantTransactionId')
+            # Extract merchant transaction ID
+            merchant_transaction_id = None
+            
+            # Try different possible locations for merchant transaction ID
+            possible_locations = [
+                decoded_response.get('data', {}).get('merchantTransactionId'),
+                decoded_response.get('merchantTransactionId'),
+                callback_data.get('merchantTransactionId'),
+                callback_data.get('data', {}).get('merchantTransactionId') if isinstance(callback_data.get('data'), dict) else None
+            ]
+            
+            for location in possible_locations:
+                if location:
+                    merchant_transaction_id = location
+                    break
             
             if not merchant_transaction_id:
-                logger.error("No merchant transaction ID in callback")
-                raise Exception("Invalid callback: No merchant transaction ID")
+                logger.error(f"❌ No merchant transaction ID found in callback")
+                logger.error(f"📄 Decoded response: {decoded_response}")
+                logger.error(f"📄 Callback data: {callback_data}")
+                raise Exception("Invalid callback: No merchant transaction ID found")
+            
+            logger.info(f"🔍 Found merchant transaction ID: {merchant_transaction_id}")
             
             # Find payment by merchant_transaction_id
             try:
                 payment = Payment.objects.get(merchant_transaction_id=merchant_transaction_id)
+                logger.info(f"✅ Found payment: ID={payment.id}, Status={payment.status}")
             except Payment.DoesNotExist:
-                logger.error(f"Payment not found for merchant transaction ID: {merchant_transaction_id}")
+                logger.error(f"❌ Payment not found for merchant transaction ID: {merchant_transaction_id}")
                 raise Exception(f"Payment not found for merchant transaction ID: {merchant_transaction_id}")
             
             # Update payment status based on callback
-            transaction_data = decoded_response.get('data', {})
-            state = transaction_data.get('state')
+            transaction_data = decoded_response.get('data', {}) if isinstance(decoded_response.get('data'), dict) else decoded_response
+            
+            # Try different possible locations for state/status
+            state = (
+                transaction_data.get('state') or 
+                transaction_data.get('status') or
+                decoded_response.get('state') or
+                decoded_response.get('status') or
+                callback_data.get('state') or
+                callback_data.get('status')
+            )
+            
+            old_status = payment.status
+            
+            if state == 'COMPLETED':
+                payment.status = PaymentStatus.SUCCESS
+                logger.info(f"💰 Payment marked as SUCCESS")
+            elif state in ['FAILED', 'DECLINED', 'FAILURE']:
+                payment.status = PaymentStatus.FAILED
+                logger.info(f"❌ Payment marked as FAILED")
+            elif state == 'PENDING':
+                payment.status = PaymentStatus.PENDING
+                logger.info(f"⏳ Payment remains PENDING")
+            else:
+                logger.warning(f"⚠️ Unknown payment state: {state}")
+                # Don't change status for unknown states
+            
+            # Update gateway response with callback data
+            payment.gateway_response = payment.gateway_response or {}
+            payment.gateway_response.update({
+                'webhook_callback': {
+                    'decoded_response': decoded_response,
+                    'callback_data': callback_data,
+                    'state': state,
+                    'merchant_transaction_id': merchant_transaction_id,
+                    'timestamp': str(timezone.now()),
+                    'status_changed': old_status != payment.status
+                }
+            })
+            
+            # This save will trigger the booking creation via the overridden save method
+            payment.save()
+            
+            logger.info(f"✅ PhonePe webhook processed successfully!")
+            logger.info(f"🔄 Status change: {old_status} → {payment.status}")
+            
+            return payment
+            
+        except Exception as e:
+            logger.error(f"💥 Webhook processing failed: {str(e)}")
+            logger.error(f"📄 Callback body: {callback_body_string}")
+            logger.error(f"📋 Headers: {headers}")
+            raise Exception(f"Webhook processing failed: {str(e)}")
             
             if state == 'COMPLETED':
                 payment.status = PaymentStatus.SUCCESS

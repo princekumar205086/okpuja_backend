@@ -1,0 +1,183 @@
+{
+  "info": {
+    "name": "PhonePe Webhook Testing - FIXED",
+    "description": "Test collection for the fixed PhonePe webhook endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Test Empty Body (Fixed)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{BASE_URL}}/api/payments/webhook/phonepe/",
+          "host": [
+            "{{BASE_URL}}"
+          ],
+          "path": [
+            "api",
+            "payments",
+            "webhook",
+            "phonepe",
+            ""
+          ]
+        },
+        "description": "Test webhook with empty body - should return helpful error message instead of crashing"
+      }
+    },
+    {
+      "name": "2. Test Invalid JSON (Fixed)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "invalid json content"
+        },
+        "url": {
+          "raw": "{{BASE_URL}}/api/payments/webhook/phonepe/",
+          "host": [
+            "{{BASE_URL}}"
+          ],
+          "path": [
+            "api",
+            "payments",
+            "webhook",
+            "phonepe",
+            ""
+          ]
+        },
+        "description": "Test webhook with invalid JSON - should return clear JSON validation error"
+      }
+    },
+    {
+      "name": "3. Test Valid PhonePe Webhook",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "X-VERIFY",
+            "value": "test_signature_here",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"response\": \"eyJzdWNjZXNzIjp0cnVlLCJjb2RlIjoiUEFZTUVOVF9TVUNDRVNTIiwibWVzc2FnZSI6IlBheW1lbnQgc3VjY2Vzc2Z1bCIsImRhdGEiOnsibWVyY2hhbnRJZCI6Ik9LUFVKQSIsIm1lcmNoYW50VHJhbnNhY3Rpb25JZCI6IlRYTjEyMzQ1Njc4OTAiLCJzdGF0ZSI6IkNPTVBMRVRFRCJ9fQ==\",\n    \"merchantId\": \"OKPUJA\",\n    \"merchantTransactionId\": \"TXN1234567890\"\n}"
+        },
+        "url": {
+          "raw": "{{BASE_URL}}/api/payments/webhook/phonepe/",
+          "host": [
+            "{{BASE_URL}}"
+          ],
+          "path": [
+            "api",
+            "payments",
+            "webhook",
+            "phonepe",
+            ""
+          ]
+        },
+        "description": "Test webhook with valid PhonePe-like payload - should process correctly (if payment exists)"
+      }
+    },
+    {
+      "name": "4. Debug Endpoint - GET Info",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/api/payments/webhook/debug/",
+          "host": [
+            "{{BASE_URL}}"
+          ],
+          "path": [
+            "api",
+            "payments",
+            "webhook",
+            "debug",
+            ""
+          ]
+        },
+        "description": "Get debug endpoint information and testing instructions"
+      }
+    },
+    {
+      "name": "5. Debug Endpoint - Test POST",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"response\": \"eyJzdWNjZXNzIjp0cnVlLCJjb2RlIjoiUEFZTUVOVF9TVUNDRVNTIiwibWVzc2FnZSI6IlBheW1lbnQgc3VjY2Vzc2Z1bCIsImRhdGEiOnsibWVyY2hhbnRJZCI6Ik9LUFVKQSIsIm1lcmNoYW50VHJhbnNhY3Rpb25JZCI6IlRYTjEyMzQ1Njc4OTAiLCJzdGF0ZSI6IkNPTVBMRVRFRCJ9fQ==\",\n    \"merchantId\": \"OKPUJA\",\n    \"merchantTransactionId\": \"TXN1234567890\"\n}"
+        },
+        "url": {
+          "raw": "{{BASE_URL}}/api/payments/webhook/debug/",
+          "host": [
+            "{{BASE_URL}}"
+          ],
+          "path": [
+            "api",
+            "payments",
+            "webhook",
+            "debug",
+            ""
+          ]
+        },
+        "description": "Test POST to debug endpoint - validates JSON and checks required fields without processing"
+      }
+    },
+    {
+      "name": "6. Webhook Status Check (GET)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/api/payments/webhook/phonepe/",
+          "host": [
+            "{{BASE_URL}}"
+          ],
+          "path": [
+            "api",
+            "payments",
+            "webhook",
+            "phonepe",
+            ""
+          ]
+        },
+        "description": "Check if webhook endpoint is active and accessible"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "http://127.0.0.1:8000",
+      "description": "Base URL for local development. Change to https://backend.okpuja.com for production"
+    }
+  ]
+}

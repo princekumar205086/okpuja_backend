@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.utils import timezone
 import logging
+import json
 
 from .models import Payment, Refund, PaymentMethod, PaymentStatus
 from .serializers import (
@@ -775,41 +776,303 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
 class PaymentWebhookView(APIView):
     """
-    Handle payment gateway webhook callbacks
+    Handle payment gateway webhook callbacks with enhanced error handling
     """
     permission_classes = []  # Public endpoint for gateway callbacks
 
     def post(self, request, gateway_name):
         """
-        Handle PhonePe webhook callback
+        Handle PhonePe webhook callback with enhanced error handling
+        FIXED: Better handling of empty request bodies and JSON parsing
         """
         try:
-            # Get authorization header
-            authorization_header = request.headers.get('Authorization', '')
+            logger.info(f"🔔 Webhook received for gateway: {gateway_name}")
+            logger.info(f"📋 Headers: {dict(request.headers)}")
+            logger.info(f"📝 Raw body length: {len(request.body) if request.body else 0}")
+            logger.info(f"📄 Content type: {request.content_type}")
+            
+            # Handle empty request body - FIXED
+            if not request.body:
+                logger.warning("⚠️ Empty webhook request body received")
+                
+                # For development/testing: return helpful message
+                if settings.DEBUG:
+                    return Response(
+                        {
+                            'error': 'Empty webhook request body',
+                            'success': False,
+                            'message': 'No data received in webhook callback',
+                            'help': 'This usually means PhonePe is not sending data to the webhook. Check PhonePe dashboard configuration.',
+                            'webhook_url': request.build_absolute_uri(),
+                            'expected_format': {
+                                'response': 'base64_encoded_response',
+                                'merchantId': 'your_merchant_id',
+                                'merchantTransactionId': 'transaction_id'
+                            }
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                else:
+                    # For production: simpler response
+                    return Response(
+                        {
+                            'error': 'Empty webhook request body',
+                            'success': False
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
             
             # Get raw callback body as string
-            callback_body_string = request.body.decode('utf-8')
+            try:
+                callback_body_string = request.body.decode('utf-8')
+                logger.info(f"✅ Decoded request body successfully: {len(callback_body_string)} characters")
+                
+                # FIXED: Handle empty string after decoding
+                if not callback_body_string.strip():
+                    logger.warning("⚠️ Empty webhook callback body after decoding")
+                    return Response(
+                        {
+                            'error': 'Empty webhook callback body after decoding',
+                            'success': False,
+                            'message': 'Webhook body is empty after UTF-8 decoding',
+                            'help': 'PhonePe might be sending empty data or wrong encoding'
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # FIXED: Validate JSON before processing
+                try:
+                    test_json = json.loads(callback_body_string)
+                    logger.info(f"✅ Valid JSON received with keys: {list(test_json.keys()) if isinstance(test_json, dict) else 'non-dict'}")
+                except json.JSONDecodeError as json_err:
+                    logger.error(f"❌ Invalid JSON in webhook body: {str(json_err)}")
+                    logger.error(f"📝 Raw body that failed JSON parsing: {callback_body_string[:200]}...")
+                    
+                    return Response(
+                        {
+                            'error': f'Invalid JSON in webhook body: {str(json_err)}',
+                            'success': False,
+                            'json_error': str(json_err),
+                            'body_preview': callback_body_string[:100],
+                            'help': 'The webhook body is not valid JSON. Check PhonePe webhook configuration.'
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                    
+            except UnicodeDecodeError as e:
+                logger.error(f"❌ Failed to decode request body: {str(e)}")
+                return Response(
+                    {
+                        'error': 'Invalid request body encoding',
+                        'success': False,
+                        'details': str(e),
+                        'help': 'Request body is not UTF-8 encoded'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Get authorization header (X-VERIFY from PhonePe)
+            authorization_header = request.headers.get('X-VERIFY', '')
+            if not authorization_header:
+                # Try alternative header names
+                authorization_header = (
+                    request.headers.get('Authorization', '') or
+                    request.headers.get('x-verify', '') or
+                    request.headers.get('verify', '')
+                )
+                
+                if not authorization_header:
+                    logger.warning("⚠️ Missing X-VERIFY header")
+                    if not settings.DEBUG:
+                        return Response(
+                            {
+                                'error': 'Missing X-VERIFY header for webhook authentication',
+                                'success': False,
+                                'available_headers': list(request.headers.keys())
+                            },
+                            status=status.HTTP_401_UNAUTHORIZED
+                        )
             
             # Process with PhonePe gateway
-            gateway = get_payment_gateway(gateway_name)
-            payment = gateway.process_webhook(authorization_header, callback_body_string)
+            try:
+                gateway = get_payment_gateway(gateway_name)
+                logger.info(f"✅ Got {gateway_name} gateway instance")
+                
+                payment = gateway.process_webhook(request.headers, callback_body_string)
+                logger.info(f"✅ Webhook processed successfully for payment {payment.id}")
+                
+                return Response(
+                    {
+                        'success': True,
+                        'message': 'Webhook processed successfully',
+                        'payment_id': payment.id,
+                        'transaction_id': payment.transaction_id,
+                        'merchant_transaction_id': payment.merchant_transaction_id,
+                        'status': payment.status
+                    },
+                    status=status.HTTP_200_OK
+                )
+                
+            except Exception as gateway_error:
+                logger.error(f"❌ Gateway processing failed: {str(gateway_error)}")
+                logger.error(f"🔍 Gateway error type: {type(gateway_error).__name__}")
+                
+                return Response(
+                    {
+                        'error': f'Gateway processing failed: {str(gateway_error)}',
+                        'success': False,
+                        'gateway': gateway_name,
+                        'error_type': type(gateway_error).__name__,
+                        'help': 'Check payment exists and webhook data is valid'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+        except Exception as e:
+            logger.error(f"💥 Critical webhook processing error: {str(e)}")
+            logger.error(f"🔍 Error type: {type(e).__name__}")
+            import traceback
+            logger.error(f"📚 Traceback: {traceback.format_exc()}")
             
             return Response(
                 {
-                    'success': True,
-                    'message': 'Webhook processed successfully',
-                    'payment_id': payment.id,
-                    'status': payment.status
+                    'error': f'Webhook processing failed: {str(e)}',
+                    'success': False,
+                    'error_type': type(e).__name__
                 },
-                status=status.HTTP_200_OK
-            )
-            
-        except Exception as e:
-            logger.error(f"Webhook processing failed: {str(e)}")
-            return Response(
-                {'error': str(e), 'success': False},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+    def get(self, request, gateway_name):
+        """
+        Handle GET requests to webhook endpoint (for testing)
+        """
+        return Response(
+            {
+                'message': f'Webhook endpoint for {gateway_name} is active',
+                'method': 'GET',
+                'expected_method': 'POST',
+                'url': request.build_absolute_uri(),
+                'timestamp': timezone.now().isoformat()
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+class WebhookDebugView(APIView):
+    """
+    Debug endpoint to test webhook without processing
+    URL: /api/payments/webhook/debug/
+    """
+    permission_classes = []  # Public endpoint for testing
+
+    @swagger_auto_schema(
+        operation_description="Get debug webhook endpoint information",
+        responses={
+            200: openapi.Response(description="Debug information returned")
+        }
+    )
+    def get(self, request):
+        """Get webhook debug information"""
+        return Response({
+            'message': 'PhonePe Webhook Debug Endpoint',
+            'timestamp': timezone.now().isoformat(),
+            'webhook_url': '/api/payments/webhook/phonepe/',
+            'test_instructions': {
+                'step1': 'POST to this endpoint with sample PhonePe webhook data',
+                'step2': 'Check response and logs for debugging',
+                'step3': 'Test actual webhook endpoint once debugging is complete'
+            },
+            'sample_request': {
+                'method': 'POST',
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'X-VERIFY': 'signature_from_phonepe'
+                },
+                'body': {
+                    'response': 'base64_encoded_phonepe_response',
+                    'merchantId': 'your_merchant_id',
+                    'merchantTransactionId': 'your_transaction_id'
+                }
+            }
+        })
+
+    @swagger_auto_schema(
+        operation_description="Debug webhook endpoint for testing PhonePe webhook integration",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'response': openapi.Schema(type=openapi.TYPE_STRING, description='Base64 encoded response'),
+                'merchantId': openapi.Schema(type=openapi.TYPE_STRING, description='Merchant ID'),
+                'merchantTransactionId': openapi.Schema(type=openapi.TYPE_STRING, description='Transaction ID')
+            }
+        ),
+        responses={
+            200: openapi.Response(description="Debug information returned"),
+            400: openapi.Response(description="Invalid request")
+        }
+    )
+    def post(self, request):
+        """Debug POST requests to webhook"""
+        try:
+            logger.info("🔍 DEBUG WEBHOOK TEST")
+            logger.info(f"Headers: {dict(request.headers)}")
+            logger.info(f"Body: {request.body}")
+            logger.info(f"Content-Type: {request.content_type}")
+            
+            if not request.body:
+                return Response({
+                    'debug': 'empty_body',
+                    'message': 'No request body received',
+                    'help': 'PhonePe webhooks should include JSON body with response, merchantId, and merchantTransactionId',
+                    'status': 'error'
+                })
+            
+            try:
+                body_str = request.body.decode('utf-8')
+                parsed_json = json.loads(body_str)
+                
+                # Check for required PhonePe fields
+                required_fields = ['response', 'merchantId', 'merchantTransactionId']
+                missing_fields = [field for field in required_fields if field not in parsed_json]
+                
+                debug_info = {
+                    'debug': 'success',
+                    'message': 'Valid JSON received',
+                    'body_length': len(body_str),
+                    'json_keys': list(parsed_json.keys()) if isinstance(parsed_json, dict) else 'not_dict',
+                    'has_required_fields': len(missing_fields) == 0,
+                    'missing_fields': missing_fields,
+                    'status': 'success' if len(missing_fields) == 0 else 'warning'
+                }
+                
+                # Try to decode the response field if it exists
+                if 'response' in parsed_json:
+                    try:
+                        import base64
+                        decoded_response = json.loads(base64.b64decode(parsed_json['response']).decode('utf-8'))
+                        debug_info['decoded_response_keys'] = list(decoded_response.keys()) if isinstance(decoded_response, dict) else 'not_dict'
+                        debug_info['response_decode'] = 'success'
+                    except Exception as decode_err:
+                        debug_info['response_decode'] = f'failed: {str(decode_err)}'
+                
+                return Response(debug_info)
+                
+            except json.JSONDecodeError as e:
+                return Response({
+                    'debug': 'json_error',
+                    'message': f'Invalid JSON: {str(e)}',
+                    'body_preview': body_str[:100] if 'body_str' in locals() else 'decode_failed',
+                    'status': 'error'
+                })
+                
+        except Exception as e:
+            return Response({
+                'debug': 'error',
+                'message': f'Debug failed: {str(e)}',
+                'status': 'error'
+            })
+
 
 class AdminPaymentViewSet(viewsets.ModelViewSet):
     """
