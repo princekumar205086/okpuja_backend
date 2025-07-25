@@ -145,6 +145,9 @@ class Payment(models.Model):
                 orig = Payment.objects.get(pk=self.pk)
                 if orig.status != PaymentStatus.SUCCESS and self.status == PaymentStatus.SUCCESS:
                     status_changed_to_success = True
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.info(f"🎯 Payment {self.id} status changed to SUCCESS - will create booking")
             except Payment.DoesNotExist:
                 pass
         
@@ -153,11 +156,37 @@ class Payment(models.Model):
         # Create booking after saving if status changed to SUCCESS
         if status_changed_to_success and not self.booking:
             try:
-                self.create_booking_from_cart()
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"🛒 Creating booking for payment {self.id} from cart {self.cart_id if self.cart else 'None'}")
+                
+                if not self.cart:
+                    logger.error(f"❌ Cannot create booking: No cart associated with payment {self.id}")
+                    return
+                
+                booking = self.create_booking_from_cart()
+                logger.info(f"✅ Successfully created booking {booking.id} from payment {self.id}")
+                
+                # Send payment status notification
+                from core.tasks import send_payment_status_notification, send_booking_confirmation
+                send_payment_status_notification.delay(self.id)
+                send_booking_confirmation.delay(booking.id)
+                
             except Exception as e:
                 import logging
                 logger = logging.getLogger(__name__)
-                logger.error(f"Failed to create booking for payment {self.id}: {str(e)}")
+                logger.error(f"❌ Failed to create booking for payment {self.id}: {str(e)}")
+                
+                # Log detailed error information for debugging
+                import traceback
+                logger.error(f"📚 Traceback: {traceback.format_exc()}")
+                
+                # Additional cart validation logging
+                if self.cart:
+                    try:
+                        logger.info(f"🛒 Cart details: ID={self.cart.id}, User={self.cart.user.email}, Status={self.cart.status}")
+                    except:
+                        logger.error("Failed to log cart details")
 
     def create_booking_from_cart(self):
         """Create booking after successful payment"""

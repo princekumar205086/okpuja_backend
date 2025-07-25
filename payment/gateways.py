@@ -102,8 +102,8 @@ class PhonePeGateway:
                 redirect_url = f"{settings.PHONEPE_SUCCESS_REDIRECT_URL}?payment_id={payment.id}"
             except AttributeError:
                 # Fallback for missing settings
-                callback_url = "https://backend.okpuja.com/api/payments/webhook/phonepe/"
-                redirect_url = f"https://backend.okpuja.com/payment/success?payment_id={payment.id}"
+                callback_url = "https://api.okpuja.com/api/payments/webhook/phonepe/"
+                redirect_url = f"https://api.okpuja.com/payment/success?payment_id={payment.id}"
                 logger.warning("Using fallback URLs for PhonePe callbacks")
             
             # Enhanced user phone handling

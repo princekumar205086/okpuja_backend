@@ -408,10 +408,24 @@ class PhonePeGatewayV2:
             # Extract merchant order ID
             merchant_order_id = (
                 callback_data.get('merchantOrderId') or
-                callback_data.get('data', {}).get('merchantOrderId') if isinstance(callback_data.get('data'), dict) else None
+                callback_data.get('data', {}).get('merchantOrderId') or
+                callback_data.get('merchantTransactionId') or # Check alternative field names
+                callback_data.get('transactionId')
             )
             
             if not merchant_order_id:
+                # Try to parse nested structures that PhonePe might send
+                if 'response' in callback_data and callback_data['response']:
+                    try:
+                        import base64
+                        decoded_data = json.loads(base64.b64decode(callback_data['response']).decode('utf-8'))
+                        merchant_order_id = decoded_data.get('merchantOrderId') or decoded_data.get('merchantTransactionId')
+                        logger.info(f"Found merchant ID in base64 response: {merchant_order_id}")
+                    except Exception as decode_err:
+                        logger.error(f"Failed to decode base64 response: {str(decode_err)}")
+            
+            if not merchant_order_id:
+                logger.error(f"No merchant order ID found in webhook data: {callback_data}")
                 raise Exception("No merchant order ID found in webhook")
             
             logger.info(f"🔍 Processing webhook for order: {merchant_order_id}")
@@ -422,22 +436,64 @@ class PhonePeGatewayV2:
             except Payment.DoesNotExist:
                 raise Exception(f"Payment not found for order ID: {merchant_order_id}")
             
-            # Extract payment state
-            state = (
-                callback_data.get('state') or
-                callback_data.get('status') or
-                callback_data.get('data', {}).get('state') if isinstance(callback_data.get('data'), dict) else None
-            )
+            # Extract payment state - CHECK MULTIPLE POSSIBLE FIELD NAMES
+            state = None
             
-            # Update payment status
+            # Check various possible field locations based on PhonePe webhook format
+            possible_state_locations = [
+                callback_data.get('state'),
+                callback_data.get('status'),
+                callback_data.get('code'),
+                callback_data.get('transactionStatus'),
+                callback_data.get('data', {}).get('state') if isinstance(callback_data.get('data'), dict) else None,
+                callback_data.get('data', {}).get('status') if isinstance(callback_data.get('data'), dict) else None,
+                callback_data.get('data', {}).get('code') if isinstance(callback_data.get('data'), dict) else None,
+            ]
+            
+            # PhonePe V2 uses checkout specific status codes
+            for potential_state in possible_state_locations:
+                if potential_state:
+                    state = potential_state
+                    break
+            
+            # For PhonePe V2, try to check if the state is encoded in any field
+            if not state and 'response' in callback_data:
+                try:
+                    import base64
+                    decoded_data = json.loads(base64.b64decode(callback_data['response']).decode('utf-8'))
+                    state = decoded_data.get('code') or decoded_data.get('state')
+                    logger.info(f"Found state in base64 response: {state}")
+                except:
+                    pass
+            
+            logger.info(f"📊 Payment state extracted from webhook: {state}")
+            
+            # Update payment status - Handle PhonePe V2 state mappings
             old_status = payment.status
             
-            if state in ['COMPLETED', 'SUCCESS']:
+            # Map PhonePe V2 status codes to our payment states
+            v2_success_states = [
+                'COMPLETED', 'SUCCESS', 'PAYMENT_SUCCESS', 
+                'AUTHORIZED', 'CHECKOUT_ORDER_COMPLETED',
+                'PAYMENT_AUTHORIZED', 'PAYMENT_CAPTURED'
+            ]
+            
+            v2_failure_states = [
+                'FAILED', 'FAILURE', 'ERROR', 'DECLINED', 
+                'CHECKOUT_ORDER_FAILED', 'PAYMENT_FAILED',
+                'PAYMENT_ERROR', 'PAYMENT_DECLINED', 
+                'CHECKOUT_TRANSACTION_ATTEMPT_FAILED'
+            ]
+            
+            if state and any(success_state in state.upper() for success_state in v2_success_states):
                 payment.status = PaymentStatus.SUCCESS
-            elif state in ['FAILED', 'DECLINED', 'FAILURE']:
+                logger.info(f"💰 Payment marked as SUCCESS based on state: {state}")
+            elif state and any(failure_state in state.upper() for failure_state in v2_failure_states):
                 payment.status = PaymentStatus.FAILED
-            elif state == 'PENDING':
+                logger.info(f"❌ Payment marked as FAILED based on state: {state}")
+            elif state and 'PENDING' in state.upper():
                 payment.status = PaymentStatus.PENDING
+                logger.info(f"⏳ Payment remains PENDING based on state: {state}")
             
             # Update gateway response
             payment.gateway_response = payment.gateway_response or {}
@@ -450,7 +506,16 @@ class PhonePeGatewayV2:
                 }
             })
             
+            # Save payment to update status
             payment.save()
+            
+            # If payment is now successful, create booking
+            if payment.status == PaymentStatus.SUCCESS and not payment.booking:
+                try:
+                    booking = payment.create_booking_from_cart()
+                    logger.info(f"✅ Created booking {booking.id} from successful payment {payment.id}")
+                except Exception as booking_error:
+                    logger.error(f"❌ Failed to create booking from payment {payment.id}: {str(booking_error)}")
             
             logger.info(f"✅ PhonePe V2 webhook processed: {old_status} → {payment.status}")
             return payment

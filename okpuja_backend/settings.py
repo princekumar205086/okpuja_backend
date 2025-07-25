@@ -70,10 +70,10 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://www.okpuja.com",
     "https://www.okpuja.com",
-    "https://backend.okpuja.com",
+    "https://api.okpuja.com",
     "https://okpuja.in",
     "https://www.okpuja.in",
-    "https://backend.okpuja.com"
+    "https://api.okpuja.com"
 ]
 
 TEMPLATES = [
