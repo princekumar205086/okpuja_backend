@@ -54,7 +54,7 @@ frontend_base_url: http://localhost:3000
 #### Production Setup
 ```
 base_url: https://backend.okpuja.com
-frontend_base_url: https://okpuja.com
+frontend_base_url: https://www.okpuja.com
 ```
 
 ### 3. Authentication Setup
@@ -243,7 +243,7 @@ admin_password: admin@123
 1. **Update Environment**
    ```
    base_url: https://backend.okpuja.com
-   frontend_base_url: https://okpuja.com
+   frontend_base_url: https://www.okpuja.com
    ```
 
 2. **Test SSL/HTTPS**

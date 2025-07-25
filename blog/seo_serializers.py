@@ -121,7 +121,7 @@ class EnterpriseBlogPostDetailSerializer(EnterpriseMinimalBlogPostSerializer):
     def get_structured_data(self, obj):
         """Generate JSON-LD structured data for the blog post"""
         request = self.context.get('request')
-        base_url = request.build_absolute_uri('/') if request else 'https://okpuja.com/'
+        base_url = request.build_absolute_uri('/') if request else 'https://www.okpuja.com/'
         
         return {
             "@context": "https://schema.org",

@@ -77,7 +77,7 @@ PRODUCTION_SERVER=True
 ALLOWED_HOSTS=localhost,127.0.0.1,api.okpuja.com,backend.okpuja.com,157.173.221.192
 
 # CORS Settings
-CORS_ALLOWED_ORIGINS=https://okpuja.com,https://okpuja.com,https://api.okpuja.com,https://backend.okpuja.com
+CORS_ALLOWED_ORIGINS=https://www.okpuja.com,https://www.okpuja.com,https://api.okpuja.com,https://backend.okpuja.com
 
 # SMS Configuration (Twilio)
 SMS_BACKEND=accounts.sms.backends.twilio.SMSBackend
@@ -104,8 +104,8 @@ PHONEPE_BASE_URL=https://api.phonepe.com/apis/hermes
 # PhonePe URLs (Updated for production)
 PHONEPE_REDIRECT_URL=https://backend.okpuja.com/api/payments/webhook/phonepe/
 PHONEPE_CALLBACK_URL=https://backend.okpuja.com/api/payments/webhook/phonepe/
-PHONEPE_FAILED_REDIRECT_URL=https://okpuja.com/failedbooking
-PHONEPE_SUCCESS_REDIRECT_URL=https://okpuja.com/confirmbooking/
+PHONEPE_FAILED_REDIRECT_URL=https://www.okpuja.com/failedbooking
+PHONEPE_SUCCESS_REDIRECT_URL=https://www.okpuja.com/confirmbooking/
 
 # Enhanced PhonePe Connection Settings (Production Optimized)
 PHONEPE_TIMEOUT=120
@@ -113,7 +113,7 @@ PHONEPE_MAX_RETRIES=5
 PHONEPE_SSL_VERIFY=True
 
 # Frontend Base URL (Production)
-FRONTEND_BASE_URL=https://okpuja.com
+FRONTEND_BASE_URL=https://www.okpuja.com
 
 # Employee Registration
 EMPLOYEE_REGISTRATION_CODE=EMP2025OK5

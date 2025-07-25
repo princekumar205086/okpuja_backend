@@ -22,7 +22,7 @@ class PhonePeGateway:
         self.merchant_id = settings.PHONEPE_MERCHANT_ID
         self.merchant_key = settings.PHONEPE_MERCHANT_KEY
         self.salt_index = settings.PHONEPE_SALT_INDEX
-        self.base_url = getattr(settings, 'PHONEPE_BASE_URL', 'https://api.phonepe.com/apis/hermes')
+        self.base_url = getattr(settings, 'PHONEPE_BASE_URL', 'https://api.phonepe.com/apis/hermes/pg/v1/pay')
         
         # Enhanced connection settings for production server issues
         self.timeout = int(getattr(settings, 'PHONEPE_TIMEOUT', 90))  # Increased timeout
@@ -34,9 +34,8 @@ class PhonePeGateway:
         
         # Define multiple API endpoints for fallback
         self.api_endpoints = [
-            'https://api.phonepe.com/apis/hermes',
-            'https://mercury-t2.phonepe.com/apis/hermes',
-            'https://api-preprod.phonepe.com/apis/hermes',  # Fallback to UAT if prod fails
+            'https://api.phonepe.com/apis/hermes/pg/v1/pay',
+            'https://api-preprod.phonepe.com/apis/hermes/pg/v1/pay',  # Fallback to UAT if prod fails
         ]
         
         logger.info(f"PhonePe Gateway initialized: merchant_id={self.merchant_id}, base_url={self.base_url}, timeout={self.timeout}s, retries={self.max_retries}, production={self.is_production}")
@@ -144,9 +143,6 @@ class PhonePeGateway:
             headers = {
                 'Content-Type': 'application/json',
                 'X-VERIFY': checksum,
-                'X-MERCHANT-ID': self.merchant_id,
-                'User-Agent': 'OkPuja-Backend/1.0',
-                'Accept': 'application/json'
             }
             
             # Multiple API endpoint fallbacks for production resilience

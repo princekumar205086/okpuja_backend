@@ -11,9 +11,9 @@
   
   PHONEPE_REDIRECT_URL=https://backend.okpuja.com/api/payments/webhook/phonepe/
   PHONEPE_CALLBACK_URL=https://backend.okpuja.com/api/payments/webhook/phonepe/
-  PHONEPE_FAILED_REDIRECT_URL=https://okpuja.com/failedbooking
-  PHONEPE_SUCCESS_REDIRECT_URL=https://okpuja.com/confirmbooking/
-  FRONTEND_BASE_URL=https://okpuja.com
+  PHONEPE_FAILED_REDIRECT_URL=https://www.okpuja.com/failedbooking
+  PHONEPE_SUCCESS_REDIRECT_URL=https://www.okpuja.com/confirmbooking/
+  FRONTEND_BASE_URL=https://www.okpuja.com
   
   DEBUG=False
   ALLOWED_HOSTS=okpuja.com,backend.okpuja.com,okpuja.com
@@ -135,7 +135,7 @@ sudo systemctl status okpuja-backend
 ### 1. Basic Health Checks
 - [ ] API accessible at `https://backend.okpuja.com`
 - [ ] Admin panel accessible at `https://backend.okpuja.com/admin/`
-- [ ] Frontend accessible at `https://okpuja.com`
+- [ ] Frontend accessible at `https://www.okpuja.com`
 - [ ] HTTPS working correctly (no mixed content warnings)
 
 ### 2. PhonePe Integration Tests

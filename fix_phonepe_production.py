@@ -65,8 +65,8 @@ PHONEPE_SALT_INDEX=1
 
 # Production URLs (Update these to your actual URLs)
 PHONEPE_CALLBACK_URL=https://backend.okpuja.com/api/payments/webhook/phonepe/
-PHONEPE_SUCCESS_REDIRECT_URL=https://okpuja.com/confirmbooking/
-PHONEPE_FAILED_REDIRECT_URL=https://okpuja.com/failedbooking
+PHONEPE_SUCCESS_REDIRECT_URL=https://www.okpuja.com/confirmbooking/
+PHONEPE_FAILED_REDIRECT_URL=https://www.okpuja.com/failedbooking
 
 # Production Server Flag
 PRODUCTION_SERVER=True

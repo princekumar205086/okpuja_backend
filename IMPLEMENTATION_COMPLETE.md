@@ -206,7 +206,7 @@ PHONEPE_ENV=PRODUCTION
 PHONEPE_CLIENT_ID=your_production_client_id
 PHONEPE_CLIENT_SECRET=your_production_secret
 PHONEPE_CALLBACK_URL=https://backend.okpuja.com/api/payments/webhook/phonepe/
-PHONEPE_SUCCESS_REDIRECT_URL=https://okpuja.com/confirmbooking/
+PHONEPE_SUCCESS_REDIRECT_URL=https://www.okpuja.com/confirmbooking/
 ```
 
 ### 3. **Import Postman Collection**

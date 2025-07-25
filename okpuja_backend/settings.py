@@ -68,8 +68,8 @@ ROOT_URLCONF = 'okpuja_backend.urls'
 # configure CORS
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "https://okpuja.com",
-    "https://okpuja.com",
+    "https://www.okpuja.com",
+    "https://www.okpuja.com",
     "https://backend.okpuja.com",
     "https://okpuja.in",
     "https://www.okpuja.in",

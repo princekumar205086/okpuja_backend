@@ -60,7 +60,7 @@ PHONEPE_BASE_URL=https://api.phonepe.com/apis/hermes  # ✅ Production URL
 ## How to Test Payment Flow
 
 ### 1. Frontend Integration Test
-From your frontend (https://okpuja.com), test the payment flow:
+From your frontend (https://www.okpuja.com), test the payment flow:
 
 ```javascript
 // Payment initiation from frontend
