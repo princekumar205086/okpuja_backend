@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OkPuja API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #e64a19;
+            text-align: center;
+        }
+        button {
+            background-color: #e64a19;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px 10px 0;
+        }
+        button:hover {
+            background-color: #d84315;
+        }
+        #results {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            color: #2e7d32;
+            font-weight: bold;
+        }
+        .error {
+            color: #c62828;
+            font-weight: bold;
+        }
+        .api-url {
+            padding: 8px;
+            width: 70%;
+            margin-right: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <h1>OkPuja API Test Tool</h1>
+    
+    <p>Use this tool to test API connectivity and diagnose CORS issues.</p>
+    
+    <div>
+        <input type="text" id="apiUrl" class="api-url" value="https://api.okpuja.com/api/puja/services/" placeholder="API URL">
+        <button onclick="testCustomEndpoint()">Test Custom URL</button>
+    </div>
+    
+    <div>
+        <button onclick="testEndpoint('/api/puja/services/')">Test Puja Services</button>
+        <button onclick="testEndpoint('/api/puja/categories/')">Test Categories</button>
+        <button onclick="testEndpoint('/api/gallery/items/')">Test Gallery</button>
+    </div>
+    
+    <div id="results">Results will appear here...</div>
+    
+    <script>
+        // Base API URL
+        const baseUrl = 'https://api.okpuja.com';
+        
+        // Function to format JSON nicely
+        function formatJSON(obj) {
+            return JSON.stringify(obj, null, 2);
+        }
+        
+        // Function to log results
+        function logResult(message, isError = false) {
+            const results = document.getElementById('results');
+            const className = isError ? 'error' : 'success';
+            
+            // Create timestamp
+            const now = new Date();
+            const timestamp = now.toLocaleTimeString();
+            
+            results.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>\n`;
+            
+            // Scroll to bottom
+            results.scrollTop = results.scrollHeight;
+        }
+        
+        // Function to test a specific endpoint
+        async function testEndpoint(endpoint) {
+            const url = baseUrl + endpoint;
+            logResult(`Testing ${url}`);
+            
+            try {
+                // Test with credentials
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include'
+                });
+                
+                // Check if response is ok
+                if (!response.ok) {
+                    throw new Error(`API returned ${response.status}: ${response.statusText}`);
+                }
+                
+                // Try to parse JSON
+                const data = await response.json();
+                
+                // Log success
+                logResult(`✅ SUCCESS: ${url}`);
+                logResult(`Status: ${response.status}`);
+                
+                // Log sample of data
+                if (Array.isArray(data)) {
+                    logResult(`Items: ${data.length}`);
+                    if (data.length > 0) {
+                        const sample = data[0];
+                        logResult(`Sample item:\n${formatJSON(sample)}`);
+                    }
+                } else {
+                    logResult(`Response data:\n${formatJSON(data)}`);
+                }
+                
+                // Log headers
+                const headers = {};
+                response.headers.forEach((value, key) => {
+                    headers[key] = value;
+                });
+                
+                logResult(`Response headers:\n${formatJSON(headers)}`);
+                
+            } catch (error) {
+                // Log error
+                logResult(`❌ ERROR: ${error.message}`, true);
+                
+                // If it's likely a CORS error
+                if (error.message.includes('CORS') || error.message.includes('blocked')) {
+                    logResult(`This appears to be a CORS error. Check that ${baseUrl} has proper CORS headers.`, true);
+                }
+                
+                console.error('API test error:', error);
+            }
+        }
+        
+        // Function to test custom endpoint
+        function testCustomEndpoint() {
+            const input = document.getElementById('apiUrl');
+            const url = input.value.trim();
+            
+            if (!url) {
+                logResult('Please enter a valid URL', true);
+                return;
+            }
+            
+            // If URL doesn't start with http/https, assume it's a relative path
+            if (!url.startsWith('http')) {
+                testEndpoint(url);
+            } else {
+                // For full URLs, we need a different approach
+                logResult(`Testing custom URL: ${url}`);
+                
+                fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`API returned ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    logResult(`✅ SUCCESS: ${url}`);
+                    
+                    // Log sample of data
+                    if (Array.isArray(data)) {
+                        logResult(`Items: ${data.length}`);
+                        if (data.length > 0) {
+                            const sample = data[0];
+                            logResult(`Sample item:\n${formatJSON(sample)}`);
+                        }
+                    } else {
+                        logResult(`Response data:\n${formatJSON(data)}`);
+                    }
+                })
+                .catch(error => {
+                    logResult(`❌ ERROR: ${error.message}`, true);
+                    console.error('API test error:', error);
+                });
+            }
+        }
+        
+        // Initialize with a welcome message
+        document.addEventListener('DOMContentLoaded', () => {
+            logResult('Welcome to the OkPuja API Test Tool!');
+            logResult('Click any button to test an API endpoint.');
+            logResult('This tool will help diagnose CORS and API connectivity issues.');
+        });
+    </script>
+</body>
+</html>

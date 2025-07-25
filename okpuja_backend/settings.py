@@ -51,6 +51,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # CORS middleware must be before CommonMiddleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -58,8 +59,6 @@ MIDDLEWARE = [
     'django_otp.middleware.OTPMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
 ]
 
 # The name of the root URLconf module.
@@ -69,11 +68,27 @@ ROOT_URLCONF = 'okpuja_backend.urls'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://www.okpuja.com",
-    "https://www.okpuja.com",
+    "https://okpuja.com",
     "https://api.okpuja.com",
-    "https://okpuja.in",
-    "https://www.okpuja.in",
-    "https://api.okpuja.com"
+    "https://okpuja.in", 
+    "https://www.okpuja.in"
+]
+
+# Additional CORS settings to fix frontend issues
+CORS_ALLOW_CREDENTIALS = True
+CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'cache-control',
+    'pragma'
 ]
 
 TEMPLATES = [
