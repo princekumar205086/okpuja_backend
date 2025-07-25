@@ -840,24 +840,56 @@ class PaymentWebhookView(APIView):
                         status=status.HTTP_400_BAD_REQUEST
                     )
                 
-                # FIXED: Validate JSON before processing
+                # FIXED: Handle both JSON and URL-encoded data
+                parsed_data = None
+                
+                # Try JSON first
                 try:
-                    test_json = json.loads(callback_body_string)
-                    logger.info(f"✅ Valid JSON received with keys: {list(test_json.keys()) if isinstance(test_json, dict) else 'non-dict'}")
+                    parsed_data = json.loads(callback_body_string)
+                    logger.info(f"✅ Valid JSON received with keys: {list(parsed_data.keys()) if isinstance(parsed_data, dict) else 'non-dict'}")
                 except json.JSONDecodeError as json_err:
-                    logger.error(f"❌ Invalid JSON in webhook body: {str(json_err)}")
-                    logger.error(f"📝 Raw body that failed JSON parsing: {callback_body_string[:200]}...")
+                    logger.warning(f"⚠️ Not JSON format, trying URL-encoded: {str(json_err)}")
                     
-                    return Response(
-                        {
-                            'error': f'Invalid JSON in webhook body: {str(json_err)}',
-                            'success': False,
-                            'json_error': str(json_err),
-                            'body_preview': callback_body_string[:100],
-                            'help': 'The webhook body is not valid JSON. Check PhonePe webhook configuration.'
-                        },
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                    # Try URL-encoded form data (PhonePe sometimes sends this)
+                    try:
+                        from urllib.parse import parse_qs
+                        
+                        # Check if it looks like form data
+                        if '=' in callback_body_string and '&' in callback_body_string:
+                            form_data = parse_qs(callback_body_string)
+                            # Convert single-item lists to strings
+                            parsed_data = {k: v[0] if len(v) == 1 else v for k, v in form_data.items()}
+                            logger.info(f"✅ URL-encoded data parsed with keys: {list(parsed_data.keys())}")
+                        else:
+                            # Not JSON or form data
+                            logger.error(f"❌ Data is neither JSON nor URL-encoded form")
+                            logger.error(f"📝 Raw body: {callback_body_string[:200]}...")
+                            
+                            return Response(
+                                {
+                                    'error': f'Invalid webhook body format: {str(json_err)}',
+                                    'success': False,
+                                    'json_error': str(json_err),
+                                    'body_preview': callback_body_string[:100],
+                                    'help': 'Webhook body must be JSON or URL-encoded form data. Check PhonePe webhook configuration.',
+                                    'received_format': 'unknown'
+                                },
+                                status=status.HTTP_400_BAD_REQUEST
+                            )
+                    except Exception as parse_err:
+                        logger.error(f"❌ Failed to parse as URL-encoded data: {str(parse_err)}")
+                        
+                        return Response(
+                            {
+                                'error': f'Unable to parse webhook body: {str(parse_err)}',
+                                'success': False,
+                                'json_error': str(json_err),
+                                'parse_error': str(parse_err),
+                                'body_preview': callback_body_string[:100],
+                                'help': 'Check PhonePe webhook configuration and data format.'
+                            },
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
                     
             except UnicodeDecodeError as e:
                 logger.error(f"❌ Failed to decode request body: {str(e)}")
@@ -898,7 +930,17 @@ class PaymentWebhookView(APIView):
                 gateway = get_payment_gateway(gateway_name)
                 logger.info(f"✅ Got {gateway_name} gateway instance")
                 
-                payment = gateway.process_webhook(request.headers, callback_body_string)
+                # Pass parsed data to gateway - supports both JSON and form data
+                if isinstance(parsed_data, dict):
+                    # Convert parsed data back to JSON format for gateway processing
+                    gateway_data = json.dumps(parsed_data)
+                    logger.info(f"✅ Using parsed data for gateway processing")
+                else:
+                    # Fallback to original string
+                    gateway_data = callback_body_string
+                    logger.warning(f"⚠️ Using original string for gateway processing")
+                
+                payment = gateway.process_webhook(request.headers, gateway_data)
                 logger.info(f"✅ Webhook processed successfully for payment {payment.id}")
                 
                 return Response(
@@ -908,7 +950,8 @@ class PaymentWebhookView(APIView):
                         'payment_id': payment.id,
                         'transaction_id': payment.transaction_id,
                         'merchant_transaction_id': payment.merchant_transaction_id,
-                        'status': payment.status
+                        'status': payment.status,
+                        'data_format': 'json' if callback_body_string.strip().startswith('{') else 'form'
                     },
                     status=status.HTTP_200_OK
                 )

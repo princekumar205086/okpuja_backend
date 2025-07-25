@@ -335,14 +335,30 @@ class PhonePeGateway:
                 logger.error("❌ Empty callback body received")
                 raise Exception("Webhook processing failed: Empty callback body")
             
-            # Parse the callback data
+            # Parse the callback data - handle both JSON and URL-encoded
             try:
                 callback_data = json.loads(callback_body_string)
-                logger.info(f"✅ Parsed callback data successfully")
+                logger.info(f"✅ Parsed JSON callback data successfully")
             except json.JSONDecodeError as e:
-                logger.error(f"❌ JSON parsing failed: {str(e)}")
-                logger.error(f"📝 Raw body that failed to parse: {callback_body_string}")
-                raise Exception(f"Webhook processing failed: Invalid JSON - {str(e)}")
+                logger.warning(f"⚠️ Not JSON format: {str(e)}")
+                
+                # Try URL-encoded form data
+                try:
+                    from urllib.parse import parse_qs
+                    if '=' in callback_body_string and ('&' in callback_body_string or len(callback_body_string.split('=')) == 2):
+                        form_data = parse_qs(callback_body_string)
+                        # Convert single-item lists to strings for easier processing
+                        callback_data = {k: v[0] if len(v) == 1 else v for k, v in form_data.items()}
+                        logger.info(f"✅ Parsed URL-encoded callback data successfully")
+                        logger.info(f"📋 Form data keys: {list(callback_data.keys())}")
+                    else:
+                        logger.error(f"❌ Data is neither JSON nor URL-encoded")
+                        logger.error(f"📝 Raw body that failed to parse: {callback_body_string}")
+                        raise Exception(f"Webhook processing failed: Invalid data format - {str(e)}")
+                except Exception as parse_err:
+                    logger.error(f"❌ Failed to parse URL-encoded data: {str(parse_err)}")
+                    logger.error(f"📝 Raw body that failed to parse: {callback_body_string}")
+                    raise Exception(f"Webhook processing failed: Invalid data format - {str(e)}")
             
             # Handle headers (can be string from Authorization header or dict from request.headers)
             x_verify_header = None
