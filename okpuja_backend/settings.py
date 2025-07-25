@@ -172,13 +172,24 @@ OTP_LENGTH = int(os.getenv('OTP_LENGTH', 6))
 # Production server flag
 PRODUCTION_SERVER = os.getenv('PRODUCTION_SERVER', 'False') == 'True'
 
-# PhonePe Payment Gateway Configuration
+# PhonePe Payment Gateway Configuration (V2 API)
 PHONEPE_ENV = os.getenv('PHONEPE_ENV', 'UAT')  # UAT for testing, PRODUCTION for live
+
+# V2 API Credentials
+PHONEPE_CLIENT_ID = os.getenv('PHONEPE_CLIENT_ID', '')
+PHONEPE_CLIENT_SECRET = os.getenv('PHONEPE_CLIENT_SECRET', '')
+PHONEPE_CLIENT_VERSION = os.getenv('PHONEPE_CLIENT_VERSION', '1')
+
+# V1 Legacy Credentials (kept for backward compatibility)
 PHONEPE_MERCHANT_ID = os.getenv('PHONEPE_MERCHANT_ID', '')
 PHONEPE_MERCHANT_KEY = os.getenv('PHONEPE_MERCHANT_KEY', '')
 PHONEPE_SALT_INDEX = int(os.getenv('PHONEPE_SALT_INDEX', 1))
 
-# PhonePe API URLs
+# PhonePe API URLs (V2)
+PHONEPE_AUTH_BASE_URL = os.getenv('PHONEPE_AUTH_BASE_URL', 'https://api-preprod.phonepe.com/apis/pg-sandbox')
+PHONEPE_PAYMENT_BASE_URL = os.getenv('PHONEPE_PAYMENT_BASE_URL', 'https://api-preprod.phonepe.com/apis/pg-sandbox')
+
+# Legacy V1 base URL
 if PHONEPE_ENV == 'PRODUCTION':
     PHONEPE_BASE_URL = 'https://api.phonepe.com/apis/hermes'
 else:

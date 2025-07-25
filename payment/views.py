@@ -22,6 +22,7 @@ from .serializers import (
     PaymentWebhookSerializer
 )
 from .gateways import get_payment_gateway
+from .gateways_v2 import get_payment_gateway_v2
 from core.tasks import (
     send_payment_initiated_notification,
     send_payment_status_notification,
@@ -75,12 +76,12 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 logger.info(f"👤 User: {request.user.email} (ID: {request.user.id})")
                 logger.info(f"🔗 Transaction ID: {payment.transaction_id}")
                 
-                # Enhanced PhonePe processing with comprehensive error handling
+                # Enhanced PhonePe V2 processing with comprehensive error handling
                 try:
-                    # Get PhonePe gateway
-                    gateway = get_payment_gateway('phonepe')
+                    # Get PhonePe V2 gateway
+                    gateway = get_payment_gateway_v2('phonepe')
                     
-                    # Initiate payment with gateway
+                    # Initiate payment with V2 gateway
                     response = gateway.initiate_payment(payment)
                     
                     # Send payment initiated notification
@@ -925,10 +926,11 @@ class PaymentWebhookView(APIView):
                             status=status.HTTP_401_UNAUTHORIZED
                         )
             
-            # Process with PhonePe gateway
+            # Process with PhonePe V2 gateway
             try:
-                gateway = get_payment_gateway(gateway_name)
-                logger.info(f"✅ Got {gateway_name} gateway instance")
+                # Use V2 gateway for modern PhonePe integration
+                gateway = get_payment_gateway_v2(gateway_name)
+                logger.info(f"✅ Got {gateway_name} V2 gateway instance")
                 
                 # Pass parsed data to gateway - supports both JSON and form data
                 if isinstance(parsed_data, dict):
