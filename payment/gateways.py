@@ -22,20 +22,22 @@ class PhonePeGateway:
         self.merchant_id = settings.PHONEPE_MERCHANT_ID
         self.merchant_key = settings.PHONEPE_MERCHANT_KEY
         self.salt_index = settings.PHONEPE_SALT_INDEX
-        self.base_url = getattr(settings, 'PHONEPE_BASE_URL', 'https://api.phonepe.com/apis/hermes/pg/v1/pay')
+        # Get base URL correctly from settings (without /pay endpoint)
+        self.base_url = getattr(settings, 'PHONEPE_BASE_URL', 'https://api.phonepe.com/apis/hermes')
         
         # Enhanced connection settings for production server issues
-        self.timeout = int(getattr(settings, 'PHONEPE_TIMEOUT', 90))  # Increased timeout
-        self.max_retries = int(getattr(settings, 'PHONEPE_MAX_RETRIES', 5))  # More retries
+        self.timeout = int(getattr(settings, 'PHONEPE_TIMEOUT', 180))  # Use .env settings
+        self.max_retries = int(getattr(settings, 'PHONEPE_MAX_RETRIES', 7))  # Use .env settings
         self.ssl_verify = getattr(settings, 'PHONEPE_SSL_VERIFY', 'True').lower() == 'true'
         
         # Production server detection
         self.is_production = getattr(settings, 'PRODUCTION_SERVER', False)
         
-        # Define multiple API endpoints for fallback
+        # Define multiple API endpoints for fallback with correct URLs
         self.api_endpoints = [
             'https://api.phonepe.com/apis/hermes/pg/v1/pay',
-            'https://api-preprod.phonepe.com/apis/hermes/pg/v1/pay',  # Fallback to UAT if prod fails
+            'https://mercury-t2.phonepe.com/apis/hermes/pg/v1/pay',  # Alternative production endpoint
+            'https://api-preprod.phonepe.com/apis/hermes/pg/v1/pay',  # UAT fallback
         ]
         
         logger.info(f"PhonePe Gateway initialized: merchant_id={self.merchant_id}, base_url={self.base_url}, timeout={self.timeout}s, retries={self.max_retries}, production={self.is_production}")
@@ -143,7 +145,28 @@ class PhonePeGateway:
             headers = {
                 'Content-Type': 'application/json',
                 'X-VERIFY': checksum,
+                'User-Agent': 'okpuja-backend/1.0',
+                'Accept': 'application/json',
+                'Connection': 'keep-alive'
             }
+            
+            # Enhanced session configuration for production
+            session = requests.Session()
+            
+            # Configure connection pooling and retries
+            from requests.adapters import HTTPAdapter
+            from urllib3.util.retry import Retry
+            
+            retry_strategy = Retry(
+                total=3,
+                backoff_factor=2,
+                status_forcelist=[429, 500, 502, 503, 504],
+                allowed_methods=["POST"]
+            )
+            
+            adapter = HTTPAdapter(max_retries=retry_strategy, pool_maxsize=10)
+            session.mount("https://", adapter)
+            session.mount("http://", adapter)
             
             # Multiple API endpoint fallbacks for production resilience
             # Use all available endpoints and try each one
@@ -153,7 +176,7 @@ class PhonePeGateway:
             if self.base_url:
                 api_endpoints.append(f"{self.base_url}/pg/v1/pay")
             
-            # Add fallback endpoints
+            # Add fallback endpoints - ENHANCED with more options
             fallback_endpoints = [
                 "https://api.phonepe.com/apis/hermes/pg/v1/pay",
                 "https://mercury-t2.phonepe.com/apis/hermes/pg/v1/pay",
@@ -179,13 +202,12 @@ class PhonePeGateway:
                         timeout = self.timeout + (attempt * 30)
                         logger.info(f"PhonePe API attempt {attempt + 1}/{self.max_retries} with timeout {timeout}s")
                         
-                        # Direct request approach (bypasses Django session/adapter issues)
-                        # This matches the working diagnostic script exactly
-                        logger.info(f"Making direct request to: {api_url}")
+                        # Enhanced request approach with session and error handling
+                        logger.info(f"Making session request to: {api_url}")
                         logger.info(f"Request headers: {list(headers.keys())}")
                         logger.info(f"Timeout: {timeout}s")
                         
-                        response = requests.post(
+                        response = session.post(
                             api_url,
                             headers=headers,
                             json=final_payload,
@@ -239,21 +261,52 @@ class PhonePeGateway:
                             continue  # Retry
                             
                     except requests.exceptions.ConnectionError as e:
-                        logger.error(f"PhonePe API Connection Error (endpoint {endpoint_idx + 1}, attempt {attempt + 1}): {str(e)}")
+                        error_msg = str(e)
+                        logger.error(f"PhonePe API Connection Error (endpoint {endpoint_idx + 1}, attempt {attempt + 1}): {error_msg}")
+                        
+                        # Enhanced connection error handling
+                        if "Connection refused" in error_msg:
+                            logger.error("🚨 Connection refused - likely server firewall or network issue")
+                            logger.error("💡 Check hosting provider firewall settings")
+                            logger.error("💡 Verify outbound HTTPS connections are allowed")
+                            logger.error("💡 Contact hosting provider about PhonePe API access")
+                        
+                        # Exponential backoff for connection errors
+                        import time
+                        backoff_time = min(60, 2 ** attempt)
+                        logger.info(f"⏰ Backing off for {backoff_time} seconds before retry")
+                        time.sleep(backoff_time)
+                        
                         if attempt == self.max_retries - 1 and endpoint_idx == len(api_endpoints) - 1:
-                            raise PhonePeException(f"Cannot connect to PhonePe API after trying all endpoints. Network issue detected. Error: {str(e)}")
+                            # Final error with detailed troubleshooting info
+                            troubleshooting_msg = (
+                                f"Cannot connect to PhonePe API after trying all endpoints and retries. "
+                                f"This is likely a server-side network issue. "
+                                f"Error: {error_msg}. "
+                                f"Troubleshooting: 1) Check firewall settings, "
+                                f"2) Verify outbound HTTPS is allowed, "
+                                f"3) Contact hosting provider, "
+                                f"4) Check if server IP is blocked by PhonePe"
+                            )
+                            raise PhonePeException(troubleshooting_msg)
                         continue  # Retry
                         
                     except requests.exceptions.Timeout as e:
                         logger.error(f"PhonePe API Timeout (endpoint {endpoint_idx + 1}, attempt {attempt + 1}): {str(e)}")
+                        
+                        # Exponential backoff for timeouts too
+                        import time
+                        backoff_time = min(30, 2 ** attempt)
+                        time.sleep(backoff_time)
+                        
                         if attempt == self.max_retries - 1 and endpoint_idx == len(api_endpoints) - 1:
-                            raise PhonePeException(f"PhonePe API timeout after trying all endpoints. Error: {str(e)}")
+                            raise PhonePeException(f"PhonePe API timeout after trying all endpoints. This might indicate network congestion or server issues. Error: {str(e)}")
                         continue  # Retry
                         
                     except requests.exceptions.SSLError as e:
                         logger.error(f"PhonePe API SSL Error (endpoint {endpoint_idx + 1}, attempt {attempt + 1}): {str(e)}")
                         if attempt == self.max_retries - 1 and endpoint_idx == len(api_endpoints) - 1:
-                            raise PhonePeException(f"SSL connection error to PhonePe API. Error: {str(e)}")
+                            raise PhonePeException(f"SSL connection error to PhonePe API. Check SSL certificates and TLS configuration. Error: {str(e)}")
                         continue  # Retry
                         
                     except requests.RequestException as e:
