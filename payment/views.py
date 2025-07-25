@@ -182,7 +182,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
         payment = self.get_object()
         
         try:
-            gateway = get_payment_gateway('phonepe')
+            gateway = get_payment_gateway_v2('phonepe')
             status_response = gateway.check_payment_status(payment.merchant_transaction_id)
             
             # Update payment status if changed
@@ -250,8 +250,8 @@ class PaymentViewSet(viewsets.ModelViewSet):
                     processed_by=request.user if request.user.is_staff else None
                 )
                 
-                # Process refund through gateway
-                gateway = get_payment_gateway(payment.method.lower())
+                # Process refund through V2 gateway
+                gateway = get_payment_gateway_v2(payment.method.lower())
                 if hasattr(gateway, 'initiate_refund'):
                     refund_response = gateway.initiate_refund(
                         payment.merchant_transaction_id,
@@ -346,10 +346,10 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 logger.info(f"🆔 Payment ID: {payment.id}")
                 logger.info(f"🔗 Transaction ID: {payment.transaction_id}")
                 
-                # Enhanced PhonePe processing with comprehensive error handling
+                # Enhanced PhonePe V2 processing with comprehensive error handling
                 try:
-                    # Get PhonePe gateway
-                    gateway = get_payment_gateway('phonepe')
+                    # Get PhonePe V2 gateway
+                    gateway = get_payment_gateway_v2('phonepe')
                     
                     # Initiate payment with gateway
                     gateway_response = gateway.initiate_payment(payment)
