@@ -38,12 +38,12 @@ INSTALLED_APPS = [
     'promo',
     'cart',
     'booking',
-    'payment',
+    'payments',
     'blog',
     'cms',
     'gallery',
     'misc',
-    'db_manager',  # Database backup/restore app
+    'db_manager', 
     'corsheaders',
     'rest_framework_simplejwt.token_blacklist'
     
@@ -188,21 +188,28 @@ OTP_LENGTH = int(os.getenv('OTP_LENGTH', 6))
 PRODUCTION_SERVER = os.getenv('PRODUCTION_SERVER', 'False') == 'True'
 
 # PhonePe Payment Gateway Configuration (V2 API)
+# PhonePe Environment - Use UAT for testing with test credentials
 PHONEPE_ENV = os.getenv('PHONEPE_ENV', 'UAT')  # UAT for testing, PRODUCTION for live
 
-# V2 API Credentials
-PHONEPE_CLIENT_ID = os.getenv('PHONEPE_CLIENT_ID', '')
-PHONEPE_CLIENT_SECRET = os.getenv('PHONEPE_CLIENT_SECRET', '')
+# V2 API Credentials - TEST credentials (should work immediately)
+PHONEPE_CLIENT_ID = os.getenv('PHONEPE_CLIENT_ID', 'TEST-M22KEWU5BO1I2_25070')
+PHONEPE_CLIENT_SECRET = os.getenv('PHONEPE_CLIENT_SECRET', 'MTgwNDU0MjctNTEzMy00ZjEzLTgwMzUtNDllNDZkZDAzYThh')
 PHONEPE_CLIENT_VERSION = os.getenv('PHONEPE_CLIENT_VERSION', '1')
 
-# V1 Legacy Credentials (kept for backward compatibility)
-PHONEPE_MERCHANT_ID = os.getenv('PHONEPE_MERCHANT_ID', '')
+# Production credentials (for when switching to live)
+PHONEPE_PROD_CLIENT_ID = 'SU2507311635477696235898'
+PHONEPE_PROD_CLIENT_SECRET = '1f59672d-e31c-4898-9caf-19ab54bcaaab'
+
+# Standard Checkout API Credentials
+PHONEPE_MERCHANT_ID = os.getenv('PHONEPE_MERCHANT_ID', 'M22KEWU5BO1I2')
 PHONEPE_MERCHANT_KEY = os.getenv('PHONEPE_MERCHANT_KEY', '')
+PHONEPE_SALT_KEY = os.getenv('PHONEPE_SALT_KEY', 'MTgwNDU0MjctNTEzMy00ZjEzLTgwMzUtNDllNDZkZDAzYThh')  # Test credentials salt
 PHONEPE_SALT_INDEX = int(os.getenv('PHONEPE_SALT_INDEX', 1))
 
-# PhonePe API URLs (V2)
-PHONEPE_AUTH_BASE_URL = os.getenv('PHONEPE_AUTH_BASE_URL', 'https://api-preprod.phonepe.com/apis/pg-sandbox')
-PHONEPE_PAYMENT_BASE_URL = os.getenv('PHONEPE_PAYMENT_BASE_URL', 'https://api-preprod.phonepe.com/apis/pg-sandbox')
+# PhonePe API URLs (V2) - Use UAT for testing production credentials
+PHONEPE_AUTH_BASE_URL = os.getenv('PHONEPE_AUTH_BASE_URL', 'https://api-preprod.phonepe.com')
+PHONEPE_PAYMENT_BASE_URL = os.getenv('PHONEPE_PAYMENT_BASE_URL', 'https://api-preprod.phonepe.com')
+PHONEPE_OAUTH_BASE_URL = os.getenv('PHONEPE_OAUTH_BASE_URL', 'https://api-preprod.phonepe.com')
 
 # Legacy V1 base URL
 if PHONEPE_ENV == 'PRODUCTION':
@@ -218,6 +225,10 @@ PHONEPE_SUCCESS_REDIRECT_URL = os.getenv('PHONEPE_SUCCESS_REDIRECT_URL', 'http:/
 
 # Frontend Base URL
 FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'http://localhost:3000')
+
+# URL settings for PaymentService
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+BACKEND_URL = os.getenv('BACKEND_URL', 'http://127.0.0.1:8000')
 
 
 # Documentation

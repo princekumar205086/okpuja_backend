@@ -355,6 +355,19 @@ class Refund(models.Model):
         unique=True,
         help_text="Internal refund reference ID"
     )
+    merchant_refund_id = models.CharField(
+        max_length=100,
+        unique=True,
+        blank=True,
+        null=True,
+        help_text="Merchant refund ID for gateways"
+    )
+    phonepe_refund_id = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,  
+        help_text="PhonePe's refund reference ID"
+    )
     amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -368,6 +381,17 @@ class Refund(models.Model):
         choices=PaymentStatus.choices,
         default=PaymentStatus.PENDING,
         help_text="Refund status"
+    )
+    error_code = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text="Error code from gateway if refund failed"
+    )
+    error_message = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Error message from gateway if refund failed"
     )
     gateway_response = models.JSONField(
         blank=True,
@@ -394,6 +418,8 @@ class Refund(models.Model):
     def save(self, *args, **kwargs):
         if not self.refund_id:
             self.refund_id = f"RFND{uuid.uuid4().hex[:8].upper()}"
+        if not self.merchant_refund_id:
+            self.merchant_refund_id = f"MR{uuid.uuid4().hex[:10].upper()}"
         super().save(*args, **kwargs)
 
 @receiver(post_save, sender=Refund)

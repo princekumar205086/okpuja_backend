@@ -37,7 +37,8 @@ urlpatterns = [
     path('api/promo/', include('promo.urls')),
     path('api/cart/', include('cart.urls')),
     path('api/booking/', include('booking.urls')),
-    path('api/payments/', include('payment.urls')),
+    path('api/payments/', include('payment.urls')),  # Old payment app
+    path('api/pay/', include('payments.urls')),  # New clean payments app
     path('api/blog/', include('blog.urls')),
     path('api/cms/', include('cms.urls')),
    path('api/gallery/', include('gallery.urls')),
