@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
+from django.contrib import messages
+from django.db import transaction
 from .models import Booking, BookingAttachment
 
 class BookingAttachmentInline(admin.TabularInline):
@@ -17,7 +19,7 @@ class BookingAdmin(admin.ModelAdmin):
     search_fields = ('book_id', 'user__email', 'user__username', 'assigned_to__email')
     readonly_fields = ('book_id', 'created_at', 'updated_at', 'total_amount')
     inlines = [BookingAttachmentInline]
-    actions = ['confirm_selected', 'cancel_selected', 'complete_selected']
+    actions = ['confirm_selected', 'cancel_selected', 'complete_selected', 'safe_delete_selected', 'force_delete_selected']
     
     fieldsets = (
         ('Booking Information', {
@@ -37,11 +39,16 @@ class BookingAdmin(admin.ModelAdmin):
     )
 
     def get_service_name(self, obj):
-        if obj.cart.service_type == 'PUJA' and obj.cart.puja_service:
-            return obj.cart.puja_service.title
-        elif obj.cart.service_type == 'ASTROLOGY' and obj.cart.astrology_service:
-            return obj.cart.astrology_service.title
-        return '-'
+        """Get service name with proper null checking"""
+        try:
+            if obj.cart and hasattr(obj.cart, 'service_type'):
+                if obj.cart.service_type == 'PUJA' and obj.cart.puja_service:
+                    return obj.cart.puja_service.title
+                elif obj.cart.service_type == 'ASTROLOGY' and obj.cart.astrology_service:
+                    return obj.cart.astrology_service.title
+            return '-'
+        except Exception:
+            return '-'
     get_service_name.short_description = 'Service'
 
     def get_queryset(self, request):
@@ -63,6 +70,100 @@ class BookingAdmin(admin.ModelAdmin):
         updated = queryset.update(status='COMPLETED')
         self.message_user(request, f'{updated} bookings marked as completed.')
     complete_selected.short_description = "Mark selected as completed"
+
+    def safe_delete_selected(self, request, queryset):
+        """Safely delete bookings by handling all FK relationships properly"""
+        try:
+            with transaction.atomic():
+                deleted_count = 0
+                deleted_ids = []
+                
+                for booking in queryset.select_related('cart', 'user', 'address', 'assigned_to'):
+                    try:
+                        booking_id = booking.book_id
+                        
+                        # First, delete any attachments to avoid FK constraints
+                        BookingAttachment.objects.filter(booking=booking).delete()
+                        
+                        # Update cart if it exists to prevent any FK issues
+                        if booking.cart:
+                            try:
+                                booking.cart.status = 'ABANDONED'
+                                booking.cart.save()
+                            except Exception:
+                                # If cart update fails, set cart to None
+                                booking.cart = None
+                                booking.save()
+                        
+                        # Now delete the booking itself
+                        booking.delete()
+                        deleted_count += 1
+                        deleted_ids.append(booking_id)
+                        
+                    except Exception as e:
+                        # Log the specific booking that failed but continue with others
+                        self.message_user(
+                            request,
+                            f'Failed to delete booking {booking.book_id}: {str(e)}',
+                            messages.WARNING
+                        )
+                
+                if deleted_count > 0:
+                    self.message_user(
+                        request, 
+                        f'Successfully deleted {deleted_count} bookings: {", ".join(deleted_ids)}',
+                        messages.SUCCESS
+                    )
+                else:
+                    self.message_user(
+                        request,
+                        'No bookings were deleted due to errors.',
+                        messages.ERROR
+                    )
+                    
+        except Exception as e:
+            self.message_user(
+                request,
+                f'Error in bulk deletion process: {str(e)}',
+                messages.ERROR
+            )
+    safe_delete_selected.short_description = "Safely delete selected bookings"
+
+    def force_delete_selected(self, request, queryset):
+        """Force delete bookings using raw SQL to bypass FK constraints"""
+        try:
+            from django.db import connection
+            
+            booking_ids = list(queryset.values_list('book_id', flat=True))
+            db_ids = list(queryset.values_list('id', flat=True))
+            
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    # First delete attachments
+                    cursor.execute(
+                        f"DELETE FROM booking_bookingattachment WHERE booking_id IN ({','.join(['%s'] * len(db_ids))})",
+                        db_ids
+                    )
+                    
+                    # Then delete bookings
+                    cursor.execute(
+                        f"DELETE FROM booking_booking WHERE id IN ({','.join(['%s'] * len(db_ids))})",
+                        db_ids
+                    )
+            
+            self.message_user(
+                request,
+                f'Force deleted {len(booking_ids)} bookings: {", ".join(booking_ids)}',
+                messages.SUCCESS
+            )
+            
+        except Exception as e:
+            self.message_user(
+                request,
+                f'Force deletion failed: {str(e)}',
+                messages.ERROR
+            )
+    force_delete_selected.short_description = "Force delete selected bookings (bypasses FK constraints)"
 
 @admin.register(BookingAttachment)
 class BookingAttachmentAdmin(admin.ModelAdmin):

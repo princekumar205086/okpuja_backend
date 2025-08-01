@@ -36,6 +36,9 @@ class PaymentOrder(models.Model):
     merchant_order_id = models.CharField(max_length=100, unique=True, db_index=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payment_orders')
     
+    # Cart Integration (optional)
+    cart_id = models.CharField(max_length=100, null=True, blank=True, db_index=True, help_text="Associated cart ID")
+    
     # Payment Details
     amount = models.PositiveIntegerField(help_text="Amount in paisa (₹1 = 100 paisa)")
     currency = models.CharField(max_length=3, default='INR')

@@ -22,7 +22,7 @@ class PaymentService:
         self.environment = environment or getattr(settings, 'PHONEPE_ENV', 'uat').lower()
         self.client = PhonePePaymentClient(environment=self.environment)
     
-    def create_payment_order(self, user, amount, redirect_url, description=None, metadata=None):
+    def create_payment_order(self, user, amount, redirect_url, description=None, metadata=None, cart_id=None):
         """
         Create a new payment order
         
@@ -32,18 +32,23 @@ class PaymentService:
             redirect_url: URL to redirect after payment
             description: Optional payment description
             metadata: Optional metadata dict
+            cart_id: Optional cart ID for cart-based payments
         
         Returns:
             dict: Payment order creation result
         """
         try:
             # Generate unique merchant order ID
-            merchant_order_id = f"OKPUJA_{uuid.uuid4().hex[:12].upper()}"
+            if cart_id:
+                merchant_order_id = f"CART_{cart_id}_{uuid.uuid4().hex[:8].upper()}"
+            else:
+                merchant_order_id = f"OKPUJA_{uuid.uuid4().hex[:12].upper()}"
             
             # Create payment order in database
             payment_order = PaymentOrder.objects.create(
                 merchant_order_id=merchant_order_id,
                 user=user,
+                cart_id=cart_id,
                 amount=amount,
                 description=description or f"Payment for ₹{amount/100}",
                 redirect_url=redirect_url,
@@ -122,6 +127,11 @@ class PaymentService:
                         phonepe_transaction_id=phonepe_data.get('transactionId'),
                         phonepe_response=phonepe_data
                     )
+                    
+                    # Auto-create booking if cart_id is present and payment just became successful
+                    if payment_order.cart_id and payment_order.status == 'SUCCESS':
+                        self._create_booking_from_cart(payment_order)
+                        
                 elif phonepe_data.get('status') in ['FAILED', 'CANCELLED']:
                     payment_order.mark_failed(phonepe_response=phonepe_data)
                 
@@ -300,6 +310,9 @@ class WebhookService:
             dict: Processing result
         """
         try:
+            # Log webhook data for debugging
+            logger.info(f"Webhook received: {webhook_data}")
+            
             merchant_order_id = webhook_data.get('merchantOrderId')
             
             if not merchant_order_id:
@@ -311,16 +324,35 @@ class WebhookService:
             # Get payment order
             payment_order = PaymentOrder.objects.get(merchant_order_id=merchant_order_id)
             
-            # Process based on webhook event
-            event_type = webhook_data.get('eventType', 'UNKNOWN')
+            # Process based on webhook event - check multiple possible field names
+            event_type = (
+                webhook_data.get('eventType') or 
+                webhook_data.get('state') or 
+                webhook_data.get('status') or
+                webhook_data.get('responseCode') or
+                'UNKNOWN'
+            )
             
-            if event_type == 'PAYMENT_SUCCESS':
+            # Map different status values to our internal statuses
+            success_statuses = ['PAYMENT_SUCCESS', 'SUCCESS', 'COMPLETED', 'PAID']
+            failed_statuses = ['PAYMENT_FAILED', 'FAILED', 'CANCELLED', 'EXPIRED']
+            
+            if event_type in success_statuses or webhook_data.get('state') == 'COMPLETED':
                 payment_order.mark_success(
                     phonepe_transaction_id=webhook_data.get('transactionId'),
                     phonepe_response=webhook_data
                 )
-            elif event_type == 'PAYMENT_FAILED':
+                
+                # Auto-create booking if cart_id is present
+                if payment_order.cart_id:
+                    booking = self._create_booking_from_cart(payment_order)
+                    logger.info(f"Booking created via webhook: {booking.book_id if booking else 'FAILED'}")
+                    
+            elif event_type in failed_statuses:
                 payment_order.mark_failed(phonepe_response=webhook_data)
+            else:
+                # Log unknown status for debugging
+                logger.warning(f"Unknown webhook status: {event_type} for order {merchant_order_id}")
             
             logger.info(f"Webhook processed: {merchant_order_id} - {event_type}")
             
@@ -342,3 +374,118 @@ class WebhookService:
                 'success': False,
                 'error': f"Webhook processing failed: {str(e)}"
             }
+    
+    def _create_booking_from_cart(self, payment_order):
+        """Create booking from cart after successful payment"""
+        try:
+            from cart.models import Cart
+            from booking.models import Booking
+            from accounts.models import Address
+            from datetime import datetime
+            
+            # Get cart
+            cart = Cart.objects.get(cart_id=payment_order.cart_id)
+            
+            # Parse time from various formats
+            selected_time = None
+            time_str = cart.selected_time
+            
+            # Try different time formats
+            time_formats = [
+                "%I:%M %p",     # 12-hour format with AM/PM (e.g., "01:00 AM")
+                "%H:%M",        # 24-hour format (e.g., "01:00")
+                "%I:%M%p",      # 12-hour format without space (e.g., "01:00AM")
+                "%H:%M:%S",     # 24-hour format with seconds (e.g., "01:00:00")
+            ]
+            
+            for fmt in time_formats:
+                try:
+                    parsed_time = datetime.strptime(time_str, fmt)
+                    selected_time = parsed_time.time()
+                    break
+                except ValueError:
+                    continue
+            
+            if not selected_time:
+                # If all parsing fails, create a default time
+                logger.warning(f"Could not parse time '{time_str}', using default 09:00")
+                selected_time = datetime.strptime("09:00", "%H:%M").time()
+            
+            # Get user's default address or use None
+            address = None
+            try:
+                address = Address.objects.filter(user=payment_order.user, is_default=True).first()
+                if not address:
+                    # If no default address, get any address for this user
+                    address = Address.objects.filter(user=payment_order.user).first()
+            except Exception as e:
+                logger.warning(f"Could not get address for user {payment_order.user.id}: {e}")
+            
+            # Convert cart to booking
+            booking = Booking.objects.create(
+                user=payment_order.user,
+                cart=cart,
+                selected_date=cart.selected_date,
+                selected_time=selected_time,
+                address=address,  # Can be None
+                status='CONFIRMED'  # Use string value directly
+            )
+            
+            # Mark cart as converted
+            cart.status = Cart.StatusChoices.CONVERTED
+            cart.save()
+            
+            logger.info(f"Booking created from cart {cart.cart_id}: {booking.book_id}")
+            
+            # Auto-cleanup old converted carts to keep database clean
+            try:
+                self._cleanup_old_carts(payment_order.user)
+            except Exception as e:
+                logger.warning(f"Failed to cleanup old carts: {e}")
+            
+            # Send booking confirmation email (trigger Celery task)
+            try:
+                from core.tasks import send_booking_confirmation
+                send_booking_confirmation.delay(booking.id)  # Use booking.id not book_id
+                logger.info(f"Booking confirmation email queued for {booking.book_id}")
+            except Exception as e:
+                logger.error(f"Failed to queue booking confirmation email: {e}")
+            
+            return booking
+            
+        except Exception as e:
+            logger.error(f"Failed to create booking from cart {payment_order.cart_id}: {e}")
+            return None
+    
+    def _cleanup_old_carts(self, user):
+        """Clean up old converted carts, keeping only the latest 3"""
+        from cart.models import Cart
+        from booking.models import Booking
+        
+        # Find all converted carts for this user
+        converted_carts = Cart.objects.filter(
+            user=user, 
+            status=Cart.StatusChoices.CONVERTED
+        ).order_by('-created_at')
+        
+        # Keep only the latest 3, mark older ones for cleanup
+        carts_to_keep = converted_carts[:3]
+        carts_to_cleanup = converted_carts[3:]
+        
+        for cart in carts_to_cleanup:
+            try:
+                # Before deleting cart, set booking cart reference to NULL
+                bookings = Booking.objects.filter(cart=cart)
+                for booking in bookings:
+                    booking.cart = None
+                    booking.save()
+                
+                # Now delete the cart safely
+                cart.delete()
+                logger.info(f"Cleaned up old cart: {cart.cart_id}")
+                
+            except Exception as e:
+                logger.warning(f"Failed to cleanup cart {cart.cart_id}: {e}")
+        
+        if carts_to_cleanup:
+            logger.info(f"Cart cleanup complete: removed {len(carts_to_cleanup)} old carts")

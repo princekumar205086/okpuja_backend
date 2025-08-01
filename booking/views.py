@@ -7,8 +7,9 @@ from rest_framework.parsers import MultiPartParser
 from django.core.exceptions import ValidationError
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from django.utils import timezone
 
-from .models import Booking, BookingAttachment
+from .models import Booking, BookingAttachment, BookingStatus
 from .serializers import (
     BookingSerializer,
     BookingCreateSerializer,
@@ -144,6 +145,92 @@ class BookingViewSet(viewsets.ModelViewSet):
             BookingAttachmentSerializer(attachment).data,
             status=status.HTTP_201_CREATED
         )
+
+    @swagger_auto_schema(
+        method='get',
+        operation_description="Get booking details by booking ID",
+        operation_summary="Get Booking by ID",
+        tags=['Booking'],
+        manual_parameters=[
+            openapi.Parameter('book_id', openapi.IN_PATH, description="Booking ID (e.g., BK-072D32E4)", type=openapi.TYPE_STRING)
+        ],
+        responses={
+            200: openapi.Response(
+                description="Booking details retrieved successfully",
+                schema=BookingSerializer
+            ),
+            404: openapi.Response(description="Booking not found")
+        }
+    )
+    @action(detail=False, methods=['get'], url_path='by-id/(?P<book_id>[^/.]+)')
+    def get_by_book_id(self, request, book_id=None):
+        """Get booking details by book_id for confirmation page"""
+        try:
+            # Get booking by book_id and ensure user owns it
+            booking = Booking.objects.select_related(
+                'user', 'cart', 'address', 'assigned_to'
+            ).prefetch_related(
+                'attachments'
+            ).get(book_id=book_id, user=request.user)
+            
+            serializer = self.get_serializer(booking)
+            return Response({
+                'success': True,
+                'data': serializer.data
+            })
+            
+        except Booking.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Booking not found or you do not have permission to view it'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Error retrieving booking: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @swagger_auto_schema(
+        method='get',
+        operation_description="Get user's latest booking",
+        operation_summary="Get Latest Booking",
+        tags=['Booking'],
+        responses={
+            200: openapi.Response(
+                description="Latest booking retrieved successfully",
+                schema=BookingSerializer
+            ),
+            404: openapi.Response(description="No bookings found")
+        }
+    )
+    @action(detail=False, methods=['get'], url_path='latest')
+    def get_latest(self, request):
+        """Get user's latest booking - used as fallback when book_id is missing"""
+        try:
+            # Get user's latest booking
+            booking = Booking.objects.select_related(
+                'user', 'cart', 'address', 'assigned_to'
+            ).prefetch_related(
+                'attachments'
+            ).filter(user=request.user).order_by('-created_at').first()
+            
+            if not booking:
+                return Response({
+                    'success': False,
+                    'message': 'No bookings found for this user'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            serializer = self.get_serializer(booking)
+            return Response({
+                'success': True,
+                'data': serializer.data
+            })
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Error retrieving latest booking: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class AdminBookingViewSet(viewsets.ModelViewSet):
     queryset = Booking.objects.select_related(

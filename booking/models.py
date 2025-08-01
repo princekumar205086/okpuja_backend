@@ -31,8 +31,11 @@ class Booking(models.Model):
     )
     cart = models.ForeignKey(
         Cart, 
-        on_delete=models.PROTECT, 
-        related_name='bookings'
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='bookings',
+        help_text="Original cart (kept for reference even if cart is deleted)"
     )
     book_id = models.CharField(
         max_length=50, 
@@ -44,7 +47,8 @@ class Booking(models.Model):
     address = models.ForeignKey(
         Address, 
         on_delete=models.SET_NULL, 
-        null=True, 
+        null=True,
+        blank=True,  # Allow blank in forms
         related_name='bookings'
     )
     status = models.CharField(
