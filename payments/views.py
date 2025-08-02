@@ -23,6 +23,7 @@ from .serializers import (
     PaymentStatusSerializer
 )
 from .services import PaymentService, WebhookService
+from .webhook_auth import authenticate_webhook
 
 logger = logging.getLogger(__name__)
 
@@ -575,10 +576,17 @@ class PhonePeWebhookView(APIView):
         }
     )
     def post(self, request):
-        """Process PhonePe webhook"""
+        """Process PhonePe webhook with authentication"""
         try:
+            # First authenticate the webhook request
+            is_authenticated, auth_error = authenticate_webhook(request)
+            if not is_authenticated:
+                return auth_error
+            
             webhook_data = request.data
             headers = dict(request.headers)
+            
+            logger.info(f"Authenticated webhook received: {webhook_data}")
             
             # Process webhook using service
             webhook_service = WebhookService()

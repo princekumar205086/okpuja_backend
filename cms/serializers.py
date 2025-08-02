@@ -59,7 +59,7 @@ class UserConsentSerializer(serializers.ModelSerializer):
         model = UserConsent
         fields = [
             'id', 'user', 'terms', 'privacy_policy',
-            'ip_address', 'user_agent', 'consented_at'
+            'user_agent', 'consented_at'
         ]
         read_only_fields = fields
 

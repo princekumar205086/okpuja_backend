@@ -260,9 +260,7 @@ class ContactUs(models.Model):
     ip_address = models.GenericIPAddressField(
         _('IP address'),
         blank=True,
-        null=True,
-        protocol='both',
-        unpack_ipv4=False
+        null=True
     )
     user_agent = models.CharField(
         _('user agent'),

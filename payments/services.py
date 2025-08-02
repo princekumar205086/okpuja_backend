@@ -300,7 +300,20 @@ class WebhookService:
     
     def process_payment_webhook(self, webhook_data, headers=None):
         """
-        Process payment webhook from PhonePe
+        Process payment webhook from PhonePe V2
+        
+        According to PhonePe V2 docs, webhook payload structure:
+        {
+            "event": "checkout.order.completed",
+            "payload": {
+                "orderId": "OMO2403282020198641071317",
+                "merchantId": "merchantId",
+                "merchantOrderId": "merchantOrderId", 
+                "state": "COMPLETED",
+                "amount": 10000,
+                ...
+            }
+        }
         
         Args:
             webhook_data: Webhook payload
@@ -311,63 +324,100 @@ class WebhookService:
         """
         try:
             # Log webhook data for debugging
-            logger.info(f"Webhook received: {webhook_data}")
+            logger.info(f"PhonePe V2 webhook received: {webhook_data}")
             
-            merchant_order_id = webhook_data.get('merchantOrderId')
+            # Extract event and payload according to V2 structure
+            event = webhook_data.get('event')
+            payload = webhook_data.get('payload', {})
+            
+            # Get merchant order ID from payload
+            merchant_order_id = payload.get('merchantOrderId')
             
             if not merchant_order_id:
+                # Fallback for old webhook format
+                merchant_order_id = webhook_data.get('merchantOrderId')
+                
+            if not merchant_order_id:
+                logger.error("No merchant order ID found in webhook payload")
                 return {
                     'success': False,
                     'error': 'No merchant order ID in webhook data'
                 }
             
             # Get payment order
-            payment_order = PaymentOrder.objects.get(merchant_order_id=merchant_order_id)
+            try:
+                payment_order = PaymentOrder.objects.get(merchant_order_id=merchant_order_id)
+            except PaymentOrder.DoesNotExist:
+                logger.error(f"Payment order not found for webhook: {merchant_order_id}")
+                return {
+                    'success': False,
+                    'error': 'Payment order not found'
+                }
             
-            # Process based on webhook event - check multiple possible field names
-            event_type = (
-                webhook_data.get('eventType') or 
-                webhook_data.get('state') or 
-                webhook_data.get('status') or
-                webhook_data.get('responseCode') or
-                'UNKNOWN'
-            )
+            # Process based on V2 webhook event type and payload state
+            payment_state = payload.get('state', '').upper()
+            event_type = event or 'UNKNOWN'
             
-            # Map different status values to our internal statuses
-            success_statuses = ['PAYMENT_SUCCESS', 'SUCCESS', 'COMPLETED', 'PAID']
-            failed_statuses = ['PAYMENT_FAILED', 'FAILED', 'CANCELLED', 'EXPIRED']
+            logger.info(f"Processing webhook - Event: {event_type}, State: {payment_state}, Order: {merchant_order_id}")
             
-            if event_type in success_statuses or webhook_data.get('state') == 'COMPLETED':
+            # Handle checkout.order.completed
+            if event_type == 'checkout.order.completed' and payment_state == 'COMPLETED':
+                # Extract transaction details
+                transaction_id = None
+                payment_details = payload.get('paymentDetails', [])
+                if payment_details:
+                    transaction_id = payment_details[0].get('transactionId')
+                
+                # Mark payment as successful
                 payment_order.mark_success(
-                    phonepe_transaction_id=webhook_data.get('transactionId'),
+                    phonepe_transaction_id=transaction_id or payload.get('orderId'),
                     phonepe_response=webhook_data
                 )
                 
                 # Auto-create booking if cart_id is present
                 if payment_order.cart_id:
                     booking = self._create_booking_from_cart(payment_order)
-                    logger.info(f"Booking created via webhook: {booking.book_id if booking else 'FAILED'}")
-                    
-            elif event_type in failed_statuses:
+                    if booking:
+                        logger.info(f"Booking created via webhook: {booking.book_id}")
+                        
+                        # Send email notifications
+                        try:
+                            from core.tasks import send_booking_confirmation
+                            send_booking_confirmation.delay(booking.id)
+                            logger.info(f"Email notification queued for booking {booking.book_id}")
+                        except Exception as e:
+                            logger.error(f"Failed to queue email notification: {e}")
+                    else:
+                        logger.error("Failed to create booking from cart")
+                        
+            # Handle checkout.order.failed
+            elif event_type == 'checkout.order.failed' and payment_state == 'FAILED':
+                error_details = payload.get('paymentDetails', [])
+                error_info = {}
+                if error_details:
+                    error_info = {
+                        'errorCode': error_details[0].get('errorCode'),
+                        'detailedErrorCode': error_details[0].get('detailedErrorCode')
+                    }
+                
+                # Mark payment as failed
                 payment_order.mark_failed(phonepe_response=webhook_data)
+                logger.info(f"Payment marked as failed: {merchant_order_id} - {error_info}")
+                
             else:
-                # Log unknown status for debugging
-                logger.warning(f"Unknown webhook status: {event_type} for order {merchant_order_id}")
+                # Log unknown or unhandled webhook events
+                logger.warning(f"Unhandled webhook event: {event_type} with state: {payment_state} for order {merchant_order_id}")
+                # Still return success to avoid PhonePe retries for unknown events
             
-            logger.info(f"Webhook processed: {merchant_order_id} - {event_type}")
+            logger.info(f"Webhook processed successfully: {merchant_order_id} - {event_type}")
             
             return {
                 'success': True,
                 'payment_order': payment_order,
-                'event_type': event_type
+                'event_type': event_type,
+                'state': payment_state
             }
             
-        except PaymentOrder.DoesNotExist:
-            logger.error(f"Payment order not found for webhook: {merchant_order_id}")
-            return {
-                'success': False,
-                'error': 'Payment order not found'
-            }
         except Exception as e:
             logger.error(f"Webhook processing failed: {e}")
             return {
@@ -461,6 +511,7 @@ class WebhookService:
         """Clean up old converted carts, keeping only the latest 3"""
         from cart.models import Cart
         from booking.models import Booking
+        from django.db import connection, transaction
         
         # Find all converted carts for this user
         converted_carts = Cart.objects.filter(
@@ -474,15 +525,32 @@ class WebhookService:
         
         for cart in carts_to_cleanup:
             try:
-                # Before deleting cart, set booking cart reference to NULL
-                bookings = Booking.objects.filter(cart=cart)
-                for booking in bookings:
-                    booking.cart = None
-                    booking.save()
-                
-                # Now delete the cart safely
-                cart.delete()
-                logger.info(f"Cleaned up old cart: {cart.cart_id}")
+                with transaction.atomic():
+                    # Before deleting cart, set booking cart reference to NULL
+                    bookings = Booking.objects.filter(cart=cart)
+                    for booking in bookings:
+                        booking.cart = None
+                        booking.save()
+                    
+                    # Handle payment order references
+                    from .models import PaymentOrder
+                    payments = PaymentOrder.objects.filter(cart_id=cart.cart_id)
+                    for payment in payments:
+                        payment.cart_id = None
+                        payment.save()
+                    
+                    # Use raw SQL to safely delete cart with foreign key constraint handling
+                    cursor = connection.cursor()
+                    try:
+                        # Temporarily disable foreign key constraints for this delete
+                        cursor.execute("PRAGMA foreign_keys = OFF")
+                        cart.delete()
+                        cursor.execute("PRAGMA foreign_keys = ON")
+                        logger.info(f"Cleaned up old cart: {cart.cart_id}")
+                    except Exception as sql_error:
+                        # Re-enable foreign keys even if delete failed
+                        cursor.execute("PRAGMA foreign_keys = ON")
+                        raise sql_error
                 
             except Exception as e:
                 logger.warning(f"Failed to cleanup cart {cart.cart_id}: {e}")

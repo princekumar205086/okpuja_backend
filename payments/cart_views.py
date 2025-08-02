@@ -7,6 +7,7 @@ from rest_framework import status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from django.conf import settings
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
@@ -119,7 +120,7 @@ class CartPaymentView(APIView):
             payment_data = {
                 'amount': amount_in_paisa,
                 'description': f"Payment for cart {cart_id}",
-                'redirect_url': 'http://localhost:8000/api/payments/redirect/simple/',  # Simple redirect handler
+                'redirect_url': getattr(settings, 'PHONEPE_SMART_REDIRECT_URL', 'http://localhost:8000/api/payments/redirect/simple/'),
                 'cart_id': cart_id
             }
             

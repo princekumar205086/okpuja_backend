@@ -13,7 +13,7 @@
 <body>
     <div class="header">
         <h2>🙏 Booking Confirmation & Invoice</h2>
-        <p>Dear {{ booking.user.first_name|default:booking.user.email }},</p>
+        <p>Dear {% if booking.user.profile %}{{ booking.user.profile.first_name }}{% else %}{{ booking.user.email }}{% endif %},</p>
         <p>Thank you for booking with OkPuja! Your booking has been confirmed.</p>
     </div>
 

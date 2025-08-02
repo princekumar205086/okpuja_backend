@@ -156,7 +156,7 @@ SIMPLE_JWT = {
 }
 
 # Email Configuration
-EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')  # Console for testing
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
@@ -206,6 +206,10 @@ PHONEPE_MERCHANT_KEY = os.getenv('PHONEPE_MERCHANT_KEY', '')
 PHONEPE_SALT_KEY = os.getenv('PHONEPE_SALT_KEY', 'MTgwNDU0MjctNTEzMy00ZjEzLTgwMzUtNDllNDZkZDAzYThh')  # Test credentials salt
 PHONEPE_SALT_INDEX = int(os.getenv('PHONEPE_SALT_INDEX', 1))
 
+# Webhook Authentication Credentials
+PHONEPE_WEBHOOK_USERNAME = os.getenv('PHONEPE_WEBHOOK_USERNAME', 'okpuja_webhook_user')
+PHONEPE_WEBHOOK_PASSWORD = os.getenv('PHONEPE_WEBHOOK_PASSWORD', 'Okpuja2025')
+
 # PhonePe API URLs (V2) - Use UAT for testing production credentials
 PHONEPE_AUTH_BASE_URL = os.getenv('PHONEPE_AUTH_BASE_URL', 'https://api-preprod.phonepe.com')
 PHONEPE_PAYMENT_BASE_URL = os.getenv('PHONEPE_PAYMENT_BASE_URL', 'https://api-preprod.phonepe.com')
@@ -254,5 +258,16 @@ EMPLOYEE_REGISTRATION_CODE = os.getenv('EMPLOYEE_REGISTRATION_CODE', 'EMP2025OK5
 DB_BACKUP_STORAGE_TYPE = os.getenv('DB_BACKUP_STORAGE_TYPE', 'LOCAL')  # LOCAL, GDRIVE, SYSTEM
 DB_BACKUP_PATH = os.getenv('DB_BACKUP_PATH', 'backups/')
 DB_BACKUP_RETENTION_DAYS = int(os.getenv('DB_BACKUP_RETENTION_DAYS', 7))
+
+# Celery Configuration
+# For development, use in-memory broker (no Redis required)
+CELERY_TASK_ALWAYS_EAGER = True  # Execute tasks immediately in development
+CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'memory://')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'cache+memory://')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
 DB_BACKUP_MAX_FILES = int(os.getenv('DB_BACKUP_MAX_FILES', 10))
 DB_BACKUP_AUTO_ENABLED = os.getenv('DB_BACKUP_AUTO_ENABLED', 'True') == 'True'

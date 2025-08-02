@@ -193,7 +193,7 @@ class UserConsent(models.Model):
         on_delete=models.CASCADE,
         related_name='user_consents'
     )
-    ip_address = models.GenericIPAddressField(protocol='both', unpack_ipv4=False)
+    ip_address = models.GenericIPAddressField()
     user_agent = models.CharField(max_length=255)
     consented_at = models.DateTimeField(auto_now_add=True)
 

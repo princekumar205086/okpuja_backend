@@ -103,7 +103,7 @@ class ContactUsAdminSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'email', 'phone',
             'subject', 'message', 'status',
-            'ip_address', 'user_agent',
+            'user_agent',
             'created_at', 'updated_at', 'replied_at'
         ]
         read_only_fields = fields

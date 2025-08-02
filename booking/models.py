@@ -101,7 +101,30 @@ class Booking(models.Model):
     @property
     def total_amount(self):
         """Calculate total amount including any discounts"""
-        return self.cart.total_price
+        if self.cart:
+            return self.cart.total_price
+        
+        # Fallback: try to get amount from payment order
+        try:
+            from payments.models import PaymentOrder
+            from datetime import timedelta
+            # Find payment order for this booking by matching user and time range
+            payment = PaymentOrder.objects.filter(
+                user=self.user,
+                status='SUCCESS',
+                created_at__lte=self.created_at + timedelta(hours=1),
+                created_at__gte=self.created_at - timedelta(hours=1)
+            ).first()
+            
+            if payment:
+                # Convert from paisa to rupees
+                return payment.amount / 100
+        except Exception:
+            pass
+        
+        # Final fallback: return zero
+        from decimal import Decimal
+        return Decimal('0.00')
 
     def send_status_notification(self):
         """Send notification based on booking status"""

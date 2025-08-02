@@ -186,7 +186,7 @@ class GalleryView(models.Model):
         null=True,
         blank=True
     )
-    ip_address = models.GenericIPAddressField(protocol='both', unpack_ipv4=False)
+    ip_address = models.GenericIPAddressField()
     user_agent = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

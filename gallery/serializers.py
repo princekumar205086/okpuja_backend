@@ -71,5 +71,5 @@ class GalleryViewSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = GalleryView
-        fields = ['id', 'user', 'ip_address', 'created_at']
+        fields = ['id', 'user', 'created_at']
         read_only_fields = fields
