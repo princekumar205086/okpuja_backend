@@ -121,18 +121,16 @@ class PaymentService:
                 phonepe_data = status_result['data']
                 
                 # Update payment order based on PhonePe response
-                # Note: Actual status mapping depends on PhonePe response format
-                if phonepe_data.get('status') == 'SUCCESS':
+                # PhonePe returns 'state' field, not 'status'
+                payment_state = phonepe_data.get('state', '').upper()
+                
+                if payment_state == 'COMPLETED':
                     payment_order.mark_success(
                         phonepe_transaction_id=phonepe_data.get('transactionId'),
                         phonepe_response=phonepe_data
                     )
-                    
-                    # Auto-create booking if cart_id is present and payment just became successful
-                    if payment_order.cart_id and payment_order.status == 'SUCCESS':
-                        self._create_booking_from_cart(payment_order)
                         
-                elif phonepe_data.get('status') in ['FAILED', 'CANCELLED']:
+                elif payment_state in ['FAILED', 'CANCELLED']:
                     payment_order.mark_failed(phonepe_response=phonepe_data)
                 
                 logger.info(f"Payment status updated: {merchant_order_id} - {payment_order.status}")

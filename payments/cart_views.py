@@ -10,12 +10,14 @@ from django.shortcuts import get_object_or_404
 from django.conf import settings
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from datetime import datetime, timedelta
+from django.utils import timezone
 
 import logging
 logger = logging.getLogger(__name__)
 
 from .models import PaymentOrder
-from .services import PaymentService
+from .services import PaymentService, WebhookService
 from cart.models import Cart
 from booking.models import Booking
 
@@ -116,11 +118,11 @@ class CartPaymentView(APIView):
             amount_in_rupees = cart.total_price
             amount_in_paisa = int(amount_in_rupees * 100)
             
-            # Create payment order with simple redirect handler URL
+            # Create payment order with professional redirect handler URL
             payment_data = {
                 'amount': amount_in_paisa,
                 'description': f"Payment for cart {cart_id}",
-                'redirect_url': getattr(settings, 'PHONEPE_SMART_REDIRECT_URL', 'http://localhost:8000/api/payments/redirect/simple/'),
+                'redirect_url': getattr(settings, 'PHONEPE_PROFESSIONAL_REDIRECT_URL', 'http://localhost:8000/api/payments/redirect/professional/'),
                 'cart_id': cart_id
             }
             
@@ -215,6 +217,48 @@ class CartPaymentStatusView(APIView):
                     'message': 'No payment found for this cart'
                 }, status=status.HTTP_404_NOT_FOUND)
             
+            # IMMEDIATE PAYMENT VERIFICATION (Professional UX)
+            if payment.status == 'INITIATED':
+                logger.info(f"🔍 IMMEDIATE verification for {payment.merchant_order_id}")
+                
+                try:
+                    # Check payment status with PhonePe immediately
+                    payment_service = PaymentService()
+                    phonepe_status = payment_service.check_payment_status(payment.merchant_order_id)
+                    
+                    if phonepe_status and phonepe_status.get('success'):
+                        response_data = phonepe_status.get('data', {})
+                        transaction_status = response_data.get('state', 'PENDING')
+                        
+                        logger.info(f"✅ PhonePe immediate status for {payment.merchant_order_id}: {transaction_status}")
+                        
+                        if transaction_status == 'COMPLETED':
+                            # Update payment to SUCCESS immediately
+                            payment.status = 'SUCCESS'
+                            payment.phonepe_transaction_id = response_data.get('transactionId', '')
+                            payment.completed_at = timezone.now()
+                            payment.save()
+                            
+                            logger.info(f"✅ Payment {payment.merchant_order_id} immediately updated to SUCCESS")
+                            
+                            # Create booking immediately
+                            try:
+                                webhook_service = WebhookService()
+                                booking_result = webhook_service.create_booking_from_payment(payment)
+                                if booking_result['success']:
+                                    logger.info(f"✅ Booking {booking_result['booking'].book_id} immediately created")
+                            except Exception as booking_error:
+                                logger.error(f"❌ Error creating booking immediately: {str(booking_error)}")
+                                
+                        elif transaction_status == 'FAILED':
+                            payment.status = 'FAILED'
+                            payment.save()
+                            logger.info(f"❌ Payment {payment.merchant_order_id} marked as failed")
+                            
+                except Exception as verify_error:
+                    logger.error(f"❌ Error in immediate verification: {str(verify_error)}")
+                    # Continue with normal response even if immediate verification fails
+            
             # Check if booking was created
             booking = None
             booking_created = False
@@ -237,7 +281,8 @@ class CartPaymentStatusView(APIView):
                     'booking_id': booking.book_id if booking else None,
                     'cart_status': cart.status,
                     'payment_created_at': payment.created_at.isoformat(),
-                    'payment_completed_at': payment.completed_at.isoformat() if payment.completed_at else None
+                    'payment_completed_at': payment.completed_at.isoformat() if payment.completed_at else None,
+                    'auto_verified': payment.status != 'INITIATED'  # Indicates if auto-verification occurred
                 }
             }, status=status.HTTP_200_OK)
             

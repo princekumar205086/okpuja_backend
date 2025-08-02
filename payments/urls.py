@@ -6,6 +6,7 @@ from django.urls import path
 from . import views
 from .redirect_handler import PaymentRedirectHandler
 from .simple_redirect_handler import SimplePaymentRedirectHandler
+from .professional_redirect_handler import ProfessionalPaymentRedirectHandler
 from .cart_views import CartPaymentView, CartPaymentStatusView
 
 app_name = 'payments'
@@ -27,14 +28,20 @@ urlpatterns = [
     # Webhook Endpoints
     path('webhook/phonepe/', views.PhonePeWebhookView.as_view(), name='phonepe_webhook'),
     
-    # Smart Redirect Handler (NEW)
+    # PROFESSIONAL Real-time Redirect Handler (RECOMMENDED)
+    path('redirect/professional/', ProfessionalPaymentRedirectHandler.as_view(), name='professional_payment_redirect'),
+    
+    # Smart Redirect Handler
     path('redirect/', PaymentRedirectHandler.as_view(), name='payment_redirect'),
     
-    # Simple Redirect Handler (Alternative)
+    # Simple Redirect Handler (Legacy)
     path('redirect/simple/', SimplePaymentRedirectHandler.as_view(), name='simple_payment_redirect'),
     
     # Latest Payment Status (for frontend)
     path('latest/', views.LatestPaymentStatusView.as_view(), name='latest_payment_status'),
+    
+    # Manual Payment Verification (NEW - for sandbox/webhook issues)
+    path('verify-and-complete/', views.verify_and_complete_payment, name='verify_complete_payment'),
     
     # Utility & Testing Endpoints
     path('health/', views.payment_health_check, name='payment_health'),
