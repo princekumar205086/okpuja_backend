@@ -38,8 +38,12 @@ class CartPaymentView(APIView):
                     type=openapi.TYPE_STRING, 
                     description='Cart ID (UUID) to create payment for. Use the cart_id field from cart API response, not the database ID.'
                 ),
+                'address_id': openapi.Schema(
+                    type=openapi.TYPE_INTEGER,
+                    description='User address ID (mandatory). User must select an address during checkout.'
+                ),
             },
-            required=['cart_id']
+            required=['cart_id', 'address_id']
         ),
         responses={
             201: openapi.Response(
@@ -68,11 +72,29 @@ class CartPaymentView(APIView):
         """Create payment order from cart"""
         try:
             cart_id = request.data.get('cart_id')
+            address_id = request.data.get('address_id')
             
+            # Validate required fields
             if not cart_id:
                 return Response({
                     'success': False,
                     'message': 'cart_id is required (use the cart_id UUID field, not database ID)'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if not address_id:
+                return Response({
+                    'success': False,
+                    'message': 'address_id is required. User must select an address during checkout.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Validate address belongs to user
+            from accounts.models import Address
+            try:
+                user_address = Address.objects.get(id=address_id, user=request.user)
+            except Address.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'message': 'Invalid address_id or address does not belong to user'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             # Get cart using cart_id field (UUID), not database ID
@@ -118,12 +140,13 @@ class CartPaymentView(APIView):
             amount_in_rupees = cart.total_price
             amount_in_paisa = int(amount_in_rupees * 100)
             
-            # Create payment order with professional redirect handler URL
+            # Create payment order with HYPER-SPEED redirect handler URL for instant response
             payment_data = {
                 'amount': amount_in_paisa,
                 'description': f"Payment for cart {cart_id}",
-                'redirect_url': getattr(settings, 'PHONEPE_PROFESSIONAL_REDIRECT_URL', 'http://localhost:8000/api/payments/redirect/professional/'),
-                'cart_id': cart_id
+                'redirect_url': getattr(settings, 'PHONEPE_HYPER_SPEED_REDIRECT_URL', 'http://localhost:8000/api/payments/redirect/hyper/'),
+                'cart_id': cart_id,
+                'address_id': address_id  # Include address_id for booking creation
             }
             
             payment_service = PaymentService()
@@ -217,12 +240,12 @@ class CartPaymentStatusView(APIView):
                     'message': 'No payment found for this cart'
                 }, status=status.HTTP_404_NOT_FOUND)
             
-            # IMMEDIATE PAYMENT VERIFICATION (Professional UX)
+            # ULTRA-FAST PAYMENT VERIFICATION (Speed-Optimized UX)
             if payment.status == 'INITIATED':
-                logger.info(f"🔍 IMMEDIATE verification for {payment.merchant_order_id}")
+                logger.info(f"⚡ LIGHTNING verification for {payment.merchant_order_id}")
                 
                 try:
-                    # Check payment status with PhonePe immediately
+                    # ULTRA-FAST payment status check
                     payment_service = PaymentService()
                     phonepe_status = payment_service.check_payment_status(payment.merchant_order_id)
                     
@@ -230,34 +253,34 @@ class CartPaymentStatusView(APIView):
                         response_data = phonepe_status.get('data', {})
                         transaction_status = response_data.get('state', 'PENDING')
                         
-                        logger.info(f"✅ PhonePe immediate status for {payment.merchant_order_id}: {transaction_status}")
+                        logger.info(f"⚡ INSTANT PhonePe status: {payment.merchant_order_id} = {transaction_status}")
                         
                         if transaction_status == 'COMPLETED':
-                            # Update payment to SUCCESS immediately
+                            # SPEED UPDATE: Payment to SUCCESS
                             payment.status = 'SUCCESS'
                             payment.phonepe_transaction_id = response_data.get('transactionId', '')
                             payment.completed_at = timezone.now()
                             payment.save()
                             
-                            logger.info(f"✅ Payment {payment.merchant_order_id} immediately updated to SUCCESS")
+                            logger.info(f"⚡ LIGHTNING update: {payment.merchant_order_id} → SUCCESS")
                             
-                            # Create booking immediately
+                            # ULTRA-FAST booking creation
                             try:
                                 webhook_service = WebhookService()
                                 booking_result = webhook_service.create_booking_from_payment(payment)
                                 if booking_result['success']:
-                                    logger.info(f"✅ Booking {booking_result['booking'].book_id} immediately created")
+                                    logger.info(f"⚡ INSTANT booking: {booking_result['booking'].book_id}")
                             except Exception as booking_error:
-                                logger.error(f"❌ Error creating booking immediately: {str(booking_error)}")
+                                logger.error(f"❌ Speed booking error: {str(booking_error)}")
                                 
                         elif transaction_status == 'FAILED':
                             payment.status = 'FAILED'
                             payment.save()
-                            logger.info(f"❌ Payment {payment.merchant_order_id} marked as failed")
+                            logger.info(f"❌ Payment {payment.merchant_order_id} failed")
                             
                 except Exception as verify_error:
-                    logger.error(f"❌ Error in immediate verification: {str(verify_error)}")
-                    # Continue with normal response even if immediate verification fails
+                    logger.error(f"❌ Lightning verification error: {str(verify_error)}")
+                    # Continue with normal response even if speed verification fails
             
             # Check if booking was created
             booking = None

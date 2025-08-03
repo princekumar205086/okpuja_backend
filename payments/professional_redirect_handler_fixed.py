@@ -201,38 +201,14 @@ class ProfessionalPaymentRedirectHandler(View):
             # ULTRA-FAST booking creation
             logger.info(f"⚡ SPEED-CREATING new booking for cart {cart.cart_id}")
             
-            # Handle time conversion from CharField to TimeField
-            from datetime import datetime, time
-            try:
-                if isinstance(cart.selected_time, str):
-                    # Try to parse various time formats
-                    time_str = cart.selected_time.strip()
-                    if ':' in time_str:
-                        # Format like "14:30" or "2:30 PM"
-                        try:
-                            if 'AM' in time_str.upper() or 'PM' in time_str.upper():
-                                selected_time = datetime.strptime(time_str.upper(), '%I:%M %p').time()
-                            else:
-                                selected_time = datetime.strptime(time_str, '%H:%M').time()
-                        except ValueError:
-                            # Fallback to a default time
-                            selected_time = time(10, 0)  # 10:00 AM default
-                    else:
-                        # Default time if format is unclear
-                        selected_time = time(10, 0)  # 10:00 AM default
-                else:
-                    selected_time = cart.selected_time
-            except Exception as e:
-                logger.warning(f"⚠️ Time conversion issue: {e}, using default")
-                selected_time = time(10, 0)  # 10:00 AM default
-            
-            # Create booking with correct fields from cart
+            # Create booking with minimal validation
             booking = Booking.objects.create(
                 cart=cart,
                 user=cart.user,
-                selected_date=cart.selected_date,
-                selected_time=selected_time,
-                status='CONFIRMED'  # Use the correct field name
+                total_amount=payment.amount,
+                payment_status='PAID',
+                booking_status='CONFIRMED',
+                payment_id=payment.merchant_order_id
             )
             
             logger.info(f"⚡ LIGHTNING BOOKING CREATED: {booking.book_id}")

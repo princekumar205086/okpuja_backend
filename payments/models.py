@@ -39,6 +39,9 @@ class PaymentOrder(models.Model):
     # Cart Integration (optional)
     cart_id = models.CharField(max_length=100, null=True, blank=True, db_index=True, help_text="Associated cart ID")
     
+    # Address Integration (for booking creation)
+    address_id = models.PositiveIntegerField(null=True, blank=True, help_text="Selected address ID for delivery/service")
+    
     # Payment Details
     amount = models.PositiveIntegerField(help_text="Amount in paisa (₹1 = 100 paisa)")
     currency = models.CharField(max_length=3, default='INR')

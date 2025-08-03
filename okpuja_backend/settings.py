@@ -227,6 +227,12 @@ PHONEPE_CALLBACK_URL = os.getenv('PHONEPE_CALLBACK_URL', 'http://localhost:8000/
 PHONEPE_FAILED_REDIRECT_URL = os.getenv('PHONEPE_FAILED_REDIRECT_URL', 'http://localhost:3000/failedbooking')
 PHONEPE_SUCCESS_REDIRECT_URL = os.getenv('PHONEPE_SUCCESS_REDIRECT_URL', 'http://localhost:3000/confirmbooking/')
 
+# Professional Ultra-Fast Redirect URLs
+PHONEPE_HYPER_SPEED_REDIRECT_URL = os.getenv('PHONEPE_HYPER_SPEED_REDIRECT_URL', 'http://localhost:8000/api/payments/redirect/hyper/')
+PHONEPE_PROFESSIONAL_REDIRECT_URL = os.getenv('PHONEPE_PROFESSIONAL_REDIRECT_URL', 'http://localhost:8000/api/payments/redirect/professional/')
+PHONEPE_PENDING_REDIRECT_URL = os.getenv('PHONEPE_PENDING_REDIRECT_URL', 'http://localhost:3000/payment-pending')
+PHONEPE_ERROR_REDIRECT_URL = os.getenv('PHONEPE_ERROR_REDIRECT_URL', 'http://localhost:3000/payment-error')
+
 # Frontend Base URL
 FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'http://localhost:3000')
 

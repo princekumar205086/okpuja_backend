@@ -7,6 +7,7 @@ from . import views
 from .redirect_handler import PaymentRedirectHandler
 from .simple_redirect_handler import SimplePaymentRedirectHandler
 from .professional_redirect_handler import ProfessionalPaymentRedirectHandler
+from .hyper_speed_redirect_handler import HyperSpeedPaymentRedirectHandler
 from .cart_views import CartPaymentView, CartPaymentStatusView
 
 app_name = 'payments'
@@ -27,6 +28,9 @@ urlpatterns = [
     
     # Webhook Endpoints
     path('webhook/phonepe/', views.PhonePeWebhookView.as_view(), name='phonepe_webhook'),
+    
+    # HYPER-SPEED Instant Redirect Handler (FASTEST - 200ms target)
+    path('redirect/hyper/', HyperSpeedPaymentRedirectHandler.as_view(), name='hyper_speed_payment_redirect'),
     
     # PROFESSIONAL Real-time Redirect Handler (RECOMMENDED)
     path('redirect/professional/', ProfessionalPaymentRedirectHandler.as_view(), name='professional_payment_redirect'),

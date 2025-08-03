@@ -22,7 +22,7 @@ class PaymentService:
         self.environment = environment or getattr(settings, 'PHONEPE_ENV', 'uat').lower()
         self.client = PhonePePaymentClient(environment=self.environment)
     
-    def create_payment_order(self, user, amount, redirect_url, description=None, metadata=None, cart_id=None):
+    def create_payment_order(self, user, amount, redirect_url, description=None, metadata=None, cart_id=None, address_id=None):
         """
         Create a new payment order
         
@@ -33,6 +33,7 @@ class PaymentService:
             description: Optional payment description
             metadata: Optional metadata dict
             cart_id: Optional cart ID for cart-based payments
+            address_id: Optional address ID for delivery/service
         
         Returns:
             dict: Payment order creation result
@@ -49,6 +50,7 @@ class PaymentService:
                 merchant_order_id=merchant_order_id,
                 user=user,
                 cart_id=cart_id,
+                address_id=address_id,  # Store selected address ID
                 amount=amount,
                 description=description or f"Payment for ₹{amount/100}",
                 redirect_url=redirect_url,
