@@ -23,20 +23,25 @@ class BookingSerializer(serializers.ModelSerializer):
         decimal_places=2, 
         read_only=True
     )
+    payment_details = serializers.SerializerMethodField()
     can_be_rescheduled = serializers.BooleanField(read_only=True)
     can_be_assigned = serializers.BooleanField(read_only=True)
+
+    def get_payment_details(self, obj):
+        """Get payment details for this booking"""
+        return obj.payment_details
 
     class Meta:
         model = Booking
         fields = [
             'id', 'book_id', 'user', 'cart', 'selected_date', 
             'selected_time', 'address', 'assigned_to', 'status', 'total_amount',
-            'cancellation_reason', 'failure_reason', 'rejection_reason',
+            'payment_details', 'cancellation_reason', 'failure_reason', 'rejection_reason',
             'created_at', 'updated_at', 'attachments', 'can_be_rescheduled', 'can_be_assigned'
         ]
         read_only_fields = [
             'book_id', 'user', 'cart', 'created_at', 
-            'updated_at', 'total_amount'
+            'updated_at', 'total_amount', 'payment_details'
         ]
 
 class BookingCreateSerializer(serializers.ModelSerializer):

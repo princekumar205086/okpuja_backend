@@ -226,16 +226,42 @@ class ProfessionalPaymentRedirectHandler(View):
                 logger.warning(f"⚠️ Time conversion issue: {e}, using default")
                 selected_time = time(10, 0)  # 10:00 AM default
             
+            # Get user's address for booking from payment order
+            address_id = None
+            try:
+                if payment.address_id:
+                    # Use the address selected during checkout
+                    from accounts.models import Address
+                    address = Address.objects.get(id=payment.address_id, user=cart.user)
+                    address_id = address.id
+                    logger.info(f"🏠 Using selected address: {address.id}")
+                else:
+                    # Fallback: Get user's default address or any address
+                    from accounts.models import Address
+                    address = Address.objects.filter(user=cart.user, is_default=True).first()
+                    if not address:
+                        address = Address.objects.filter(user=cart.user).first()
+                    address_id = address.id if address else None
+                    logger.info(f"🏠 Fallback address: {address.id if address else 'None'}")
+            except Exception as e:
+                logger.warning(f"Could not get address for user {cart.user.id}: {e}")
+
             # Create booking with correct fields from cart
             booking = Booking.objects.create(
                 cart=cart,
                 user=cart.user,
+                payment_order_id=payment.merchant_order_id,  # Store payment reference
                 selected_date=cart.selected_date,
                 selected_time=selected_time,
+                address_id=address_id,  # Include address_id from payment
                 status='CONFIRMED'  # Use the correct field name
             )
             
             logger.info(f"⚡ LIGHTNING BOOKING CREATED: {booking.book_id}")
+            
+            # POST-BOOKING CLEANUP: Mark cart as converted after successful booking
+            self._clean_cart_after_booking(cart)
+            
             return booking
             
         except Exception as e:
@@ -252,8 +278,8 @@ class ProfessionalPaymentRedirectHandler(View):
     
     def _redirect_to_failure(self, message):
         """ULTRA-FAST failure redirect"""
-        error_url = getattr(settings, 'PHONEPE_ERROR_REDIRECT_URL', 'http://localhost:3000/payment-error')
-        redirect_url = f"{error_url}?error={message}"
+        failed_url = getattr(settings, 'PHONEPE_FAILED_REDIRECT_URL', 'http://localhost:3000/failedbooking')
+        redirect_url = f"{failed_url}?error={message}"
         
         logger.info(f"❌ SPEED FAILURE redirect: {redirect_url}")
         return redirect(redirect_url)
@@ -275,3 +301,15 @@ class ProfessionalPaymentRedirectHandler(View):
         
         logger.info(f"⏳ SMART PENDING redirect: {redirect_url}")
         return redirect(redirect_url)
+
+    def _clean_cart_after_booking(self, cart):
+        """Clean cart after successful booking to prevent reuse"""
+        try:
+            # Mark cart as converted to prevent reuse
+            cart.status = cart.StatusChoices.CONVERTED
+            cart.save()
+            
+            logger.info(f"🧹 CART CLEANED: {cart.cart_id} status={cart.status}")
+        except Exception as e:
+            logger.error(f"⚠️ CART CLEANUP ERROR: {e}")
+            # Don't fail the booking for cleanup errors

@@ -140,11 +140,11 @@ class CartPaymentView(APIView):
             amount_in_rupees = cart.total_price
             amount_in_paisa = int(amount_in_rupees * 100)
             
-            # Create payment order with HYPER-SPEED redirect handler URL for instant response
+            # Create payment order with PROFESSIONAL redirect handler URL for safe payment verification
             payment_data = {
                 'amount': amount_in_paisa,
                 'description': f"Payment for cart {cart_id}",
-                'redirect_url': getattr(settings, 'PHONEPE_HYPER_SPEED_REDIRECT_URL', 'http://localhost:8000/api/payments/redirect/hyper/'),
+                'redirect_url': getattr(settings, 'PHONEPE_PROFESSIONAL_REDIRECT_URL', 'http://localhost:8000/api/payments/redirect/professional/'),
                 'cart_id': cart_id,
                 'address_id': address_id  # Include address_id for booking creation
             }

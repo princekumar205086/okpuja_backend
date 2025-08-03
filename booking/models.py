@@ -37,6 +37,20 @@ class Booking(models.Model):
         related_name='bookings',
         help_text="Original cart (kept for reference even if cart is deleted)"
     )
+    payment_order_id = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        help_text="Payment order ID associated with this booking"
+    )
+    # payment = models.ForeignKey(
+    #     'payments.PaymentOrder',
+    #     on_delete=models.SET_NULL,
+    #     null=True,
+    #     blank=True,
+    #     related_name='bookings',
+    #     help_text="Payment order associated with this booking"
+    # )
     book_id = models.CharField(
         max_length=50, 
         unique=True,
@@ -101,10 +115,11 @@ class Booking(models.Model):
     @property
     def total_amount(self):
         """Calculate total amount including any discounts"""
+        # First priority: use cart total
         if self.cart:
             return self.cart.total_price
         
-        # Fallback: try to get amount from payment order
+        # Fallback: try to get amount from payment order by matching
         try:
             from payments.models import PaymentOrder
             from datetime import timedelta
@@ -125,6 +140,52 @@ class Booking(models.Model):
         # Final fallback: return zero
         from decimal import Decimal
         return Decimal('0.00')
+    
+    @property 
+    def payment_details(self):
+        """Get payment details for this booking"""
+        try:
+            from payments.models import PaymentOrder
+            from datetime import timedelta
+            
+            payment = None
+            
+            # First try to find by payment_order_id if set
+            if self.payment_order_id:
+                payment = PaymentOrder.objects.filter(
+                    merchant_order_id=self.payment_order_id
+                ).first()
+            
+            # If not found, try to find by user, cart and time range
+            if not payment:
+                payment = PaymentOrder.objects.filter(
+                    user=self.user,
+                    status='SUCCESS',
+                    cart_id=self.cart.cart_id if self.cart else None,
+                    created_at__lte=self.created_at + timedelta(hours=1),
+                    created_at__gte=self.created_at - timedelta(hours=1)
+                ).first()
+            
+            if payment:
+                return {
+                    'payment_id': payment.merchant_order_id,
+                    'amount': payment.amount / 100,
+                    'status': payment.status,
+                    'payment_method': payment.payment_method,
+                    'transaction_id': getattr(payment, 'phonepe_transaction_id', None) or payment.merchant_order_id,
+                    'payment_date': payment.created_at
+                }
+        except Exception:
+            pass
+        
+        return {
+            'payment_id': 'N/A',
+            'amount': self.total_amount,
+            'status': 'Completed',
+            'payment_method': 'PhonePe',
+            'transaction_id': 'N/A',
+            'payment_date': self.created_at
+        }
 
     def send_status_notification(self):
         """Send notification based on booking status"""

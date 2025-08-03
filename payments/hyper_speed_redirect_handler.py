@@ -54,19 +54,27 @@ class HyperSpeedPaymentRedirectHandler(View):
                 logger.info(f"🚀 INSTANT SUCCESS: {existing_booking.book_id} in {processing_time:.3f}s")
                 return self._instant_redirect_success(existing_booking.book_id)
             
-            # HYPER-FAST: Create booking immediately (skip verification for speed)
-            booking = self._create_booking_instantly(latest_payment)
+            # CRITICAL FIX: Verify payment before creating booking
+            verification_result = self._verify_payment_quickly(latest_payment)
             
-            if booking:
-                processing_time = (timezone.now() - start_time).total_seconds()
-                logger.info(f"🚀 HYPER-FAST SUCCESS: {booking.book_id} in {processing_time:.3f}s")
+            if verification_result['success'] and verification_result['payment'].status == 'SUCCESS':
+                # Payment verified as successful - now create booking
+                booking = self._create_booking_instantly(verification_result['payment'])
                 
-                # ASYNC: Trigger background verification (don't wait for it)
-                self._trigger_async_verification(latest_payment)
-                
-                return self._instant_redirect_success(booking.book_id)
+                if booking:
+                    processing_time = (timezone.now() - start_time).total_seconds()
+                    logger.info(f"🚀 VERIFIED SUCCESS: {booking.book_id} in {processing_time:.3f}s")
+                    return self._instant_redirect_success(booking.book_id)
+                else:
+                    logger.error("❌ Fast booking creation failed after payment verification")
+                    return self._instant_redirect_pending()
+            elif verification_result['payment'].status in ['FAILED', 'CANCELLED']:
+                # Payment failed - redirect to failure page
+                logger.info(f"❌ Payment verification failed: {verification_result['payment'].status}")
+                return self._instant_redirect_failure("Payment was not successful")
             else:
-                logger.error("❌ Fast booking creation failed")
+                # Payment still pending - redirect to pending
+                logger.info(f"⏳ Payment still pending: {verification_result['payment'].status}")
                 return self._instant_redirect_pending()
                 
         except Exception as e:
@@ -161,30 +169,58 @@ class HyperSpeedPaymentRedirectHandler(View):
             except Exception as e:
                 logger.warning(f"Could not get address for user {cart.user.id}: {e}")
             
-            # Create booking instantly (OPTIMISTIC - assume payment is good)
+            # Create booking instantly (ONLY after payment verification)
             booking = Booking.objects.create(
                 cart=cart,
                 user=cart.user,
                 selected_date=cart.selected_date,
                 selected_time=selected_time,
                 address_id=address_id,  # Use address_id from payment directly
-                status='CONFIRMED'  # Optimistic confirmation for speed
+                status='CONFIRMED'  # Only set after payment verification
             )
-            
-            # INSTANT: Update payment status optimistically for speed
-            payment.status = 'SUCCESS'
-            payment.save()
             
             # POST-BOOKING CLEANUP: Clear the cart after successful booking
             self._clean_cart_after_booking(cart)
             
-            logger.info(f"🚀 INSTANT BOOKING: {booking.book_id} with address_id: {address_id}")
+            logger.info(f"🚀 VERIFIED BOOKING: {booking.book_id} with address_id: {address_id}")
             return booking
             
         except Exception as e:
             logger.error(f"❌ Instant booking error: {str(e)}")
             return None
     
+    def _verify_payment_quickly(self, payment):
+        """Quick payment verification with minimal delay"""
+        try:
+            logger.info(f"🚀 Quick verification for {payment.merchant_order_id}")
+            
+            payment_service = PaymentService()
+            result = payment_service.check_payment_status(payment.merchant_order_id)
+            
+            if result and result.get('success'):
+                updated_payment = result['payment_order']
+                logger.info(f"🚀 Verification result: {updated_payment.status}")
+                
+                return {
+                    'success': True,
+                    'payment': updated_payment
+                }
+            else:
+                logger.warning(f"⚠️ Verification failed: {result}")
+                return {
+                    'success': False,
+                    'payment': payment,
+                    'error': 'Verification failed'
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ Verification error: {str(e)}")
+            return {
+                'success': False,
+                'payment': payment,
+                'error': str(e)
+            }
+
     def _trigger_async_verification(self, payment):
         """Trigger background verification without waiting"""
         try:
@@ -206,6 +242,14 @@ class HyperSpeedPaymentRedirectHandler(View):
         logger.info(f"🚀 INSTANT SUCCESS: {redirect_url}")
         return redirect(redirect_url)
     
+    def _instant_redirect_failure(self, reason):
+        """INSTANT failure redirect"""
+        failure_url = getattr(settings, 'PHONEPE_FAILED_REDIRECT_URL', 'http://localhost:3000/failedbooking')
+        redirect_url = f"{failure_url}?reason={reason}&hyper_speed=true"
+        
+        logger.info(f"🚀 INSTANT FAILURE: {redirect_url}")
+        return redirect(redirect_url)
+
     def _instant_redirect_pending(self):
         """INSTANT pending redirect"""
         pending_url = getattr(settings, 'PHONEPE_PENDING_REDIRECT_URL', 'http://localhost:3000/payment-pending')
