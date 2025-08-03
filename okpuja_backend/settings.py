@@ -215,30 +215,31 @@ PHONEPE_AUTH_BASE_URL = os.getenv('PHONEPE_AUTH_BASE_URL', 'https://api-preprod.
 PHONEPE_PAYMENT_BASE_URL = os.getenv('PHONEPE_PAYMENT_BASE_URL', 'https://api-preprod.phonepe.com')
 PHONEPE_OAUTH_BASE_URL = os.getenv('PHONEPE_OAUTH_BASE_URL', 'https://api-preprod.phonepe.com')
 
-# Legacy V1 base URL
+# Phone API URLs (V2) - Production URLs
 if PHONEPE_ENV == 'PRODUCTION':
-    PHONEPE_BASE_URL = 'https://api.phonepe.com/apis/hermes'
-else:
-    PHONEPE_BASE_URL = 'https://api-preprod.phonepe.com/apis/hermes'
+    PHONEPE_AUTH_BASE_URL = 'https://api.phonepe.com'
+    PHONEPE_PAYMENT_BASE_URL = 'https://api.phonepe.com'
+    PHONEPE_OAUTH_BASE_URL = 'https://api.phonepe.com'
+
 
 # PhonePe URLs
-PHONEPE_REDIRECT_URL = os.getenv('PHONEPE_REDIRECT_URL', 'http://localhost:8000/api/payments/webhook/phonepe/')
-PHONEPE_CALLBACK_URL = os.getenv('PHONEPE_CALLBACK_URL', 'http://localhost:8000/api/payments/webhook/phonepe/')
+PHONEPE_REDIRECT_URL = os.getenv('PHONEPE_REDIRECT_URL', 'https://www.okpuja.com/api/payments/webhook/phonepe/')
+PHONEPE_CALLBACK_URL = os.getenv('PHONEPE_CALLBACK_URL', 'https://www.okpuja.com/api/payments/webhook/phonepe/')
 PHONEPE_FAILED_REDIRECT_URL = os.getenv('PHONEPE_FAILED_REDIRECT_URL', 'http://localhost:3000/failedbooking')
 PHONEPE_SUCCESS_REDIRECT_URL = os.getenv('PHONEPE_SUCCESS_REDIRECT_URL', 'http://localhost:3000/confirmbooking/')
 
 # Professional Ultra-Fast Redirect URLs
-PHONEPE_HYPER_SPEED_REDIRECT_URL = os.getenv('PHONEPE_HYPER_SPEED_REDIRECT_URL', 'http://localhost:8000/api/payments/redirect/hyper/')
-PHONEPE_PROFESSIONAL_REDIRECT_URL = os.getenv('PHONEPE_PROFESSIONAL_REDIRECT_URL', 'http://localhost:8000/api/payments/redirect/professional/')
+PHONEPE_HYPER_SPEED_REDIRECT_URL = os.getenv('PHONEPE_HYPER_SPEED_REDIRECT_URL', 'https://www.okpuja.com/api/payments/redirect/hyper/')
+PHONEPE_PROFESSIONAL_REDIRECT_URL = os.getenv('PHONEPE_PROFESSIONAL_REDIRECT_URL', 'https://www.okpuja.com/api/payments/redirect/professional/')
 PHONEPE_PENDING_REDIRECT_URL = os.getenv('PHONEPE_PENDING_REDIRECT_URL', 'http://localhost:3000/payment-pending')
 PHONEPE_ERROR_REDIRECT_URL = os.getenv('PHONEPE_ERROR_REDIRECT_URL', 'http://localhost:3000/payment-error')
 
 # Frontend Base URL
-FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'http://localhost:3000')
+FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'https://www.okpuja.com')
 
 # URL settings for PaymentService
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
-BACKEND_URL = os.getenv('BACKEND_URL', 'http://127.0.0.1:8000')
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://www.okpuja.com')
+BACKEND_URL = os.getenv('BACKEND_URL', 'https://api.okpuja.com')
 
 
 # Documentation

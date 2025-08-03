@@ -175,9 +175,11 @@ class CartPaymentView(APIView):
                     }
                 }, status=status.HTTP_201_CREATED)
             else:
+                error_message = result.get('error', result.get('message', 'Unknown payment service error'))
+                logger.error(f"Payment service failed: {error_message}")
                 return Response({
                     'success': False,
-                    'message': result['message']
+                    'message': f'Payment creation failed: {error_message}'
                 }, status=status.HTTP_400_BAD_REQUEST)
                 
         except Cart.DoesNotExist:
@@ -187,11 +189,28 @@ class CartPaymentView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             import traceback
-            logger.error(f"Error creating cart payment: {str(e)}")
-            logger.error(f"Traceback: {traceback.format_exc()}")
+            error_details = {
+                'error_type': type(e).__name__,
+                'error_message': str(e),
+                'traceback': traceback.format_exc()
+            }
+            logger.error(f"Error creating cart payment: {error_details}")
+            
+            # More specific error message based on error type
+            if hasattr(e, 'response') and hasattr(e.response, 'status_code'):
+                # HTTP request error
+                error_msg = f"External API error (HTTP {e.response.status_code})"
+            elif 'connection' in str(e).lower() or 'timeout' in str(e).lower():
+                error_msg = "Network connectivity issue with payment gateway"
+            elif 'authentication' in str(e).lower() or 'token' in str(e).lower():
+                error_msg = "Payment gateway authentication failed"
+            else:
+                error_msg = f"Payment service error: {str(e)}"
+            
             return Response({
                 'success': False,
-                'message': f'Internal server error: {str(e)}'
+                'message': error_msg,
+                'error_type': type(e).__name__
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
