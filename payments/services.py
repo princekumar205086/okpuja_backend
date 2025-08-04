@@ -8,6 +8,7 @@ import logging
 from datetime import timedelta
 from django.utils import timezone
 from django.conf import settings
+from django.db import models
 from .models import PaymentOrder, PaymentRefund
 from .phonepe_client import PhonePePaymentClient
 
@@ -399,6 +400,14 @@ class WebhookService:
                             logger.error(f"Failed to queue email notification: {e}")
                     else:
                         logger.error("Failed to create booking from cart")
+                
+                # Handle astrology booking confirmation
+                elif payment_order.metadata.get('booking_type') == 'astrology':
+                    success = self._confirm_astrology_booking(payment_order)
+                    if success:
+                        logger.info(f"Astrology booking confirmed via webhook: {payment_order.metadata.get('booking_id')}")
+                    else:
+                        logger.error(f"Failed to confirm astrology booking: {payment_order.metadata.get('booking_id')}")
                         
             # Handle checkout.order.failed
             elif event_type == 'checkout.order.failed' and payment_state == 'FAILED':
@@ -568,3 +577,141 @@ class WebhookService:
         
         if carts_to_cleanup:
             logger.info(f"Cart cleanup complete: removed {len(carts_to_cleanup)} old carts")
+
+    def _confirm_astrology_booking(self, payment_order):
+        """Confirm astrology booking after successful payment"""
+        try:
+            booking_id = payment_order.metadata.get('booking_id')
+            if not booking_id:
+                logger.error("No booking_id found in payment metadata")
+                return False
+            
+            # Import here to avoid circular imports
+            from astrology.models import AstrologyBooking
+            
+            # Get the booking
+            try:
+                booking = AstrologyBooking.objects.get(id=booking_id)
+            except AstrologyBooking.DoesNotExist:
+                logger.error(f"Astrology booking not found: {booking_id}")
+                return False
+            
+            # Update booking status to CONFIRMED
+            booking.status = 'CONFIRMED'
+            
+            # Update booking metadata with payment details
+            booking.metadata.update({
+                'payment_confirmed': True,
+                'payment_order_id': str(payment_order.id),
+                'merchant_order_id': payment_order.merchant_order_id,
+                'payment_amount': payment_order.amount,
+                'payment_completed_at': payment_order.completed_at.isoformat() if payment_order.completed_at else None,
+                'phonepe_transaction_id': payment_order.phonepe_transaction_id
+            })
+            
+            booking.save()
+            
+            logger.info(f"Astrology booking {booking_id} confirmed successfully after payment")
+            
+            # Send confirmation email to customer
+            try:
+                booking.send_booking_confirmation()
+                logger.info(f"Confirmation email sent for astrology booking {booking_id}")
+            except Exception as e:
+                logger.error(f"Failed to send confirmation email for astrology booking {booking_id}: {e}")
+            
+            # Send notification to admin
+            try:
+                self._send_admin_notification_astrology(booking)
+                logger.info(f"Admin notification sent for astrology booking {booking_id}")
+            except Exception as e:
+                logger.error(f"Failed to send admin notification for astrology booking {booking_id}: {e}")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to confirm astrology booking: {e}")
+            return False
+
+    def _send_admin_notification_astrology(self, booking):
+        """Send admin notification for new astrology booking"""
+        try:
+            from django.contrib.auth import get_user_model
+            from django.core.mail import send_mail
+            from django.conf import settings
+            
+            User = get_user_model()
+            
+            # Get admin users
+            admin_users = User.objects.filter(
+                models.Q(is_staff=True) | models.Q(role='ADMIN'),
+                is_active=True,
+                email__isnull=False
+            ).exclude(email='')
+            
+            admin_emails = [admin.email for admin in admin_users]
+            
+            if admin_emails:
+                subject = f"🔮 New Astrology Booking - #{booking.id} - {booking.service.title}"
+                
+                message = f"""
+📋 NEW ASTROLOGY BOOKING RECEIVED
+
+Booking Details:
+• Booking ID: #{booking.id}
+• Service: {booking.service.title}
+• Amount: ₹{booking.service.price}
+• Status: {booking.get_status_display()}
+• Duration: {booking.service.duration_minutes} minutes
+
+Customer Information:
+• Name: Customer (via {booking.contact_email})
+• Email: {booking.contact_email}
+• Phone: {booking.contact_phone}
+
+Session Details:
+• Preferred Date: {booking.preferred_date.strftime('%B %d, %Y')}
+• Preferred Time: {booking.preferred_time.strftime('%I:%M %p')}
+• Language: {booking.language}
+
+Birth Information:
+• Birth Place: {booking.birth_place}
+• Birth Date: {booking.birth_date.strftime('%B %d, %Y')}
+• Birth Time: {booking.birth_time.strftime('%I:%M %p')}
+• Gender: {booking.get_gender_display()}
+
+Customer Questions:
+{booking.questions if booking.questions else 'No specific questions provided.'}
+
+Payment Information:
+• Payment Status: Confirmed ✅
+• Amount Paid: ₹{booking.service.price}
+• Payment Method: PhonePe
+
+Next Steps:
+1. Review customer's birth details and questions
+2. Prepare consultation materials
+3. Contact customer before the session
+4. Ensure you're available at the scheduled time
+
+Admin Panel: http://localhost:8000/admin/astrology/astrologybooking/{booking.id}/
+
+---
+This is an automated notification from OKPUJA Astrology System.
+                """
+                
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    admin_emails,
+                    fail_silently=False,
+                )
+                
+                logger.info(f"Admin notification sent to {len(admin_emails)} administrators")
+            else:
+                logger.warning("No admin email addresses found for astrology booking notification")
+                
+        except Exception as e:
+            logger.error(f"Failed to send admin notification: {e}")
+            raise

@@ -90,3 +90,51 @@ class CreateAstrologyBookingSerializer(serializers.ModelSerializer):
     def validate(self, data):
         # Add custom validation logic here
         return data
+
+class AstrologyBookingWithPaymentSerializer(serializers.Serializer):
+    """Serializer for creating astrology booking with payment"""
+    
+    # Booking fields
+    service = serializers.PrimaryKeyRelatedField(queryset=AstrologyService.objects.filter(is_active=True))
+    language = serializers.CharField(max_length=50)
+    preferred_date = serializers.DateField()
+    preferred_time = serializers.TimeField()
+    birth_place = serializers.CharField(max_length=255)
+    birth_date = serializers.DateField()
+    birth_time = serializers.TimeField()
+    gender = serializers.ChoiceField(choices=AstrologyBooking.GENDER_CHOICES)
+    questions = serializers.CharField(required=False, allow_blank=True)
+    contact_email = serializers.EmailField()
+    contact_phone = serializers.CharField(max_length=15)
+    
+    # Payment fields
+    redirect_url = serializers.URLField(help_text="URL to redirect after payment completion")
+    
+    def validate(self, data):
+        """Validate the booking data"""
+        from datetime import date, datetime, time
+        
+        # Validate preferred_date is not in the past
+        if data['preferred_date'] < date.today():
+            raise serializers.ValidationError({
+                'preferred_date': 'Preferred date cannot be in the past'
+            })
+        
+        # Validate birth_date is not in the future
+        if data['birth_date'] > date.today():
+            raise serializers.ValidationError({
+                'birth_date': 'Birth date cannot be in the future'
+            })
+        
+        # Validate time format
+        if not isinstance(data['preferred_time'], time):
+            raise serializers.ValidationError({
+                'preferred_time': 'Invalid time format'
+            })
+        
+        if not isinstance(data['birth_time'], time):
+            raise serializers.ValidationError({
+                'birth_time': 'Invalid time format'
+            })
+        
+        return data

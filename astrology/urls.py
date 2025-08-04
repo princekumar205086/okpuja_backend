@@ -10,7 +10,8 @@ from .views import (
     AstrologyBookingCreateView,
     AstrologyBookingDetailView,
     AstrologyBookingUpdateView,
-    AstrologyBookingDeleteView
+    AstrologyBookingDeleteView,
+    AstrologyBookingWithPaymentView
 )
 
 urlpatterns = [
@@ -22,6 +23,7 @@ urlpatterns = [
     path('services/<int:pk>/image/', AstrologyServiceImageUploadView.as_view(), name='astrology-service-image-upload'),
     path('bookings/', AstrologyBookingListView.as_view(), name='astrology-booking-list'),
     path('bookings/create/', AstrologyBookingCreateView.as_view(), name='astrology-booking-create'),
+    path('bookings/book-with-payment/', AstrologyBookingWithPaymentView.as_view(), name='astrology-booking-with-payment'),
     path('bookings/<int:pk>/', AstrologyBookingDetailView.as_view(), name='astrology-booking-detail'),
     path('bookings/<int:pk>/update/', AstrologyBookingUpdateView.as_view(), name='astrology-booking-update'),
     path('bookings/<int:pk>/delete/', AstrologyBookingDeleteView.as_view(), name='astrology-booking-delete'),

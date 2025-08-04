@@ -220,6 +220,7 @@ class AstrologyBooking(models.Model):
     )
     contact_email = models.EmailField()
     contact_phone = models.CharField(max_length=15)
+    metadata = models.JSONField(default=dict, blank=True, help_text="Payment and booking metadata")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

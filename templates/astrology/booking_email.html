@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astrology Booking Confirmation - OKPUJA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+        }
+        .booking-details {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border-left: 4px solid #ff6b35;
+        }
+        .service-info {
+            background: #e3f2fd;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 6px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+        .highlight {
+            color: #ff6b35;
+            font-weight: bold;
+        }
+        .button {
+            display: inline-block;
+            background: #ff6b35;
+            color: white;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔮 OKPUJA - Astrology Services</h1>
+        <h2>Booking Confirmation</h2>
+    </div>
+
+    <div class="content">
+        <p>Dear {{ booking.contact_email|default:"Valued Customer" }},</p>
+        
+        <p>Thank you for booking an astrology consultation with OKPUJA! Your booking has been confirmed and we're excited to provide you with personalized astrological insights.</p>
+
+        <div class="booking-details">
+            <h3>📋 Booking Details</h3>
+            <p><strong>Booking ID:</strong> #{{ booking.id }}</p>
+            <p><strong>Status:</strong> <span class="highlight">{{ booking.get_status_display }}</span></p>
+            <p><strong>Service:</strong> {{ service.title }}</p>
+            <p><strong>Price:</strong> ₹{{ service.price }}</p>
+            <p><strong>Duration:</strong> {{ service.duration_minutes }} minutes</p>
+        </div>
+
+        <div class="service-info">
+            <h3>🌟 Service Information</h3>
+            <p><strong>Service Type:</strong> {{ service.get_service_type_display }}</p>
+            <p><strong>Description:</strong> {{ service.description }}</p>
+        </div>
+
+        <div class="booking-details">
+            <h3>📅 Session Details</h3>
+            <p><strong>Preferred Date:</strong> {{ booking.preferred_date|date:"F d, Y" }}</p>
+            <p><strong>Preferred Time:</strong> {{ booking.preferred_time|time:"g:i A" }}</p>
+            <p><strong>Language:</strong> {{ booking.language }}</p>
+        </div>
+
+        <div class="booking-details">
+            <h3>👤 Personal Information</h3>
+            <p><strong>Birth Place:</strong> {{ booking.birth_place }}</p>
+            <p><strong>Birth Date:</strong> {{ booking.birth_date|date:"F d, Y" }}</p>
+            <p><strong>Birth Time:</strong> {{ booking.birth_time|time:"g:i A" }}</p>
+            <p><strong>Gender:</strong> {{ booking.get_gender_display }}</p>
+            {% if booking.questions %}
+            <p><strong>Your Questions:</strong></p>
+            <p style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-style: italic;">{{ booking.questions }}</p>
+            {% endif %}
+        </div>
+
+        <div class="booking-details">
+            <h3>📱 Contact Information</h3>
+            <p><strong>Email:</strong> {{ booking.contact_email }}</p>
+            <p><strong>Phone:</strong> {{ booking.contact_phone }}</p>
+        </div>
+
+        <h3>🔮 What Happens Next?</h3>
+        <ul>
+            <li>Our expert astrologer will review your birth details</li>
+            <li>You'll receive a confirmation call/message before your session</li>
+            <li>Please ensure you're available at the preferred time</li>
+            <li>Keep your birth details handy during the consultation</li>
+        </ul>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="tel:+91-XXX-XXX-XXXX" class="button">📞 Contact Us</a>
+        </div>
+
+        <p><strong>Need to make changes?</strong> Please contact us at least 24 hours before your scheduled time.</p>
+        
+        <p>We look forward to providing you with valuable astrological insights!</p>
+        
+        <p>Warm regards,<br>
+        <strong>Team OKPUJA</strong><br>
+        Your Trusted Astrology Partner</p>
+    </div>
+
+    <div class="footer">
+        <p>© 2025 OKPUJA - All Rights Reserved</p>
+        <p>This is an automated email. Please do not reply to this email.</p>
+        <p>For support, contact us at contact@okpuja.com</p>
+    </div>
+</body>
+</html>
