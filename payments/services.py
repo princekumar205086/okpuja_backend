@@ -19,8 +19,18 @@ class PaymentService:
     
     def __init__(self, environment=None):
         """Initialize payment service"""
-        self.environment = environment or getattr(settings, 'PHONEPE_ENV', 'uat').lower()
+        # Get environment from settings, default to UAT
+        env_setting = getattr(settings, 'PHONEPE_ENV', 'uat').lower()
+        self.environment = environment or env_setting
+        
+        # Ensure environment is properly formatted
+        if self.environment.upper() == 'PRODUCTION':
+            self.environment = 'production'
+        else:
+            self.environment = 'uat'
+            
         self.client = PhonePePaymentClient(environment=self.environment)
+        logger.info(f"PaymentService initialized with environment: {self.environment}")
     
     def create_payment_order(self, user, amount, redirect_url, description=None, metadata=None, cart_id=None, address_id=None):
         """
@@ -50,7 +60,7 @@ class PaymentService:
                 merchant_order_id=merchant_order_id,
                 user=user,
                 cart_id=cart_id,
-                address_id=address_id,  # Store selected address ID
+                address_id=address_id,  
                 amount=amount,
                 description=description or f"Payment for ₹{amount/100}",
                 redirect_url=redirect_url,

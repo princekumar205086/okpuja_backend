@@ -28,12 +28,15 @@ class PhonePePaymentClient:
         
         # Set environment URLs based on Postman documentation
         if environment == "production":
-            self.base_url = "https://api.phonepe.com/apis/pg-sandbox"
-            self.client_id = getattr(settings, 'PHONEPE_PROD_CLIENT_ID', '')
-            self.client_secret = getattr(settings, 'PHONEPE_PROD_CLIENT_SECRET', '')
+            # Production environment
+            self.oauth_base_url = "https://api.phonepe.com/apis/identity-manager"
+            self.pg_base_url = "https://api.phonepe.com/apis/pg"
+            self.client_id = getattr(settings, 'PHONEPE_CLIENT_ID', '')
+            self.client_secret = getattr(settings, 'PHONEPE_CLIENT_SECRET', '')
         else:
             # UAT environment (default)
-            self.base_url = "https://api-preprod.phonepe.com/apis/pg-sandbox"
+            self.oauth_base_url = "https://api-preprod.phonepe.com/apis/identity-manager"
+            self.pg_base_url = "https://api-preprod.phonepe.com/apis/pg-sandbox"
             self.client_id = getattr(settings, 'PHONEPE_CLIENT_ID', '')
             self.client_secret = getattr(settings, 'PHONEPE_CLIENT_SECRET', '')
         
@@ -41,13 +44,15 @@ class PhonePePaymentClient:
         self.merchant_id = getattr(settings, 'PHONEPE_MERCHANT_ID', '')
         
         # API Endpoints based on Postman documentation
-        self.oauth_url = f"{self.base_url}/v1/oauth/token"
-        self.payment_url = f"{self.base_url}/checkout/v2/pay"
-        self.status_url = f"{self.base_url}/checkout/v2/order"
-        self.refund_url = f"{self.base_url}/payments/v2/refund"
-        self.refund_status_url = f"{self.base_url}/payments/v2/refund"
+        self.oauth_url = f"{self.oauth_base_url}/v1/oauth/token"
+        self.payment_url = f"{self.pg_base_url}/checkout/v2/pay"
+        self.status_url = f"{self.pg_base_url}/checkout/v2/order"
+        self.refund_url = f"{self.pg_base_url}/payments/v2/refund"
+        self.refund_status_url = f"{self.pg_base_url}/payments/v2/refund"
         
         logger.info(f"PhonePe Client initialized for {environment} environment")
+        logger.info(f"OAuth URL: {self.oauth_url}")
+        logger.info(f"Payment URL: {self.payment_url}")
     
     def get_access_token(self):
         """
