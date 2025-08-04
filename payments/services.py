@@ -485,6 +485,7 @@ class WebhookService:
             booking = Booking.objects.create(
                 user=payment_order.user,
                 cart=cart,
+                payment_order_id=payment_order.merchant_order_id,  # Link payment to booking
                 selected_date=cart.selected_date,
                 selected_time=selected_time,
                 address=address,  # Can be None

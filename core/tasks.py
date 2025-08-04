@@ -19,8 +19,9 @@ def send_booking_confirmation(booking_id):
         ).get(id=booking_id)
         
         subject = f"🙏 Booking Confirmed & Invoice - {booking.book_id}"
-        html_message = render_to_string('emails/booking_invoice.html', {
-            'booking': booking
+        html_message = render_to_string('emails/booking_confirmation_professional.html', {
+            'booking': booking,
+            'MEDIA_URL': settings.MEDIA_URL
         })
         
         send_mail(
