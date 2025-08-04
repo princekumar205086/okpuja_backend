@@ -24,20 +24,33 @@ def send_booking_confirmation(booking_id):
             'MEDIA_URL': settings.MEDIA_URL
         })
         
-        send_mail(
+        # Create EmailMessage to support attachments
+        from django.core.mail import EmailMessage
+        
+        email = EmailMessage(
             subject,
-            f"Your booking {booking.book_id} has been confirmed. Please find the invoice details in the email.",
+            html_message,
             settings.DEFAULT_FROM_EMAIL,
-            [booking.user.email],
-            html_message=html_message
+            [booking.user.email]
         )
+        email.content_subtype = "html"
+        
+        # Generate and attach invoice PDF
+        try:
+            from booking.invoice_views import generate_invoice_pdf_data
+            pdf_data = generate_invoice_pdf_data(booking)
+            email.attach(f'OkPuja-Invoice-{booking.book_id}.pdf', pdf_data, 'application/pdf')
+        except Exception as e:
+            logger.warning(f"Failed to attach invoice PDF: {str(e)}")
+        
+        email.send()
         
         # Also send notification to admin
         send_mail(
             f"New Booking Confirmed - {booking.book_id}",
             f"Booking {booking.book_id} for {booking.user.email} has been confirmed.",
             settings.DEFAULT_FROM_EMAIL,
-            [settings.ADMIN_EMAIL],
+            [settings.ADMIN_EMAIL] if hasattr(settings, 'ADMIN_EMAIL') else ['support@okpuja.com'],
         )
         
         logger.info(f"Booking confirmation email sent for {booking.book_id}")

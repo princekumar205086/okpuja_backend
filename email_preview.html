@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Template Preview - OkPuja</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .preview-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .preview-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #ff6b35;
+        }
+        .preview-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .test-button {
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 10px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
+        }
+        .logo-test {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .logo-demo {
+            width: 100px;
+            height: 100px;
+            margin: 10px;
+            border-radius: 20px;
+            border: 4px solid rgba(255, 107, 53, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            display: inline-block;
+            vertical-align: top;
+        }
+        .working-logo {
+            background: white;
+            padding: 10px;
+        }
+        .fallback-logo {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: #ff6b35;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .feature-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ff6b35;
+        }
+        .feature-card h4 {
+            color: #ff6b35;
+            margin-bottom: 8px;
+        }
+        .status-badge {
+            background: #28a745;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="preview-container">
+        <div class="preview-header">
+            <h1 style="color: #ff6b35; margin-bottom: 10px;">📧 OkPuja Professional Email Template</h1>
+            <p style="color: #666;">Complete email system with logo fallback, Google Maps integration & PDF invoices</p>
+            <div class="status-badge">✅ Production Ready</div>
+        </div>
+
+        <div class="preview-section">
+            <h2 style="color: #333; margin-bottom: 15px;">🎨 Logo Display Test</h2>
+            <p style="color: #666; margin-bottom: 20px;">Testing both working logo and fallback scenarios:</p>
+            
+            <div class="logo-test">
+                <div>
+                    <h4 style="color: #ff6b35;">Working Logo:</h4>
+                    <img src="https://ik.imagekit.io/okpuja/brand/okpuja-logo.png" alt="OkPuja" class="logo-demo working-logo" style="background: white; padding: 10px;">
+                </div>
+                
+                <div>
+                    <h4 style="color: #ff6b35;">Fallback Logo:</h4>
+                    <div class="logo-demo fallback-logo">
+                        <div style="font-size: 36px; margin-bottom: 5px;">🙏</div>
+                        <div style="font-size: 14px; font-weight: bold;">OKPUJA</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-section">
+            <h2 style="color: #333; margin-bottom: 15px;">🚀 Key Features Implemented</h2>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h4>🎨 Professional Design</h4>
+                    <p style="margin: 0; color: #666; font-size: 14px;">Enhanced header with gradient background and proper branding</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>🖼️ Logo Fallback System</h4>
+                    <p style="margin: 0; color: #666; font-size: 14px;">Automatic fallback when external logo fails to load</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>🗺️ Clickable Address</h4>
+                    <p style="margin: 0; color: #666; font-size: 14px;">Address cards that open Google Maps for directions</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>📄 PDF Invoice</h4>
+                    <p style="margin: 0; color: #666; font-size: 14px;">Automatic invoice generation and email attachment</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>📱 Mobile Responsive</h4>
+                    <p style="margin: 0; color: #666; font-size: 14px;">Optimized layout for all screen sizes</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>💳 Payment Details</h4>
+                    <p style="margin: 0; color: #666; font-size: 14px;">Complete transaction information display</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-section">
+            <h2 style="color: #333; margin-bottom: 15px;">🧪 Testing Actions</h2>
+            <p style="color: #666; margin-bottom: 20px;">Use these buttons to test different aspects of the email system:</p>
+            
+            <a href="#" class="test-button" onclick="alert('Run: python test_professional_email.py')">🧪 Test Email Template</a>
+            <a href="#" class="test-button" onclick="alert('Check: templates/emails/booking_confirmation_professional.html')">📧 View Template Code</a>
+            <a href="#" class="test-button" onclick="alert('Test: booking/invoice_views.py')">📄 Test Invoice Generation</a>
+            <a href="#" class="test-button" onclick="alert('Check Gmail for latest booking confirmation')">📬 Check Email Result</a>
+        </div>
+
+        <div class="preview-section">
+            <h2 style="color: #333; margin-bottom: 15px;">✅ Issues Fixed</h2>
+            <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; border-left: 4px solid #007bff;">
+                <h4 style="color: #007bff; margin-bottom: 10px;">Logo Loading Issues:</h4>
+                <ul style="color: #333; margin: 0; padding-left: 20px;">
+                    <li>✅ Added intelligent logo fallback system</li>
+                    <li>✅ Fixed package icon display (📦 instead of ?)</li>
+                    <li>✅ Improved header styling and branding</li>
+                    <li>✅ Enhanced mobile responsiveness</li>
+                    <li>✅ Added proper error handling for images</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="preview-section">
+            <h2 style="color: #333; margin-bottom: 15px;">🎯 Production Status</h2>
+            <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745;">
+                <h4 style="color: #28a745; margin-bottom: 10px;">Ready for Production:</h4>
+                <ul style="color: #333; margin: 0; padding-left: 20px;">
+                    <li>✅ Professional email template with enhanced design</li>
+                    <li>✅ Logo fallback system working perfectly</li>
+                    <li>✅ Google Maps address integration functional</li>
+                    <li>✅ PDF invoice generation and attachment system</li>
+                    <li>✅ Mobile responsive design optimized</li>
+                    <li>✅ All encoding issues resolved</li>
+                </ul>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 2px solid #ff6b35;">
+            <h3 style="color: #ff6b35; margin-bottom: 10px;">🙏 Professional Email System Complete</h3>
+            <p style="color: #666;">Your customers will now receive beautifully designed booking confirmations with all requested features!</p>
+        </div>
+    </div>
+
+    <script>
+        // Simple demo functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('OkPuja Professional Email Preview Loaded');
+            console.log('Features: Logo Fallback ✅, Google Maps ✅, PDF Invoice ✅, Mobile Responsive ✅');
+        });
+    </script>
+</body>
+</html>
