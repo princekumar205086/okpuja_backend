@@ -77,6 +77,7 @@ class PaymentRedirectHandler(View):
                     # Handle different types of payments
                     booking_id = None
                     astro_book_id = None
+                    frontend_base = None
                     
                     # Check if this is an astrology booking
                     if payment_order.metadata.get('booking_type') == 'astrology':
@@ -99,14 +100,13 @@ class PaymentRedirectHandler(View):
                                 else:
                                     logger.error(f"Failed to create astrology booking during redirect for {merchant_order_id}")
                             
-                            # Get the original frontend URL from metadata
-                            frontend_base = payment_order.metadata.get('frontend_redirect_url', settings.FRONTEND_BASE_URL)
-                            if frontend_base.endswith('/'):
-                                frontend_base = frontend_base.rstrip('/')
-                            
                         except Exception as e:
                             logger.warning(f"Could not get/create astrology booking for payment {payment_order.id}: {e}")
-                            frontend_base = settings.FRONTEND_BASE_URL
+                        
+                        # Get the original frontend URL from metadata for astrology bookings
+                        frontend_base = payment_order.metadata.get('frontend_redirect_url', 'https://okpuja.com')
+                        if frontend_base.endswith('/'):
+                            frontend_base = frontend_base.rstrip('/')
                     
                     # ENSURE booking exists for cart-based payments
                     elif payment_order.cart_id:
@@ -133,14 +133,14 @@ class PaymentRedirectHandler(View):
                             logger.warning(f"Could not get/create booking for cart {payment_order.cart_id}: {e}")
                     
                     # Build redirect URL based on booking type
-                    if astro_book_id:
-                        # Astrology booking - redirect to astro success page
-                        redirect_url = f"{frontend_base}/astro-booking-success?astro_book_id={astro_book_id}&merchant_order_id={merchant_order_id}"
-                        logger.info(f"Redirecting to astrology success page with astro_book_id: {astro_book_id}")
+                    if astro_book_id and frontend_base:
+                        # Astrology booking - redirect to astro success page with astro_book_id as merchant_order_id
+                        redirect_url = f"{frontend_base}/astro-booking-success?merchant_order_id={astro_book_id}"
+                        logger.info(f"Redirecting to astrology success page: {redirect_url}")
                     elif booking_id:
-                        # Regular booking - use existing URL
+                        # Regular puja booking - use existing URL (keep unchanged)
                         redirect_url = f"{success_url}?book_id={booking_id}&order_id={merchant_order_id}&transaction_id={transaction_id or ''}"
-                        logger.info(f"Redirecting to success page with booking ID: {booking_id}")
+                        logger.info(f"Redirecting to puja success page with booking ID: {booking_id}")
                     else:
                         # No booking found - redirect to generic success
                         redirect_url = f"{success_url}?order_id={merchant_order_id}&transaction_id={transaction_id or ''}&status=no_booking"
@@ -149,11 +149,11 @@ class PaymentRedirectHandler(View):
                     return redirect(redirect_url)
                     
                 elif status in ['FAILED', 'CANCELLED']:
-                    # Extract frontend_base from metadata
-                    frontend_base = payment_order.metadata.get('frontend_redirect_url', settings.FRONTEND_BASE_URL).rstrip('/')
-                    
                     # Check if this is an astrology booking
                     if payment_order.metadata.get('booking_type') == 'astrology':
+                        # Extract frontend_base from metadata for astrology bookings
+                        frontend_base = payment_order.metadata.get('frontend_redirect_url', 'https://okpuja.com').rstrip('/')
+                        
                         # Try to get astro_book_id if booking exists
                         astro_book_id = None
                         try:
@@ -164,17 +164,17 @@ class PaymentRedirectHandler(View):
                         except Exception as e:
                             logger.warning(f"Could not get astrology booking for failed payment: {e}")
                         
-                        # Astrology booking - redirect to astro failed page
+                        # Astrology booking - redirect to astro failed page with astro_book_id as merchant_order_id
                         if astro_book_id:
-                            redirect_url = f"{frontend_base}/astro-booking-failed?astro_book_id={astro_book_id}&merchant_order_id={merchant_order_id}&reason={status.lower()}"
+                            redirect_url = f"{frontend_base}/astro-booking-failed?merchant_order_id={astro_book_id}&reason={status.lower()}"
                         else:
                             redirect_url = f"{frontend_base}/astro-booking-failed?merchant_order_id={merchant_order_id}&reason={status.lower()}"
-                        logger.info(f"Redirecting to astrology failure page for order: {merchant_order_id}, status: {status}")
+                        logger.info(f"Redirecting to astrology failure page: {redirect_url}")
                     else:
-                        # Regular booking - use existing failed URL
+                        # Regular puja booking - use existing failed URL (keep unchanged)
                         failed_url = getattr(settings, 'PHONEPE_FAILED_REDIRECT_URL', f"{settings.FRONTEND_BASE_URL}/payment/failed")
                         redirect_url = f"{failed_url}?order_id={merchant_order_id}&transaction_id={transaction_id or ''}&reason={status.lower()}"
-                        logger.info(f"Redirecting to failure page for order: {merchant_order_id}, status: {status}")
+                        logger.info(f"Redirecting to puja failure page for order: {merchant_order_id}, status: {status}")
                     
                     return redirect(redirect_url)
                     
