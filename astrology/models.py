@@ -225,6 +225,12 @@ class AstrologyBooking(models.Model):
     )
     contact_email = models.EmailField()
     contact_phone = models.CharField(max_length=15)
+    
+    # Google Meet session details
+    google_meet_link = models.URLField(blank=True, null=True, help_text="Google Meet link for the astrology session")
+    session_notes = models.TextField(blank=True, null=True, help_text="Additional notes about the session")
+    is_session_scheduled = models.BooleanField(default=False, help_text="Whether admin has scheduled the session")
+    
     metadata = models.JSONField(default=dict, blank=True, help_text="Payment and booking metadata")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -255,28 +261,141 @@ class AstrologyBooking(models.Model):
             self.astro_book_id = f"ASTRO_BOOK_{today}_{unique_id}"
         
         is_new = self.pk is None
+        
+        # Check if Google Meet link was just added
+        google_meet_link_added = False
+        if not is_new and self.google_meet_link:
+            # Get the old instance to compare
+            try:
+                old_instance = AstrologyBooking.objects.get(pk=self.pk)
+                if not old_instance.google_meet_link and self.google_meet_link:
+                    google_meet_link_added = True
+                    self.is_session_scheduled = True
+            except AstrologyBooking.DoesNotExist:
+                pass
+        
         super().save(*args, **kwargs)
         
-        # Only send confirmation for new bookings (already confirmed after payment)
+        # Send notifications
         if is_new and self.contact_email:
+            # Send confirmation to user and notification to admin
             self.send_booking_confirmation()
+            self.send_admin_notification()
+        elif google_meet_link_added:
+            # Send Google Meet link to user
+            self.send_session_link_notification()
 
     def send_booking_confirmation(self):
-        subject = f"Booking Confirmation for {self.service.title}"
-        html_message = render_to_string('astrology/booking_email.html', {
+        """Send booking confirmation email to user"""
+        subject = f"Booking Confirmation - {self.service.title}"
+        html_message = render_to_string('astrology/booking_confirmation_email.html', {
             'booking': self,
-            'service': self.service
+            'service': self.service,
+            'user_name': self.user.full_name if self.user else 'Valued Customer'
         })
         plain_message = strip_tags(html_message)
         
-        send_mail(
-            subject,
-            plain_message,
-            settings.DEFAULT_FROM_EMAIL,
-            [self.contact_email],
-            html_message=html_message,
-            fail_silently=False
-        )
+        try:
+            send_mail(
+                subject,
+                plain_message,
+                settings.DEFAULT_FROM_EMAIL,
+                [self.contact_email],
+                html_message=html_message,
+                fail_silently=False
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to send booking confirmation email: {e}")
+
+    def send_admin_notification(self):
+        """Send new booking notification to admin"""
+        admin_emails = getattr(settings, 'ASTROLOGY_ADMIN_EMAILS', ['admin@okpuja.com'])
+        
+        subject = f"New Astrology Booking - {self.astro_book_id}"
+        html_message = render_to_string('astrology/admin_booking_notification.html', {
+            'booking': self,
+            'service': self.service,
+            'admin_panel_url': f"{getattr(settings, 'FRONTEND_BASE_URL', 'https://www.okpuja.com')}/admin/astrology/astrologybooking/{self.pk}/change/"
+        })
+        plain_message = strip_tags(html_message)
+        
+        try:
+            send_mail(
+                subject,
+                plain_message,
+                settings.DEFAULT_FROM_EMAIL,
+                admin_emails,
+                html_message=html_message,
+                fail_silently=False
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to send admin notification email: {e}")
+
+    def send_session_link_notification(self):
+        """Send Google Meet session link to user"""
+        if not self.google_meet_link:
+            return
+            
+        subject = f"Your Astrology Session Link - {self.service.title}"
+        html_message = render_to_string('astrology/session_link_email.html', {
+            'booking': self,
+            'service': self.service,
+            'user_name': self.user.full_name if self.user else 'Valued Customer',
+            'google_meet_link': self.google_meet_link,
+            'session_notes': self.session_notes
+        })
+        plain_message = strip_tags(html_message)
+        
+        try:
+            send_mail(
+                subject,
+                plain_message,
+                settings.DEFAULT_FROM_EMAIL,
+                [self.contact_email],
+                html_message=html_message,
+                fail_silently=False
+            )
+            
+            # Also send notification to admin that link was sent
+            self.send_admin_session_link_notification()
+            
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to send session link email: {e}")
+
+    def send_admin_session_link_notification(self):
+        """Notify admin that session link was sent to user"""
+        admin_emails = getattr(settings, 'ASTROLOGY_ADMIN_EMAILS', ['admin@okpuja.com'])
+        
+        subject = f"Session Link Sent - {self.astro_book_id}"
+        message = f"""
+Session link has been sent to the customer for booking {self.astro_book_id}.
+
+Customer: {self.contact_email}
+Service: {self.service.title}
+Session Date: {self.preferred_date} at {self.preferred_time}
+Google Meet Link: {self.google_meet_link}
+
+The customer has been notified and should receive the session details.
+        """
+        
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                admin_emails,
+                fail_silently=False
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to send admin session link notification: {e}")
 
 def upload_to_imagekit(file, file_name, folder=None, is_private=False):
     """Enhanced helper function to upload files to ImageKit with better error handling"""

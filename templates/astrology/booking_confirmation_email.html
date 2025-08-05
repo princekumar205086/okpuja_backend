@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Confirmation - {{ service.title }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #ff7b00 0%, #ff9500 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: #f9f9f9;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+        }
+        .booking-details {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #ff7b00;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #555;
+        }
+        .detail-value {
+            color: #333;
+        }
+        .cta-button {
+            background: #ff7b00;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            display: inline-block;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 30px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">🕉️ OKPUJA</div>
+        <h1>Booking Confirmed!</h1>
+        <p>Your astrology consultation has been successfully booked</p>
+    </div>
+    
+    <div class="content">
+        <h2>Dear {{ user_name }},</h2>
+        
+        <p>Thank you for booking your astrology consultation with OKPUJA. Your booking has been confirmed and payment has been processed successfully.</p>
+        
+        <div class="booking-details">
+            <h3>📋 Booking Details</h3>
+            
+            <div class="detail-row">
+                <span class="detail-label">Booking ID:</span>
+                <span class="detail-value">{{ booking.astro_book_id }}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Service:</span>
+                <span class="detail-value">{{ service.title }}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Consultation Date:</span>
+                <span class="detail-value">{{ booking.preferred_date|date:"F d, Y" }}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Consultation Time:</span>
+                <span class="detail-value">{{ booking.preferred_time|time:"g:i A" }}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Duration:</span>
+                <span class="detail-value">{{ service.duration_minutes }} minutes</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Language:</span>
+                <span class="detail-value">{{ booking.language }}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Contact Email:</span>
+                <span class="detail-value">{{ booking.contact_email }}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Contact Phone:</span>
+                <span class="detail-value">{{ booking.contact_phone }}</span>
+            </div>
+        </div>
+        
+        <div class="booking-details">
+            <h3>🔮 What's Next?</h3>
+            <ul>
+                <li><strong>Session Link:</strong> You will receive a Google Meet link via email 24-48 hours before your consultation.</li>
+                <li><strong>Preparation:</strong> Please have your birth details ready and any specific questions you'd like to ask.</li>
+                <li><strong>Technical Setup:</strong> Ensure you have a stable internet connection and access to Google Meet.</li>
+                <li><strong>Contact:</strong> If you need to reschedule or have any questions, please contact us immediately.</li>
+            </ul>
+        </div>
+        
+        {% if booking.questions %}
+        <div class="booking-details">
+            <h3>💭 Your Questions</h3>
+            <p>{{ booking.questions }}</p>
+        </div>
+        {% endif %}
+        
+        <div style="text-align: center;">
+            <a href="https://www.okpuja.com/astro-booking-success?astro_book_id={{ booking.astro_book_id }}" class="cta-button">
+                View Booking Details
+            </a>
+        </div>
+        
+        <div class="footer">
+            <p><strong>Important:</strong> Please save this email for your records. You'll need your Booking ID for any future communication.</p>
+            <p>For support, contact us at <a href="mailto:support@okpuja.com">support@okpuja.com</a> or call +91-XXXXXXXXXX</p>
+            <p>&copy; 2025 OKPUJA. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Astrology Session Link - {{ service.title }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #6a5acd 0%, #836fff 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: #f9f9f9;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+        }
+        .session-details {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #6a5acd;
+        }
+        .meet-link {
+            background: #e8f5e8;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 2px solid #4caf50;
+            text-align: center;
+        }
+        .meet-button {
+            background: #4caf50;
+            color: white;
+            padding: 15px 40px;
+            text-decoration: none;
+            border-radius: 8px;
+            display: inline-block;
+            margin: 10px 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #555;
+        }
+        .detail-value {
+            color: #333;
+        }
+        .important-notes {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #ffc107;
+        }
+        .footer {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 30px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">🔮 OKPUJA</div>
+        <h1>Your Session is Ready!</h1>
+        <p>Google Meet link for your astrology consultation</p>
+    </div>
+    
+    <div class="content">
+        <h2>Dear {{ user_name }},</h2>
+        
+        <p>Great news! Your astrology session has been scheduled and the Google Meet link is ready. Please join the session at your scheduled time using the link below.</p>
+        
+        <div class="meet-link">
+            <h3>🎥 Join Your Session</h3>
+            <a href="{{ google_meet_link }}" class="meet-button" target="_blank">
+                JOIN GOOGLE MEET
+            </a>
+            <p><small>Click the button above or copy this link: <br><strong>{{ google_meet_link }}</strong></small></p>
+        </div>
+        
+        <div class="session-details">
+            <h3>📅 Session Details</h3>
+            
+            <div class="detail-row">
+                <span class="detail-label">Booking ID:</span>
+                <span class="detail-value">{{ booking.astro_book_id }}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Service:</span>
+                <span class="detail-value">{{ service.title }}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Session Date:</span>
+                <span class="detail-value">{{ booking.preferred_date|date:"F d, Y (l)" }}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Session Time:</span>
+                <span class="detail-value">{{ booking.preferred_time|time:"g:i A" }}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Duration:</span>
+                <span class="detail-value">{{ service.duration_minutes }} minutes</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Language:</span>
+                <span class="detail-value">{{ booking.language }}</span>
+            </div>
+        </div>
+        
+        {% if session_notes %}
+        <div class="session-details">
+            <h3>📝 Session Notes</h3>
+            <p>{{ session_notes }}</p>
+        </div>
+        {% endif %}
+        
+        <div class="important-notes">
+            <h3>⚠️ Important Instructions</h3>
+            <ul>
+                <li><strong>Join 5 minutes early:</strong> Please join the meeting 5 minutes before your scheduled time</li>
+                <li><strong>Stable Internet:</strong> Ensure you have a stable internet connection</li>
+                <li><strong>Quiet Environment:</strong> Find a quiet place for better audio quality</li>
+                <li><strong>Have Ready:</strong> Your birth details and any specific questions</li>
+                <li><strong>Recording:</strong> This session may be recorded for quality purposes</li>
+                <li><strong>Technical Issues:</strong> If you face any technical problems, immediately call {{ booking.contact_phone }}</li>
+            </ul>
+        </div>
+        
+        <div class="session-details">
+            <h3>🔮 What to Expect</h3>
+            <ol>
+                <li>The astrologer will greet you and confirm your details</li>
+                <li>Discussion about your birth chart and planetary positions</li>
+                <li>Addressing your specific questions and concerns</li>
+                <li>Recommendations and remedies if applicable</li>
+                <li>Q&A session for any additional queries</li>
+            </ol>
+        </div>
+        
+        <div class="important-notes">
+            <h3>📞 Need Help?</h3>
+            <p>If you need to reschedule or have any questions:</p>
+            <ul>
+                <li>Email: <a href="mailto:support@okpuja.com">support@okpuja.com</a></li>
+                <li>Phone: +91-XXXXXXXXXX</li>
+                <li>WhatsApp: +91-XXXXXXXXXX</li>
+            </ul>
+        </div>
+        
+        <div class="footer">
+            <p><strong>Please save this email</strong> and join the session on time. We look forward to providing you with valuable insights!</p>
+            <p>&copy; 2025 OKPUJA. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
