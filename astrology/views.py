@@ -67,9 +67,12 @@ class AstrologyBookingListView(generics.ListAPIView):
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return AstrologyBooking.objects.none()
-        if self.request.user.is_staff:
+        
+        # Security: Only admin can see all bookings, users see their own
+        if self.request.user.is_staff or getattr(self.request.user, 'role', '') == 'ADMIN':
             return AstrologyBooking.objects.all()
-        return AstrologyBooking.objects.filter(user=self.request.user)
+        else:
+            return AstrologyBooking.objects.filter(user=self.request.user)
 
 class AstrologyBookingCreateView(generics.CreateAPIView):
     queryset = AstrologyBooking.objects.all()
@@ -203,7 +206,7 @@ class AstrologyBookingWithPaymentView(APIView):
         }
     )
     def post(self, request):
-        """Create astrology booking with payment"""
+        """Create astrology booking with payment - Only create booking after successful payment"""
         try:
             # Validate request data
             serializer = AstrologyBookingWithPaymentSerializer(data=request.data)
@@ -217,90 +220,157 @@ class AstrologyBookingWithPaymentView(APIView):
             validated_data = serializer.validated_data
             service = validated_data['service']
             
-            with transaction.atomic():
-                # Create booking (initially with PENDING status)
-                booking_data = {
-                    'user': request.user,
-                    'service': service,
-                    'language': validated_data['language'],
-                    'preferred_date': validated_data['preferred_date'],
-                    'preferred_time': validated_data['preferred_time'],
-                    'birth_place': validated_data['birth_place'],
-                    'birth_date': validated_data['birth_date'],
-                    'birth_time': validated_data['birth_time'],
-                    'gender': validated_data['gender'],
-                    'questions': validated_data.get('questions', ''),
-                    'contact_email': validated_data['contact_email'],
-                    'contact_phone': validated_data['contact_phone'],
-                    'status': 'PENDING'  # Will be updated to CONFIRMED after successful payment
-                }
-                
-                booking = AstrologyBooking.objects.create(**booking_data)
-                
-                # Generate unique merchant order ID
-                merchant_order_id = f"ASTRO_ORDER_{booking.id}_{uuid.uuid4().hex[:8].upper()}"
-                
-                # Prepare payment data
-                payment_data = {
-                    'amount': int(service.price * 100),  # Convert to paisa
-                    'description': f"Payment for {service.title} - Astrology Booking #{booking.id}",
-                    'redirect_url': validated_data['redirect_url'],
-                    'metadata': {
-                        'booking_type': 'astrology',
-                        'booking_id': booking.id,
-                        'service_id': service.id,
-                        'service_title': service.title
+            # Store all booking data in payment metadata (NOT creating booking yet)
+            booking_data = {
+                'booking_type': 'astrology',
+                'service_id': service.id,
+                'service_title': service.title,
+                'service_price': float(service.price),
+                'user_id': request.user.id,
+                'language': validated_data['language'],
+                'preferred_date': validated_data['preferred_date'].isoformat(),
+                'preferred_time': validated_data['preferred_time'].strftime('%H:%M:%S'),
+                'birth_place': validated_data['birth_place'],
+                'birth_date': validated_data['birth_date'].isoformat(),
+                'birth_time': validated_data['birth_time'].strftime('%H:%M:%S'),
+                'gender': validated_data['gender'],
+                'questions': validated_data.get('questions', ''),
+                'contact_email': validated_data['contact_email'],
+                'contact_phone': validated_data['contact_phone'],
+            }
+            
+            # Create payment order using PaymentService
+            payment_service = PaymentService()
+            payment_result = payment_service.create_payment_order(
+                user=request.user,
+                amount=int(service.price * 100),  # Convert to paisa
+                redirect_url=validated_data['redirect_url'],
+                description=f"Payment for {service.title} - Astrology Consultation",
+                metadata=booking_data
+            )
+            
+            if not payment_result['success']:
+                return Response({
+                    'success': False,
+                    'error': 'Failed to create payment order',
+                    'details': payment_result.get('error', 'Unknown error')
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            # Get the merchant order ID from the payment order
+            payment_order = payment_result['payment_order']
+            merchant_order_id = payment_order.merchant_order_id
+            
+            # Prepare response data (no booking created yet)
+            response_data = {
+                'success': True,
+                'message': 'Payment initiated successfully. Booking will be created after successful payment.',
+                'data': {
+                    'payment': {
+                        'payment_url': payment_result['payment_url'],
+                        'merchant_order_id': merchant_order_id,
+                        'amount': payment_order.amount,
+                        'amount_in_rupees': f"{payment_order.amount_in_rupees:.2f}"
+                    },
+                    'service': AstrologyServiceSerializer(service).data,
+                    'redirect_urls': {
+                        'success': f"{validated_data['redirect_url'].rstrip('/')}/astro-booking-success?merchant_order_id={merchant_order_id}",
+                        'failure': f"{validated_data['redirect_url'].rstrip('/')}/astro-booking-failed?merchant_order_id={merchant_order_id}"
                     }
                 }
-                
-                # Create payment order using PaymentService
-                payment_service = PaymentService()
-                payment_result = payment_service.create_payment_order(
-                    user=request.user,
-                    **payment_data
-                )
-                
-                if not payment_result['success']:
-                    # If payment creation fails, delete the booking
-                    booking.delete()
-                    return Response({
-                        'success': False,
-                        'error': 'Failed to create payment order',
-                        'details': payment_result.get('error', 'Unknown error')
-                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                
-                # Update booking with payment reference
-                booking.metadata = {
-                    'merchant_order_id': merchant_order_id,
-                    'payment_order_id': str(payment_result['payment_order'].id)
-                }
-                booking.save()
-                
-                # Prepare response data
-                booking_serializer = AstrologyBookingSerializer(booking)
-                
-                response_data = {
-                    'success': True,
-                    'message': 'Booking created and payment initiated successfully',
-                    'data': {
-                        'booking': booking_serializer.data,
-                        'payment': {
-                            'payment_url': payment_result['payment_url'],
-                            'merchant_order_id': merchant_order_id,
-                            'amount': payment_result['payment_order'].amount,
-                            'amount_in_rupees': f"{payment_result['payment_order'].amount_in_rupees:.2f}"
-                        }
-                    }
-                }
-                
-                logger.info(f"Astrology booking created successfully: {booking.id} with payment order: {merchant_order_id}")
-                
-                return Response(response_data, status=status.HTTP_201_CREATED)
+            }
+            
+            logger.info(f"Astrology payment initiated successfully: {merchant_order_id} for service: {service.title}")
+            
+            return Response(response_data, status=status.HTTP_201_CREATED)
                 
         except Exception as e:
-            logger.error(f"Error creating astrology booking with payment: {str(e)}")
+            logger.error(f"Error creating astrology payment: {str(e)}")
             return Response({
                 'success': False,
                 'error': 'Internal server error',
                 'details': str(e) if request.user.is_staff else 'Please try again later'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AstrologyBookingConfirmationView(APIView):
+    """Get astrology booking details by astro_book_id for confirmation page"""
+    
+    permission_classes = [permissions.AllowAny]  # Allow unauthenticated access for confirmation
+    
+    @swagger_auto_schema(
+        operation_description="Get astrology booking details by astro_book_id",
+        operation_summary="Get Astrology Booking Confirmation",
+        tags=['Astrology'],
+        manual_parameters=[
+            openapi.Parameter('astro_book_id', openapi.IN_QUERY, description="Astrology booking ID", type=openapi.TYPE_STRING, required=True)
+        ],
+        responses={
+            200: openapi.Response(
+                description="Booking details retrieved successfully",
+                examples={
+                    "application/json": {
+                        "success": True,
+                        "data": {
+                            "booking": {
+                                "astro_book_id": "ASTRO_BOOK_20250805_A1B2C3D4",
+                                "service": {
+                                    "title": "Gemstone Consultation",
+                                    "price": "1999.00"
+                                },
+                                "preferred_date": "2025-08-10",
+                                "preferred_time": "10:00:00",
+                                "status": "CONFIRMED",
+                                "contact_email": "user@example.com"
+                            }
+                        }
+                    }
+                }
+            ),
+            400: openapi.Response(
+                description="Bad request - Missing astro_book_id"
+            ),
+            404: openapi.Response(
+                description="Booking not found"
+            )
+        }
+    )
+    def get(self, request):
+        """Get booking details by astro_book_id"""
+        try:
+            astro_book_id = request.query_params.get('astro_book_id')
+            
+            if not astro_book_id:
+                return Response({
+                    'success': False,
+                    'error': 'astro_book_id parameter is required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            try:
+                booking = AstrologyBooking.objects.get(astro_book_id=astro_book_id)
+            except AstrologyBooking.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'error': 'Booking not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            # Serialize booking data
+            booking_serializer = AstrologyBookingSerializer(booking)
+            
+            response_data = {
+                'success': True,
+                'data': {
+                    'booking': booking_serializer.data
+                }
+            }
+            
+            logger.info(f"Booking confirmation details retrieved for: {astro_book_id}")
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+                
+        except Exception as e:
+            logger.error(f"Error retrieving booking confirmation: {str(e)}")
+            return Response({
+                'success': False,
+                'error': 'Internal server error',
+                'details': str(e) if hasattr(request, 'user') and request.user.is_staff else 'Please try again later'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

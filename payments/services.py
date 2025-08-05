@@ -401,13 +401,13 @@ class WebhookService:
                     else:
                         logger.error("Failed to create booking from cart")
                 
-                # Handle astrology booking confirmation
+                # Handle astrology booking creation
                 elif payment_order.metadata.get('booking_type') == 'astrology':
-                    success = self._confirm_astrology_booking(payment_order)
-                    if success:
-                        logger.info(f"Astrology booking confirmed via webhook: {payment_order.metadata.get('booking_id')}")
+                    booking = self._create_astrology_booking(payment_order)
+                    if booking:
+                        logger.info(f"Astrology booking created via webhook: {booking.astro_book_id}")
                     else:
-                        logger.error(f"Failed to confirm astrology booking: {payment_order.metadata.get('booking_id')}")
+                        logger.error(f"Failed to create astrology booking for payment: {payment_order.merchant_order_id}")
                         
             # Handle checkout.order.failed
             elif event_type == 'checkout.order.failed' and payment_state == 'FAILED':
@@ -578,60 +578,100 @@ class WebhookService:
         if carts_to_cleanup:
             logger.info(f"Cart cleanup complete: removed {len(carts_to_cleanup)} old carts")
 
-    def _confirm_astrology_booking(self, payment_order):
-        """Confirm astrology booking after successful payment"""
+    def _create_astrology_booking(self, payment_order):
+        """Create astrology booking after successful payment from stored metadata"""
         try:
-            booking_id = payment_order.metadata.get('booking_id')
-            if not booking_id:
-                logger.error("No booking_id found in payment metadata")
-                return False
-            
             # Import here to avoid circular imports
-            from astrology.models import AstrologyBooking
+            from astrology.models import AstrologyBooking, AstrologyService
+            from django.contrib.auth import get_user_model
+            from datetime import datetime
             
-            # Get the booking
+            User = get_user_model()
+            
+            # Get booking data from payment metadata
+            metadata = payment_order.metadata
+            if not metadata or metadata.get('booking_type') != 'astrology':
+                logger.error("No astrology booking data found in payment metadata")
+                return None
+            
+            # Validate required fields
+            required_fields = [
+                'service_id', 'user_id', 'language', 'preferred_date', 'preferred_time',
+                'birth_place', 'birth_date', 'birth_time', 'gender', 'contact_email', 'contact_phone'
+            ]
+            
+            for field in required_fields:
+                if field not in metadata:
+                    logger.error(f"Missing required field in payment metadata: {field}")
+                    return None
+            
+            # Get service and user
             try:
-                booking = AstrologyBooking.objects.get(id=booking_id)
-            except AstrologyBooking.DoesNotExist:
-                logger.error(f"Astrology booking not found: {booking_id}")
-                return False
+                service = AstrologyService.objects.get(id=metadata['service_id'])
+                user = User.objects.get(id=metadata['user_id'])
+            except (AstrologyService.DoesNotExist, User.DoesNotExist) as e:
+                logger.error(f"Service or user not found: {e}")
+                return None
             
-            # Update booking status to CONFIRMED
-            booking.status = 'CONFIRMED'
+            # Parse dates and times
+            try:
+                preferred_date = datetime.fromisoformat(metadata['preferred_date']).date()
+                preferred_time = datetime.strptime(metadata['preferred_time'], '%H:%M:%S').time()
+                birth_date = datetime.fromisoformat(metadata['birth_date']).date()
+                birth_time = datetime.strptime(metadata['birth_time'], '%H:%M:%S').time()
+            except (ValueError, KeyError) as e:
+                logger.error(f"Error parsing dates/times from metadata: {e}")
+                return None
             
-            # Update booking metadata with payment details
-            booking.metadata.update({
-                'payment_confirmed': True,
-                'payment_order_id': str(payment_order.id),
-                'merchant_order_id': payment_order.merchant_order_id,
-                'payment_amount': payment_order.amount,
-                'payment_completed_at': payment_order.completed_at.isoformat() if payment_order.completed_at else None,
-                'phonepe_transaction_id': payment_order.phonepe_transaction_id
-            })
+            # Create the booking
+            booking_data = {
+                'user': user,
+                'service': service,
+                'language': metadata['language'],
+                'preferred_date': preferred_date,
+                'preferred_time': preferred_time,
+                'birth_place': metadata['birth_place'],
+                'birth_date': birth_date,
+                'birth_time': birth_time,
+                'gender': metadata['gender'],
+                'questions': metadata.get('questions', ''),
+                'contact_email': metadata['contact_email'],
+                'contact_phone': metadata['contact_phone'],
+                'payment_id': str(payment_order.id),
+                'status': 'CONFIRMED',  # Already confirmed since payment is successful
+                'metadata': {
+                    'payment_confirmed': True,
+                    'payment_order_id': str(payment_order.id),
+                    'merchant_order_id': payment_order.merchant_order_id,
+                    'payment_amount': payment_order.amount,
+                    'payment_completed_at': payment_order.completed_at.isoformat() if payment_order.completed_at else None,
+                    'phonepe_transaction_id': payment_order.phonepe_transaction_id
+                }
+            }
             
-            booking.save()
+            booking = AstrologyBooking.objects.create(**booking_data)
             
-            logger.info(f"Astrology booking {booking_id} confirmed successfully after payment")
+            logger.info(f"Astrology booking created successfully: {booking.astro_book_id} after payment {payment_order.merchant_order_id}")
             
             # Send confirmation email to customer
             try:
                 booking.send_booking_confirmation()
-                logger.info(f"Confirmation email sent for astrology booking {booking_id}")
+                logger.info(f"Confirmation email sent for astrology booking {booking.astro_book_id}")
             except Exception as e:
-                logger.error(f"Failed to send confirmation email for astrology booking {booking_id}: {e}")
+                logger.error(f"Failed to send confirmation email for astrology booking {booking.astro_book_id}: {e}")
             
             # Send notification to admin
             try:
                 self._send_admin_notification_astrology(booking)
-                logger.info(f"Admin notification sent for astrology booking {booking_id}")
+                logger.info(f"Admin notification sent for astrology booking {booking.astro_book_id}")
             except Exception as e:
-                logger.error(f"Failed to send admin notification for astrology booking {booking_id}: {e}")
+                logger.error(f"Failed to send admin notification for astrology booking {booking.astro_book_id}: {e}")
             
-            return True
+            return booking
             
         except Exception as e:
-            logger.error(f"Failed to confirm astrology booking: {e}")
-            return False
+            logger.error(f"Failed to create astrology booking: {e}")
+            return None
 
     def _send_admin_notification_astrology(self, booking):
         """Send admin notification for new astrology booking"""
@@ -652,13 +692,13 @@ class WebhookService:
             admin_emails = [admin.email for admin in admin_users]
             
             if admin_emails:
-                subject = f"🔮 New Astrology Booking - #{booking.id} - {booking.service.title}"
+                subject = f"🔮 New Astrology Booking - {booking.astro_book_id} - {booking.service.title}"
                 
                 message = f"""
 📋 NEW ASTROLOGY BOOKING RECEIVED
 
 Booking Details:
-• Booking ID: #{booking.id}
+• Booking ID: {booking.astro_book_id}
 • Service: {booking.service.title}
 • Amount: ₹{booking.service.price}
 • Status: {booking.get_status_display()}

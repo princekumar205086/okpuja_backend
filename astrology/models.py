@@ -185,8 +185,7 @@ class AstrologyService(models.Model):
 
 class AstrologyBooking(models.Model):
     STATUS_CHOICES = [
-        ('PENDING', 'Pending'),
-        ('CONFIRMED', 'Confirmed'),
+        ('CONFIRMED', 'Confirmed'),  # Only confirmed bookings exist (after successful payment)
         ('COMPLETED', 'Completed'),
         ('CANCELLED', 'Cancelled'),
     ]
@@ -197,6 +196,12 @@ class AstrologyBooking(models.Model):
         ('OTHER', 'Other'),
     ]
 
+    # Unique booking identifier for frontend
+    astro_book_id = models.CharField(max_length=100, unique=True, db_index=True, help_text="Unique astrology booking ID")
+    
+    # Payment reference for tracking
+    payment_id = models.CharField(max_length=100, null=True, blank=True, db_index=True, help_text="Associated payment order ID")
+    
     user = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -216,7 +221,7 @@ class AstrologyBooking(models.Model):
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default='PENDING'
+        default='CONFIRMED'  # Default to confirmed since we only create after payment
     )
     contact_email = models.EmailField()
     contact_phone = models.CharField(max_length=15)
@@ -229,18 +234,30 @@ class AstrologyBooking(models.Model):
         verbose_name_plural = "Astrology Bookings"
         ordering = ['-preferred_date', '-created_at']
         indexes = [
+            models.Index(fields=['astro_book_id']),
+            models.Index(fields=['payment_id']),
             models.Index(fields=['user', 'status']),
             models.Index(fields=['preferred_date', 'status']),
             models.Index(fields=['service', 'status']),
         ]
 
     def __str__(self):
-        return f"{self.contact_email} - {self.service.title} on {self.preferred_date}"
+        return f"{self.astro_book_id} - {self.contact_email} - {self.service.title}"
 
     def save(self, *args, **kwargs):
+        # Generate astro_book_id if not set
+        if not self.astro_book_id:
+            import uuid
+            # Format: ASTRO_BOOK_YYYYMMDD_UNIQUEID
+            from django.utils import timezone
+            today = timezone.now().strftime('%Y%m%d')
+            unique_id = str(uuid.uuid4().hex[:8]).upper()
+            self.astro_book_id = f"ASTRO_BOOK_{today}_{unique_id}"
+        
         is_new = self.pk is None
         super().save(*args, **kwargs)
         
+        # Only send confirmation for new bookings (already confirmed after payment)
         if is_new and self.contact_email:
             self.send_booking_confirmation()
 

@@ -11,7 +11,8 @@ from .views import (
     AstrologyBookingDetailView,
     AstrologyBookingUpdateView,
     AstrologyBookingDeleteView,
-    AstrologyBookingWithPaymentView
+    AstrologyBookingWithPaymentView,
+    AstrologyBookingConfirmationView
 )
 
 urlpatterns = [
@@ -24,6 +25,7 @@ urlpatterns = [
     path('bookings/', AstrologyBookingListView.as_view(), name='astrology-booking-list'),
     path('bookings/create/', AstrologyBookingCreateView.as_view(), name='astrology-booking-create'),
     path('bookings/book-with-payment/', AstrologyBookingWithPaymentView.as_view(), name='astrology-booking-with-payment'),
+    path('bookings/confirmation/', AstrologyBookingConfirmationView.as_view(), name='astrology-booking-confirmation'),
     path('bookings/<int:pk>/', AstrologyBookingDetailView.as_view(), name='astrology-booking-detail'),
     path('bookings/<int:pk>/update/', AstrologyBookingUpdateView.as_view(), name='astrology-booking-update'),
     path('bookings/<int:pk>/delete/', AstrologyBookingDeleteView.as_view(), name='astrology-booking-delete'),

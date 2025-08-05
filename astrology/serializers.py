@@ -71,12 +71,12 @@ class AstrologyBookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = AstrologyBooking
         fields = [
-            'id', 'user', 'service', 'language', 'preferred_date',
-            'preferred_time', 'birth_place', 'birth_date', 'birth_time',
-            'gender', 'questions', 'status', 'contact_email', 'contact_phone',
-            'created_at', 'updated_at'
+            'id', 'astro_book_id', 'payment_id', 'user', 'service', 'language', 
+            'preferred_date', 'preferred_time', 'birth_place', 'birth_date', 
+            'birth_time', 'gender', 'questions', 'status', 'contact_email', 
+            'contact_phone', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['created_at', 'updated_at', 'status']
+        read_only_fields = ['astro_book_id', 'payment_id', 'created_at', 'updated_at', 'status']
 
 class CreateAstrologyBookingSerializer(serializers.ModelSerializer):
     class Meta:
