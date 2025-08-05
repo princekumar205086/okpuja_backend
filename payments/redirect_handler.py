@@ -74,9 +74,42 @@ class PaymentRedirectHandler(View):
                 if status == 'SUCCESS':
                     success_url = getattr(settings, 'PHONEPE_SUCCESS_REDIRECT_URL', f"{settings.FRONTEND_BASE_URL}/confirmbooking")
                     
-                    # ENSURE booking exists for cart-based payments
+                    # Handle different types of payments
                     booking_id = None
-                    if payment_order.cart_id:
+                    astro_book_id = None
+                    
+                    # Check if this is an astrology booking
+                    if payment_order.metadata.get('booking_type') == 'astrology':
+                        try:
+                            from astrology.models import AstrologyBooking
+                            # Find the astrology booking created by webhook
+                            astrology_booking = AstrologyBooking.objects.filter(payment_id=str(payment_order.id)).first()
+                            
+                            if astrology_booking:
+                                astro_book_id = astrology_booking.astro_book_id
+                                logger.info(f"Found astrology booking: {astro_book_id}")
+                            else:
+                                # If no booking found, try to create it now (webhook might have failed)
+                                logger.info(f"No astrology booking found for payment {merchant_order_id}, creating now...")
+                                webhook_service = WebhookService()
+                                astrology_booking = webhook_service._create_astrology_booking(payment_order)
+                                if astrology_booking:
+                                    astro_book_id = astrology_booking.astro_book_id
+                                    logger.info(f"Astrology booking created during redirect: {astro_book_id}")
+                                else:
+                                    logger.error(f"Failed to create astrology booking during redirect for {merchant_order_id}")
+                            
+                            # Get the original frontend URL from metadata
+                            frontend_base = payment_order.metadata.get('frontend_redirect_url', settings.FRONTEND_BASE_URL)
+                            if frontend_base.endswith('/'):
+                                frontend_base = frontend_base.rstrip('/')
+                            
+                        except Exception as e:
+                            logger.warning(f"Could not get/create astrology booking for payment {payment_order.id}: {e}")
+                            frontend_base = settings.FRONTEND_BASE_URL
+                    
+                    # ENSURE booking exists for cart-based payments
+                    elif payment_order.cart_id:
                         try:
                             from cart.models import Cart
                             from booking.models import Booking
@@ -99,20 +132,50 @@ class PaymentRedirectHandler(View):
                         except Exception as e:
                             logger.warning(f"Could not get/create booking for cart {payment_order.cart_id}: {e}")
                     
-                    # Build redirect URL with booking ID if available
-                    if booking_id:
+                    # Build redirect URL based on booking type
+                    if astro_book_id:
+                        # Astrology booking - redirect to astro success page
+                        redirect_url = f"{frontend_base}/astro-booking-success?astro_book_id={astro_book_id}&merchant_order_id={merchant_order_id}"
+                        logger.info(f"Redirecting to astrology success page with astro_book_id: {astro_book_id}")
+                    elif booking_id:
+                        # Regular booking - use existing URL
                         redirect_url = f"{success_url}?book_id={booking_id}&order_id={merchant_order_id}&transaction_id={transaction_id or ''}"
                         logger.info(f"Redirecting to success page with booking ID: {booking_id}")
                     else:
+                        # No booking found - redirect to generic success
                         redirect_url = f"{success_url}?order_id={merchant_order_id}&transaction_id={transaction_id or ''}&status=no_booking"
                         logger.warning(f"Redirecting to success page WITHOUT booking ID for order: {merchant_order_id}")
                     
                     return redirect(redirect_url)
                     
                 elif status in ['FAILED', 'CANCELLED']:
-                    failed_url = getattr(settings, 'PHONEPE_FAILED_REDIRECT_URL', f"{settings.FRONTEND_BASE_URL}/payment/failed")
-                    redirect_url = f"{failed_url}?order_id={merchant_order_id}&transaction_id={transaction_id or ''}&reason={status.lower()}"
-                    logger.info(f"Redirecting to failure page for order: {merchant_order_id}, status: {status}")
+                    # Extract frontend_base from metadata
+                    frontend_base = payment_order.metadata.get('frontend_redirect_url', settings.FRONTEND_BASE_URL).rstrip('/')
+                    
+                    # Check if this is an astrology booking
+                    if payment_order.metadata.get('booking_type') == 'astrology':
+                        # Try to get astro_book_id if booking exists
+                        astro_book_id = None
+                        try:
+                            from astrology.models import AstrologyBooking
+                            astrology_booking = AstrologyBooking.objects.filter(payment_id=str(payment_order.id)).first()
+                            if astrology_booking:
+                                astro_book_id = astrology_booking.astro_book_id
+                        except Exception as e:
+                            logger.warning(f"Could not get astrology booking for failed payment: {e}")
+                        
+                        # Astrology booking - redirect to astro failed page
+                        if astro_book_id:
+                            redirect_url = f"{frontend_base}/astro-booking-failed?astro_book_id={astro_book_id}&merchant_order_id={merchant_order_id}&reason={status.lower()}"
+                        else:
+                            redirect_url = f"{frontend_base}/astro-booking-failed?merchant_order_id={merchant_order_id}&reason={status.lower()}"
+                        logger.info(f"Redirecting to astrology failure page for order: {merchant_order_id}, status: {status}")
+                    else:
+                        # Regular booking - use existing failed URL
+                        failed_url = getattr(settings, 'PHONEPE_FAILED_REDIRECT_URL', f"{settings.FRONTEND_BASE_URL}/payment/failed")
+                        redirect_url = f"{failed_url}?order_id={merchant_order_id}&transaction_id={transaction_id or ''}&reason={status.lower()}"
+                        logger.info(f"Redirecting to failure page for order: {merchant_order_id}, status: {status}")
+                    
                     return redirect(redirect_url)
                     
                 else:

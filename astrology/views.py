@@ -237,14 +237,21 @@ class AstrologyBookingWithPaymentView(APIView):
                 'questions': validated_data.get('questions', ''),
                 'contact_email': validated_data['contact_email'],
                 'contact_phone': validated_data['contact_phone'],
+                # Store original frontend URL for proper redirects
+                'frontend_redirect_url': validated_data['redirect_url']
             }
             
             # Create payment order using PaymentService
             payment_service = PaymentService()
+            
+            # Use the payment redirect handler URL instead of direct frontend URL
+            # The redirect handler will then redirect to the correct frontend page
+            payment_redirect_url = f"{request.scheme}://{request.get_host()}/api/payments/redirect/"
+            
             payment_result = payment_service.create_payment_order(
                 user=request.user,
                 amount=int(service.price * 100),  # Convert to paisa
-                redirect_url=validated_data['redirect_url'],
+                redirect_url=payment_redirect_url,  # Use redirect handler
                 description=f"Payment for {service.title} - Astrology Consultation",
                 metadata=booking_data
             )
