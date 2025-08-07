@@ -3,7 +3,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.parsers import MultiPartParser
+from rest_framework.parsers import MultiPartParser, JSONParser
 from django.core.exceptions import ValidationError
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -37,7 +37,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     filterset_fields = ['status', 'assigned_to']
     search_fields = ['book_id', 'user__email']
-    parser_classes = [MultiPartParser]
+    parser_classes = [MultiPartParser, JSONParser]
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -328,7 +328,7 @@ class AdminBookingViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
     filterset_fields = ['status', 'user', 'assigned_to']
     search_fields = ['book_id', 'user__email', 'assigned_to__email']
-    parser_classes = [MultiPartParser]
+    parser_classes = [MultiPartParser, JSONParser]
 
     def get_serializer_class(self):
         if self.action in ['update_status', 'partial_update_status']:
@@ -442,9 +442,23 @@ class AdminBookingViewSet(viewsets.ModelViewSet):
         employees = User.objects.filter(
             role__in=[User.Role.EMPLOYEE, User.Role.ADMIN],
             account_status=User.AccountStatus.ACTIVE
-        ).values('id', 'email', 'username', 'first_name', 'last_name')
+        ).select_related('profile').values(
+            'id', 'email', 'username',
+            'profile__first_name', 'profile__last_name'
+        )
         
-        return Response(list(employees))
+        # Transform the data to have proper field names
+        employees_data = []
+        for emp in employees:
+            employees_data.append({
+                'id': emp['id'],
+                'email': emp['email'],
+                'username': emp['username'],
+                'first_name': emp['profile__first_name'] or '',
+                'last_name': emp['profile__last_name'] or ''
+            })
+        
+        return Response(employees_data)
 
     @action(detail=False, methods=['get'])
     def dashboard_stats(self, request):

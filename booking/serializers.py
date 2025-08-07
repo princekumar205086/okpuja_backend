@@ -184,8 +184,10 @@ class AdminBookingListSerializer(serializers.ModelSerializer):
         ]
     
     def get_service_name(self, obj):
+        if not obj.cart:
+            return "Unknown Service"
         if obj.cart.service_type == 'PUJA' and obj.cart.puja_service:
-            return obj.cart.puja_service.name
+            return obj.cart.puja_service.title
         elif obj.cart.service_type == 'ASTROLOGY' and obj.cart.astrology_service:
-            return obj.cart.astrology_service.name
+            return obj.cart.astrology_service.title
         return "Unknown Service"
