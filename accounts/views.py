@@ -41,8 +41,27 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
 
     def perform_create(self, serializer):
-        user = serializer.save()
-        self._send_verification(user)
+        from django.db import IntegrityError
+        from rest_framework import serializers as drf_serializers
+        
+        try:
+            user = serializer.save()
+            self._send_verification(user)
+        except IntegrityError as e:
+            # Handle any IntegrityError that might slip through serializer validation
+            error_message = str(e)
+            if 'accounts_user.phone' in error_message:
+                raise drf_serializers.ValidationError({
+                    "phone": "A user with this phone number already exists."
+                })
+            elif 'accounts_user.email' in error_message:
+                raise drf_serializers.ValidationError({
+                    "email": "A user with this email address already exists."
+                })
+            else:
+                raise drf_serializers.ValidationError({
+                    "non_field_errors": "Registration failed due to a data conflict. Please check your information."
+                })
 
     def _send_verification(self, user):
         # Send OTP via email

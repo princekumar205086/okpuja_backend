@@ -63,6 +63,19 @@ class RegisterSerializer(serializers.ModelSerializer):
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError({"password": "Password fields didn't match."})
 
+        # Check for existing email
+        if User.objects.filter(email=attrs['email']).exists():
+            raise serializers.ValidationError({
+                "email": "A user with this email address already exists."
+            })
+        
+        # Check for existing phone number if provided
+        phone = attrs.get('phone')
+        if phone and User.objects.filter(phone=phone).exists():
+            raise serializers.ValidationError({
+                "phone": "A user with this phone number already exists."
+            })
+
         role = attrs.get('role', 'USER')
         if role == 'EMPLOYEE':
             code = attrs.get('employee_registration_code')
@@ -74,18 +87,37 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        from django.db import IntegrityError
+        
         role = validated_data.pop('role', 'USER')
         validated_data.pop('employee_registration_code', None)
 
-        # Use the custom manager's create_user method
-        user = User.objects.create_user(
-            email=validated_data['email'],
-            password=validated_data['password'],
-            phone=validated_data.get('phone', ''),
-            role=role
-        )
-        user.generate_otp()
-        return user
+        try:
+            # Use the custom manager's create_user method
+            user = User.objects.create_user(
+                email=validated_data['email'],
+                password=validated_data['password'],
+                phone=validated_data.get('phone', ''),
+                role=role
+            )
+            user.generate_otp()
+            return user
+        except IntegrityError as e:
+            # Handle unique constraint violations
+            error_message = str(e)
+            if 'accounts_user.phone' in error_message:
+                raise serializers.ValidationError({
+                    "phone": "A user with this phone number already exists."
+                })
+            elif 'accounts_user.email' in error_message:
+                raise serializers.ValidationError({
+                    "email": "A user with this email address already exists."
+                })
+            else:
+                # Generic integrity error
+                raise serializers.ValidationError({
+                    "non_field_errors": "Registration failed due to a data conflict. Please check your information."
+                })
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
