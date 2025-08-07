@@ -85,6 +85,7 @@ class AdminBookingUpdateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = AstrologyBooking
+        ref_name = 'AstrologyAdminBookingUpdate'
         fields = [
             'status', 'preferred_date', 'preferred_time', 'language',
             'google_meet_link', 'session_notes', 'is_session_scheduled',

@@ -274,6 +274,7 @@ class AdminBookingUpdateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Booking
+        ref_name = 'BookingAdminBookingUpdate'  # Unique ref_name for Swagger
         fields = [
             'status', 'selected_date', 'selected_time', 'assigned_to',
             'cancellation_reason', 'failure_reason', 'rejection_reason',
