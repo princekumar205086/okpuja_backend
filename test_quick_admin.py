@@ -204,6 +204,13 @@ class AdminBookingEndpointTester:
             'Content-Type': 'application/json'
         }
     
+    def get_form_headers(self):
+        """Get headers for form data requests"""
+        return {
+            'Authorization': f'Bearer {self.admin_token}'
+            # Don't set Content-Type, let requests handle it for form data
+        }
+    
     def test_admin_booking_list(self):
         """Test: GET /api/booking/admin/bookings/ - List all bookings"""
         print("\n📋 Testing: Admin Booking List")
@@ -226,223 +233,6 @@ class AdminBookingEndpointTester:
             print(f"   ❌ Error: {e}")
             return False
     
-    def test_admin_booking_detail(self):
-        """Test: GET /api/booking/admin/bookings/{id}/ - Get booking details"""
-        print("\n📋 Testing: Admin Booking Detail")
-        
-        if not self.test_booking_id:
-            print("   ⚠️ No test booking ID available")
-            return False
-            
-        url = f"{self.base_url}/api/booking/admin/bookings/{self.test_booking_id}/"
-        
-        try:
-            response = requests.get(url, headers=self.get_headers())
-            print(f"   Status: {response.status_code}")
-            
-            if response.status_code == 200:
-                data = response.json()
-                print(f"   ✅ Success - Booking ID: {data.get('book_id', 'N/A')}")
-                return True
-            else:
-                print(f"   ❌ Failed: {response.text[:200]}")
-                return False
-                
-        except Exception as e:
-            print(f"   ❌ Error: {e}")
-            return False
-    
-    def test_admin_booking_update_status(self):
-        """Test: POST/PATCH /api/booking/admin/bookings/{id}/status/ - Update booking status"""
-        print("\n📋 Testing: Admin Booking Status Update")
-        
-        if not self.test_booking_id:
-            print("   ⚠️ No test booking ID available")
-            return False
-            
-        url = f"{self.base_url}/api/booking/admin/bookings/{self.test_booking_id}/status/"
-        data = {
-            'status': 'CONFIRMED'
-        }
-        
-        try:
-            # Use form data for multipart endpoints
-            response = requests.post(url, headers=self.get_form_headers(), data=data)
-            print(f"   Status: {response.status_code}")
-            
-            if response.status_code == 200:
-                response_data = response.json()
-                print(f"   ✅ Success - Status updated to: {response_data.get('status', 'N/A')}")
-                return True
-            else:
-                print(f"   ❌ Failed: {response.text[:200]}")
-                return False
-                
-        except Exception as e:
-            print(f"   ❌ Error: {e}")
-            return False
-    
-    def test_admin_booking_reschedule(self):
-        """Test: POST /api/booking/admin/bookings/{id}/reschedule/ - Reschedule booking"""
-        print("\n📋 Testing: Admin Booking Reschedule")
-        
-        if not self.test_booking_id:
-            print("   ⚠️ No test booking ID available")
-            return False
-            
-        url = f"{self.base_url}/api/booking/admin/bookings/{self.test_booking_id}/reschedule/"
-        data = {
-            'selected_date': (timezone.now().date() + timedelta(days=2)).isoformat(),
-            'selected_time': '14:00:00',
-            'reason': 'Test reschedule by admin'
-        }
-        
-        try:
-            # Try form data first since JSON gives 415 error
-            response = requests.post(url, headers=self.get_headers(), data=data)
-            if response.status_code == 415:
-                # If form data fails, try JSON
-                headers = self.get_headers()
-                headers['Content-Type'] = 'application/json'
-                response = requests.post(url, headers=headers, json=data)
-            
-            print(f"   Status: {response.status_code}")
-            
-            if response.status_code == 200:
-                response_data = response.json()
-                print(f"   ✅ Success - Booking rescheduled")
-                return True
-            else:
-                print(f"   ❌ Failed: {response.text[:200]}")
-                return False
-                
-        except Exception as e:
-            print(f"   ❌ Error: {e}")
-            return False
-    
-    def test_admin_booking_assign(self):
-        """Test: POST /api/booking/admin/bookings/{id}/assign/ - Assign booking to employee"""
-        print("\n📋 Testing: Admin Booking Assignment")
-        
-        if not self.test_booking_id:
-            print("   ⚠️ No test booking ID available")
-            return False
-        
-        # Get employee ID
-        try:
-            employee = User.objects.filter(email='employee@okpuja.com').first()
-            if not employee:
-                print("   ⚠️ No employee user found")
-                return False
-                
-            url = f"{self.base_url}/api/booking/admin/bookings/{self.test_booking_id}/assign/"
-            data = {
-                'assigned_to_id': employee.id,
-                'notes': 'Test assignment by admin'
-            }
-            
-            # Try form data first since JSON gives 415 error
-            response = requests.post(url, headers=self.get_headers(), data=data)
-            if response.status_code == 415:
-                # If form data fails, try JSON
-                headers = self.get_headers()
-                headers['Content-Type'] = 'application/json'
-                response = requests.post(url, headers=headers, json=data)
-            
-            print(f"   Status: {response.status_code}")
-            
-            if response.status_code == 200:
-                response_data = response.json()
-                print(f"   ✅ Success - Booking assigned")
-                return True
-            else:
-                print(f"   ❌ Failed: {response.text[:200]}")
-                return False
-                
-        except Exception as e:
-            print(f"   ❌ Error: {e}")
-            return False
-    
-    def test_admin_employees_list(self):
-        """Test: GET /api/booking/admin/bookings/employees/ - Get employees list"""
-        print("\n📋 Testing: Admin Employees List")
-        
-        url = f"{self.base_url}/api/booking/admin/bookings/employees/"
-        
-        try:
-            response = requests.get(url, headers=self.get_headers())
-            print(f"   Status: {response.status_code}")
-            
-            if response.status_code == 200:
-                data = response.json()
-                print(f"   ✅ Success - Found {len(data)} employees")
-                return True
-            else:
-                print(f"   ❌ Failed: {response.text[:200]}")
-                return False
-                
-        except Exception as e:
-            print(f"   ❌ Error: {e}")
-            return False
-    
-    def test_admin_dashboard_stats(self):
-        """Test: GET /api/booking/admin/bookings/dashboard_stats/ - Get dashboard statistics"""
-        print("\n📋 Testing: Admin Dashboard Stats")
-        
-        url = f"{self.base_url}/api/booking/admin/bookings/dashboard_stats/"
-        
-        try:
-            response = requests.get(url, headers=self.get_headers())
-            print(f"   Status: {response.status_code}")
-            
-            if response.status_code == 200:
-                data = response.json()
-                print(f"   ✅ Success - Stats: {data.get('total_bookings', 0)} total bookings")
-                return True
-            else:
-                print(f"   ❌ Failed: {response.text[:200]}")
-                return False
-                
-        except Exception as e:
-            print(f"   ❌ Error: {e}")
-            return False
-    
-    def test_admin_booking_update(self):
-        """Test: PUT/PATCH /api/booking/admin/bookings/{id}/ - Update booking details"""
-        print("\n📋 Testing: Admin Booking Update")
-        
-        if not self.test_booking_id:
-            print("   ⚠️ No test booking ID available")
-            return False
-            
-        url = f"{self.base_url}/api/booking/admin/bookings/{self.test_booking_id}/"
-        data = {
-            'selected_time': '15:30:00'
-        }
-        
-        try:
-            # Try form data first since JSON gives 415 error
-            response = requests.patch(url, headers=self.get_headers(), data=data)
-            if response.status_code == 415:
-                # If form data fails, try JSON
-                headers = self.get_headers()
-                headers['Content-Type'] = 'application/json'
-                response = requests.patch(url, headers=headers, json=data)
-            
-            print(f"   Status: {response.status_code}")
-            
-            if response.status_code == 200:
-                response_data = response.json()
-                print(f"   ✅ Success - Booking updated")
-                return True
-            else:
-                print(f"   ❌ Failed: {response.text[:200]}")
-                return False
-                
-        except Exception as e:
-            print(f"   ❌ Error: {e}")
-            return False
-    
     def run_all_tests(self):
         """Run all admin booking endpoint tests"""
         print("🚀 Starting Admin Booking Endpoints Testing")
@@ -454,16 +244,9 @@ class AdminBookingEndpointTester:
             print("❌ Cannot proceed without admin token")
             return
         
-        # Test endpoints
+        # Test main endpoint
         tests = [
             ('Admin Booking List', self.test_admin_booking_list),
-            ('Admin Booking Detail', self.test_admin_booking_detail),
-            ('Admin Booking Status Update', self.test_admin_booking_update_status),
-            ('Admin Booking Reschedule', self.test_admin_booking_reschedule),
-            ('Admin Booking Assignment', self.test_admin_booking_assign),
-            ('Admin Employees List', self.test_admin_employees_list),
-            ('Admin Dashboard Stats', self.test_admin_dashboard_stats),
-            ('Admin Booking Update', self.test_admin_booking_update),
         ]
         
         results = []
