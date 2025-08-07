@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Status Update - {{ company_name }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 10px 0;
+        }
+        .status-confirmed {
+            background-color: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        .status-cancelled {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        .status-completed {
+            background-color: #cce7ff;
+            color: #004085;
+            border: 2px solid #b3d7ff;
+        }
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffeaa7;
+        }
+        .status-rejected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        .status-failed {
+            background-color: #f5c6cb;
+            color: #721c24;
+            border: 2px solid #f1b0b7;
+        }
+        .booking-details {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+            width: 40%;
+        }
+        .detail-value {
+            color: #212529;
+            width: 58%;
+        }
+        .highlight-box {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .footer {
+            background-color: #343a40;
+            color: white;
+            text-align: center;
+            padding: 30px;
+        }
+        .contact-info {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #495057;
+        }
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                border-radius: 0;
+            }
+            .content {
+                padding: 20px 15px;
+            }
+            .detail-row {
+                flex-direction: column;
+            }
+            .detail-label {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+            .detail-value {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Booking Status Update</h1>
+            <p>Your booking status has been updated</p>
+        </div>
+        
+        <div class="content">
+            <p>Dear {{ booking.user.first_name|default:booking.user.email }},</p>
+            
+            <p>We wanted to inform you that the status of your booking has been updated.</p>
+            
+            <div class="highlight-box">
+                <h3 style="margin: 0 0 10px 0;">Status Changed</h3>
+                <p style="margin: 0;">From: <strong>{{ old_status|title }}</strong> → To: <span class="status-badge status-{{ new_status|lower }}">{{ booking.get_status_display }}</span></p>
+            </div>
+            
+            <div class="booking-details">
+                <h3 style="margin-top: 0; color: #495057;">Booking Details</h3>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Booking ID:</div>
+                    <div class="detail-value"><strong>#{{ booking.book_id }}</strong></div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Service Date:</div>
+                    <div class="detail-value">{{ booking.selected_date }}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Service Time:</div>
+                    <div class="detail-value">{{ booking.selected_time|time:"H:i A" }}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Total Amount:</div>
+                    <div class="detail-value">₹{{ booking.total_amount }}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Current Status:</div>
+                    <div class="detail-value"><span class="status-badge status-{{ new_status|lower }}">{{ booking.get_status_display }}</span></div>
+                </div>
+                
+                {% if booking.assigned_to %}
+                <div class="detail-row">
+                    <div class="detail-label">Assigned To:</div>
+                    <div class="detail-value">{{ booking.assigned_to.first_name }} {{ booking.assigned_to.last_name }}</div>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if new_status == 'CONFIRMED' %}
+            <div style="background-color: #d4edda; padding: 15px; border-radius: 6px; border-left: 4px solid #28a745;">
+                <strong>Great News!</strong> Your booking has been confirmed. Our team will contact you shortly with further details about the service arrangements.
+            </div>
+            {% elif new_status == 'CANCELLED' %}
+            <div style="background-color: #f8d7da; padding: 15px; border-radius: 6px; border-left: 4px solid #dc3545;">
+                <strong>Booking Cancelled:</strong> We regret to inform you that your booking has been cancelled. 
+                {% if booking.cancellation_reason %}
+                <br><strong>Reason:</strong> {{ booking.cancellation_reason }}
+                {% endif %}
+                Please contact our support team if you have any questions.
+            </div>
+            {% elif new_status == 'COMPLETED' %}
+            <div style="background-color: #cce7ff; padding: 15px; border-radius: 6px; border-left: 4px solid #007bff;">
+                <strong>Service Completed!</strong> Thank you for choosing our services. We hope you had a great experience. Your feedback is valuable to us.
+            </div>
+            {% elif new_status == 'REJECTED' %}
+            <div style="background-color: #f8d7da; padding: 15px; border-radius: 6px; border-left: 4px solid #dc3545;">
+                <strong>Booking Rejected:</strong> We are unable to process your booking at this time. 
+                {% if booking.rejection_reason %}
+                <br><strong>Reason:</strong> {{ booking.rejection_reason }}
+                {% endif %}
+                Please contact our support team for assistance.
+            </div>
+            {% elif new_status == 'FAILED' %}
+            <div style="background-color: #f5c6cb; padding: 15px; border-radius: 6px; border-left: 4px solid #dc3545;">
+                <strong>Booking Failed:</strong> There was an issue with your booking. 
+                {% if booking.failure_reason %}
+                <br><strong>Reason:</strong> {{ booking.failure_reason }}
+                {% endif %}
+                Please contact our support team immediately.
+            </div>
+            {% endif %}
+            
+            {% if booking.address %}
+            <div class="booking-details">
+                <h4 style="margin-top: 0; color: #495057;">Service Address:</h4>
+                <p style="margin: 0;">{{ booking.address.full_address }}</p>
+            </div>
+            {% endif %}
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <p>Need assistance? Contact our support team:</p>
+                <p><strong>Phone:</strong> +91-9876543210 | <strong>Email:</strong> support@okpuja.com</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>{{ company_name }}</strong></p>
+            <p>Your Trusted Service Partner</p>
+            
+            <div class="contact-info">
+                <p>📧 support@okpuja.com | 📞 +91-9876543210</p>
+                <p>🌐 www.okpuja.com</p>
+                <p style="font-size: 12px; margin-top: 15px;">
+                    This is an automated notification. Please do not reply to this email.
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

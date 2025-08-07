@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Rescheduled - {{ company_name }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #17a2b8, #20c997);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .schedule-comparison {
+            display: flex;
+            justify-content: space-between;
+            margin: 25px 0;
+            gap: 20px;
+        }
+        .schedule-box {
+            flex: 1;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .old-schedule {
+            background-color: #f8d7da;
+            border: 2px solid #f5c6cb;
+            color: #721c24;
+        }
+        .new-schedule {
+            background-color: #d4edda;
+            border: 2px solid #c3e6cb;
+            color: #155724;
+        }
+        .schedule-title {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .schedule-details {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .booking-details {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+            width: 40%;
+        }
+        .detail-value {
+            color: #212529;
+            width: 58%;
+        }
+        .highlight-box {
+            background: linear-gradient(135deg, #17a2b8, #20c997);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .important-note {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .footer {
+            background-color: #343a40;
+            color: white;
+            text-align: center;
+            padding: 30px;
+        }
+        .arrow {
+            font-size: 24px;
+            color: #6c757d;
+            align-self: center;
+        }
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                border-radius: 0;
+            }
+            .content {
+                padding: 20px 15px;
+            }
+            .schedule-comparison {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .detail-row {
+                flex-direction: column;
+            }
+            .detail-label {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+            .detail-value {
+                width: 100%;
+            }
+            .arrow {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📅 Schedule Update</h1>
+            <p>Your service has been rescheduled</p>
+        </div>
+        
+        <div class="content">
+            <p>Dear {{ booking.user.first_name|default:booking.user.email }},</p>
+            
+            <p>We hope this message finds you well. We are writing to inform you that your service appointment has been rescheduled.</p>
+            
+            <div class="highlight-box">
+                <h3 style="margin: 0 0 10px 0;">🏠 Service Booking</h3>
+                <p style="margin: 0;">Booking ID: <strong>#{{ booking.book_id }}</strong></p>
+            </div>
+            
+            <div class="schedule-comparison">
+                <div class="schedule-box old-schedule">
+                    <div class="schedule-title">Previous Schedule</div>
+                    <div class="schedule-details">
+                        📅 {{ old_date }}<br>
+                        🕐 {{ old_time|time:"H:i" }}
+                    </div>
+                </div>
+                
+                <div class="arrow">→</div>
+                
+                <div class="schedule-box new-schedule">
+                    <div class="schedule-title">New Schedule</div>
+                    <div class="schedule-details">
+                        📅 {{ booking.selected_date }}<br>
+                        🕐 {{ booking.selected_time|time:"H:i" }}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="important-note">
+                <strong>📌 Important:</strong> Please make note of the new date and time. Our service team will arrive at the scheduled time.
+            </div>
+            
+            <div class="booking-details">
+                <h3 style="margin-top: 0; color: #495057;">Complete Booking Details</h3>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Booking ID:</div>
+                    <div class="detail-value">#{{ booking.book_id }}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">New Date:</div>
+                    <div class="detail-value"><strong>{{ booking.selected_date }}</strong></div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">New Time:</div>
+                    <div class="detail-value"><strong>{{ booking.selected_time|time:"H:i A" }}</strong></div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Total Amount:</div>
+                    <div class="detail-value">₹{{ booking.total_amount }}</div>
+                </div>
+                
+                {% if booking.assigned_to %}
+                <div class="detail-row">
+                    <div class="detail-label">Service Team:</div>
+                    <div class="detail-value">{{ booking.assigned_to.first_name }} {{ booking.assigned_to.last_name }}</div>
+                </div>
+                {% endif %}
+                
+                {% if booking.address %}
+                <div class="detail-row">
+                    <div class="detail-label">Service Address:</div>
+                    <div class="detail-value">{{ booking.address.full_address }}</div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div style="background-color: #e7f3ff; padding: 20px; border-radius: 8px; border-left: 4px solid #007bff; margin: 25px 0;">
+                <h4 style="margin-top: 0; color: #0056b3;">🎯 What to Expect</h4>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Our service team will arrive at the scheduled time</li>
+                    <li>All necessary equipment and materials will be provided</li>
+                    <li>The service will be completed professionally</li>
+                    <li>You will receive a service completion confirmation</li>
+                </ul>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <p><strong>Questions about the schedule change?</strong></p>
+                <p>Contact us: <strong>📞 +91-9876543210</strong> | <strong>✉️ support@okpuja.com</strong></p>
+            </div>
+            
+            <div style="background-color: #fff8e1; padding: 15px; border-radius: 6px; text-align: center;">
+                <p style="margin: 0; font-weight: 600; color: #f57f17;">
+                    🙏 We apologize for any inconvenience caused and appreciate your understanding.
+                </p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>{{ company_name }}</strong></p>
+            <p>🏠 Professional Service at Your Doorstep 🎯</p>
+            
+            <div style="margin-top: 15px; font-size: 12px;">
+                <p>📧 support@okpuja.com | 📞 +91-9876543210</p>
+                <p>🌐 www.okpuja.com</p>
+                <p style="margin-top: 15px;">
+                    This is an automated notification. Please do not reply to this email.
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

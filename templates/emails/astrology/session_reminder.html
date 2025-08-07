@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session Reminder - {{ booking.astro_book_id }}</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%); color: white; padding: 30px; text-align: center; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .content { padding: 30px; }
+        .reminder-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px; padding: 20px; text-align: center; margin: 20px 0; }
+        .booking-details { background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .detail-row { display: flex; justify-content: space-between; margin: 10px 0; }
+        .detail-label { font-weight: bold; color: #666; }
+        .detail-value { color: #333; }
+        .footer { background-color: #f8f9fa; padding: 20px; text-align: center; color: #666; }
+        .button { display: inline-block; background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 25px; font-weight: bold; margin: 15px 10px; }
+        .checklist { background-color: #e8f5e8; border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .checklist ul { margin: 10px 0; }
+        .checklist li { margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⏰ Session Reminder</h1>
+            <p>Your astrology session is coming up soon!</p>
+        </div>
+        
+        <div class="content">
+            <p>Dear {{ booking.contact_email|default:"Valued Customer" }},</p>
+            
+            <div class="reminder-box">
+                <h2>🔮 Your Astrology Session</h2>
+                <p style="font-size: 18px; margin: 0;"><strong>{{ booking.preferred_date|date:"F d, Y" }} at {{ booking.preferred_time|time:"g:i A" }}</strong></p>
+                <p style="margin: 10px 0;">Duration: {{ booking.service.duration_minutes }} minutes</p>
+            </div>
+            
+            <p>This is a friendly reminder that your astrology consultation is scheduled for the above date and time.</p>
+            
+            <div class="booking-details">
+                <h3>📋 Session Details</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Booking ID:</span>
+                    <span class="detail-value">{{ booking.astro_book_id }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Service:</span>
+                    <span class="detail-value">{{ booking.service.title }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Language:</span>
+                    <span class="detail-value">{{ booking.language }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Birth Details:</span>
+                    <span class="detail-value">{{ booking.birth_place }}, {{ booking.birth_date|date:"F d, Y" }} at {{ booking.birth_time|time:"g:i A" }}</span>
+                </div>
+                {% if booking.questions %}
+                <div class="detail-row">
+                    <span class="detail-label">Your Questions:</span>
+                    <span class="detail-value">{{ booking.questions|truncatewords:20 }}</span>
+                </div>
+                {% endif %}
+                {% if booking.google_meet_link %}
+                <div style="text-align: center; margin: 20px 0;">
+                    <a href="{{ booking.google_meet_link }}" class="button">🎥 Join Google Meet</a>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="checklist">
+                <h3>✅ Pre-Session Checklist</h3>
+                <ul>
+                    <li>Ensure you have a stable internet connection</li>
+                    <li>Test your camera and microphone</li>
+                    <li>Prepare any additional questions you may have</li>
+                    <li>Keep your birth details handy for reference</li>
+                    <li>Find a quiet, private space for the consultation</li>
+                    {% if booking.google_meet_link %}
+                    <li>Click the "Join Google Meet" link above 5 minutes before the session</li>
+                    {% endif %}
+                </ul>
+            </div>
+            
+            <p><strong>Note:</strong> Please join the session on time to make the most of your consultation. Our astrologer will be available at the scheduled time.</p>
+            
+            <p>If you need to reschedule or have any questions, please contact us at <a href="mailto:support@okpuja.com">support@okpuja.com</a> at least 2 hours before your scheduled session.</p>
+        </div>
+        
+        <div class="footer">
+            <p>🙏 Looking forward to your session!</p>
+            <p><small>This is an automated reminder. Please do not reply to this email.</small></p>
+        </div>
+    </div>
+</body>
+</html>

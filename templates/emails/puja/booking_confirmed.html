@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puja Booking Confirmed - {{ company_name }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .success-badge {
+            background-color: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .booking-details {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+            width: 40%;
+        }
+        .detail-value {
+            color: #212529;
+            width: 58%;
+        }
+        .preparations {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .footer {
+            background-color: #343a40;
+            color: white;
+            text-align: center;
+            padding: 30px;
+        }
+        @media (max-width: 600px) {
+            .detail-row {
+                flex-direction: column;
+            }
+            .detail-label, .detail-value {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Booking Confirmed!</h1>
+            <p>Your puja has been successfully confirmed</p>
+        </div>
+        
+        <div class="content">
+            <p>Dear {{ booking.contact_name }},</p>
+            
+            <div class="success-badge">
+                🎉 Great News! Your puja booking is confirmed!
+            </div>
+            
+            <p>We are delighted to confirm your puja booking. Our experienced pandit will conduct the ceremony with complete devotion and traditional rituals.</p>
+            
+            <div class="booking-details">
+                <h3 style="margin-top: 0; color: #495057;">📋 Confirmed Booking Details</h3>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Booking ID:</div>
+                    <div class="detail-value"><strong>#{{ booking.id }}</strong></div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Service:</div>
+                    <div class="detail-value">{{ service_name }}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Package:</div>
+                    <div class="detail-value">{{ package_details.name }}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Amount:</div>
+                    <div class="detail-value">₹{{ package_details.price }}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Date & Time:</div>
+                    <div class="detail-value">{{ booking.booking_date }} at {{ booking.start_time|time:"H:i A" }}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Address:</div>
+                    <div class="detail-value">{{ booking.address }}</div>
+                </div>
+            </div>
+            
+            <div class="preparations">
+                <h3 style="margin-top: 0;">🕉️ What to Expect</h3>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Our pandit will arrive 15 minutes before the scheduled time</li>
+                    <li>All necessary puja items and materials will be provided</li>
+                    <li>The ceremony will follow traditional Vedic practices</li>
+                    <li>You will receive blessed prasadam after the puja</li>
+                    <li>Duration: Approximately 1-2 hours</li>
+                </ul>
+            </div>
+            
+            <div style="background-color: #fff3cd; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107;">
+                <h4 style="margin-top: 0;">📞 Contact Information</h4>
+                <p style="margin: 5px 0;">For any questions or changes, please contact us:</p>
+                <p style="margin: 5px 0;"><strong>Phone:</strong> +91-9876543210</p>
+                <p style="margin: 5px 0;"><strong>Email:</strong> support@okpuja.com</p>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <p style="font-size: 18px; color: #28a745; font-weight: 600;">
+                    🙏 Thank you for choosing {{ company_name }}!
+                </p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>{{ company_name }}</strong></p>
+            <p>🕉️ Bringing Divine Blessings to Your Home 🏠</p>
+            
+            <div style="margin-top: 15px; font-size: 12px;">
+                <p>📧 support@okpuja.com | 📞 +91-9876543210</p>
+                <p>🌐 www.okpuja.com</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

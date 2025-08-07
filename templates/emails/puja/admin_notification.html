@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Notification - Puja Booking - {{ company_name }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 650px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #343a40, #495057);
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .admin-badge {
+            background-color: #dc3545;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+        .content {
+            padding: 30px;
+        }
+        .notification-type {
+            background-color: #e9ecef;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 6px 6px 0;
+        }
+        .booking-summary {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .detail-item {
+            background-color: white;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+        .detail-value {
+            color: #212529;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-confirmed { background-color: #d4edda; color: #155724; }
+        .status-cancelled { background-color: #f8d7da; color: #721c24; }
+        .status-completed { background-color: #cce7ff; color: #004085; }
+        .status-pending { background-color: #fff3cd; color: #856404; }
+        .action-section {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 25px 0;
+            text-align: center;
+        }
+        .button {
+            display: inline-block;
+            background-color: white;
+            color: #007bff;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 10px 5px;
+        }
+        .context-info {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .footer {
+            background-color: #343a40;
+            color: white;
+            text-align: center;
+            padding: 25px;
+        }
+        .timestamp {
+            color: #6c757d;
+            font-size: 12px;
+            text-align: right;
+            margin-top: 20px;
+            font-style: italic;
+        }
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                border-radius: 0;
+            }
+            .content {
+                padding: 20px 15px;
+            }
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="admin-badge">Admin Notification</div>
+            <h1>🕉️ Puja Booking Alert</h1>
+            <p>Booking #{{ booking.id }} - {{ notification_type|title|replace_:"_":" " }}</p>
+        </div>
+        
+        <div class="content">
+            <div class="notification-type">
+                <strong>Notification Type:</strong> {{ notification_type|title|replace_:"_":" " }}
+            </div>
+            
+            <div class="booking-summary">
+                <h3 style="margin-top: 0; color: #495057;">📋 Booking Summary</h3>
+                
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Booking ID</div>
+                        <div class="detail-value">#{{ booking.id }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Service</div>
+                        <div class="detail-value">{{ booking.puja_service.title }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Category</div>
+                        <div class="detail-value">{{ booking.puja_service.category.name }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Package</div>
+                        <div class="detail-value">{{ booking.package.name }} (₹{{ booking.package.price }})</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Customer</div>
+                        <div class="detail-value">{{ booking.contact_name }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Contact</div>
+                        <div class="detail-value">{{ booking.contact_number }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Email</div>
+                        <div class="detail-value">{{ booking.contact_email }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Status</div>
+                        <div class="detail-value">
+                            <span class="status-badge status-{{ booking.status|lower }}">
+                                {{ booking.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Date & Time</div>
+                        <div class="detail-value">
+                            {{ booking.booking_date }}<br>
+                            <small>{{ booking.start_time|time:"H:i A" }}</small>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Booking Created</div>
+                        <div class="detail-value">{{ booking.created_at|date:"M d, Y H:i" }}</div>
+                    </div>
+                </div>
+                
+                {% if booking.address %}
+                <div class="detail-item" style="grid-column: 1 / -1; margin-top: 15px;">
+                    <div class="detail-label">Service Address</div>
+                    <div class="detail-value">{{ booking.address }}</div>
+                </div>
+                {% endif %}
+                
+                {% if booking.special_requests %}
+                <div class="detail-item" style="grid-column: 1 / -1; margin-top: 15px;">
+                    <div class="detail-label">Special Requests</div>
+                    <div class="detail-value" style="font-style: italic;">{{ booking.special_requests }}</div>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if context %}
+            <div class="context-info">
+                <h4 style="margin-top: 0;">📌 Additional Context</h4>
+                {% for key, value in context.items %}
+                <p style="margin: 5px 0;"><strong>{{ key|title|replace_:"_":" " }}:</strong> {{ value }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            {% if notification_type == 'status_updated' %}
+            <div style="background-color: #e7f3ff; padding: 15px; border-radius: 6px; border-left: 4px solid #007bff;">
+                <h4 style="margin-top: 0; color: #0056b3;">Status Change Details</h4>
+                <p style="margin: 5px 0;">
+                    <strong>Previous Status:</strong> {{ context.old_status|default:"Unknown" }}<br>
+                    <strong>New Status:</strong> {{ context.new_status|default:booking.get_status_display }}
+                </p>
+            </div>
+            {% elif notification_type == 'booking_created' %}
+            <div style="background-color: #d4edda; padding: 15px; border-radius: 6px; border-left: 4px solid #28a745;">
+                <h4 style="margin-top: 0; color: #155724;">🎉 New Booking Alert</h4>
+                <p style="margin: 0;">A new puja booking has been created and requires attention.</p>
+            </div>
+            {% elif notification_type == 'booking_cancelled' %}
+            <div style="background-color: #f8d7da; padding: 15px; border-radius: 6px; border-left: 4px solid #dc3545;">
+                <h4 style="margin-top: 0; color: #721c24;">❌ Cancellation Alert</h4>
+                <p style="margin: 0;">
+                    This booking has been cancelled.
+                    {% if booking.cancellation_reason %}
+                    <br><strong>Reason:</strong> {{ booking.cancellation_reason }}
+                    {% endif %}
+                </p>
+            </div>
+            {% endif %}
+            
+            <div class="action-section">
+                <h4 style="margin-top: 0;">🎯 Quick Actions</h4>
+                <a href="{{ admin_panel_url }}/puja/bookings/{{ booking.id }}/" class="button">View Details</a>
+                <a href="{{ admin_panel_url }}/puja/bookings/" class="button">Manage Bookings</a>
+                <a href="{{ admin_panel_url }}/puja/dashboard/" class="button">Dashboard</a>
+            </div>
+            
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                <h4 style="margin-top: 0; color: #495057;">📊 Quick Stats</h4>
+                <div style="display: flex; justify-content: space-between; text-align: center;">
+                    <div>
+                        <div style="font-weight: bold; color: #007bff;">Service Type</div>
+                        <div>{{ booking.puja_service.get_type_display }}</div>
+                    </div>
+                    <div>
+                        <div style="font-weight: bold; color: #28a745;">Revenue</div>
+                        <div>₹{{ booking.package.price }}</div>
+                    </div>
+                    <div>
+                        <div style="font-weight: bold; color: #ffc107;">Priority</div>
+                        <div>
+                            {% if booking.booking_date <= today %}
+                                High
+                            {% else %}
+                                Normal
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="timestamp">
+                📅 Notification sent: {{ now|date:"M d, Y H:i A" }}
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>{{ company_name }} - Admin Panel</strong></p>
+            <p>🕉️ Puja Booking Management System</p>
+            
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #495057; font-size: 12px;">
+                <p>This is an automated admin notification.</p>
+                <p>🌐 Admin Panel: {{ admin_panel_url }}</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

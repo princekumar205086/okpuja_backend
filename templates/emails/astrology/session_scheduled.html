@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astrology Session Scheduled - OkPuja</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .content {
+            margin: 20px 0;
+        }
+        .session-details {
+            background-color: #f0f8ff;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #8e2de2;
+            margin: 20px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #555;
+        }
+        .detail-value {
+            color: #333;
+            text-align: right;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-scheduled {
+            background-color: #cce7ff;
+            color: #0056b3;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+        .preparation-tips {
+            background-color: #fff8dc;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #ffd700;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 10px 5px;
+        }
+        .astrologer-card {
+            background-color: #f0f8f0;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #28a745;
+        }
+        .countdown {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .container { padding: 20px; }
+            .detail-row { flex-direction: column; }
+            .detail-value { text-align: left; margin-top: 5px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌟 Session Scheduled</h1>
+            <p>Your astrology consultation is ready</p>
+        </div>
+
+        <div class="content">
+            <p>Dear {{ booking.user.first_name|default:"Valued Customer" }},</p>
+            
+            <p>Wonderful news! Your astrology session has been <strong>scheduled</strong> and confirmed. 
+            Your astrologer is prepared to provide you with insightful cosmic guidance.</p>
+
+            <div class="countdown">
+                <h3 style="margin: 0 0 10px 0;">⏰ Session Starting Soon</h3>
+                <p style="margin: 0; font-size: 18px;">
+                    <strong>{{ booking.preferred_date|date:"F j, Y" }} at {{ booking.preferred_time|time:"g:i A" }}</strong>
+                </p>
+            </div>
+
+            <div class="session-details">
+                <h3 style="margin-top: 0; color: #8e2de2;">📅 Session Information</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Booking ID:</span>
+                    <span class="detail-value"><strong>#{{ booking.booking_id }}</strong></span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Service:</span>
+                    <span class="detail-value">{{ booking.service.name }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Session Type:</span>
+                    <span class="detail-value">{{ booking.session_type|default:"Phone Consultation" }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Duration:</span>
+                    <span class="detail-value">{{ booking.service.duration|default:"60" }} minutes</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Status:</span>
+                    <span class="detail-value">
+                        <span class="status-badge status-scheduled">Scheduled</span>
+                    </span>
+                </div>
+                {% if booking.meeting_link %}
+                <div class="detail-row">
+                    <span class="detail-label">Meeting Link:</span>
+                    <span class="detail-value">
+                        <a href="{{ booking.meeting_link }}" style="color: #8e2de2;">Join Session</a>
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if booking.astrologer %}
+            <div class="astrologer-card">
+                <h3 style="margin-top: 0; color: #28a745;">🔮 Your Astrologer</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Name:</span>
+                    <span class="detail-value">{{ booking.astrologer.name }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Specialization:</span>
+                    <span class="detail-value">{{ booking.astrologer.specialization|default:"Vedic Astrology" }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Languages:</span>
+                    <span class="detail-value">{{ booking.astrologer.languages|default:"Hindi, English" }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Contact:</span>
+                    <span class="detail-value">{{ booking.astrologer.phone|default:"Will call you" }}</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="preparation-tips">
+                <h3 style="margin-top: 0; color: #b8860b;">📝 Session Preparation</h3>
+                <ul style="margin: 10px 0; padding-left: 20px; color: #666;">
+                    <li><strong>Birth Details:</strong> Have your exact birth date, time, and place ready</li>
+                    <li><strong>Questions:</strong> Prepare specific questions about love, career, health, or future</li>
+                    <li><strong>Environment:</strong> Find a quiet, private space for the consultation</li>
+                    <li><strong>Duration:</strong> Keep {{ booking.service.duration|default:"60" }} minutes free</li>
+                    <li><strong>Recording:</strong> Ask permission if you wish to record the session</li>
+                </ul>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+                {% if booking.meeting_link %}
+                <a href="{{ booking.meeting_link }}" class="btn">Join Video Session</a>
+                {% endif %}
+                <a href="#" class="btn">View Full Details</a>
+                <a href="#" class="btn">Reschedule</a>
+            </div>
+
+            <div style="background-color: #e8f4fd; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #0056b3;">🔔 Important Reminders</h3>
+                <ul style="color: #666; margin: 10px 0;">
+                    <li>Your astrologer will contact you 5-10 minutes before the session</li>
+                    <li>Please be available 15 minutes before the scheduled time</li>
+                    <li>If you need to reschedule, please do so at least 2 hours in advance</li>
+                    <li>You'll receive a session recording and summary afterward</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>OkPuja - Your Spiritual Journey Partner</strong></p>
+            <p>Get ready for your cosmic consultation!</p>
+            <p style="font-size: 12px; margin-top: 15px;">
+                Need help? Contact us at support@okpuja.com or +91-XXXX-XXXX-XXX
+            </p>
+        </div>
+    </div>
+</body>
+</html>

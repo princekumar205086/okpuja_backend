@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Notification - {{ company_name }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #6f42c1, #7c4dff);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .message-type-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 10px 0;
+        }
+        .type-reminder { background-color: #fff3cd; color: #856404; }
+        .type-update { background-color: #cce7ff; color: #004085; }
+        .type-custom { background-color: #e2e3e5; color: #383d41; }
+        .type-follow_up { background-color: #d1ecf1; color: #0c5460; }
+        .custom-message {
+            background-color: #f8f9fa;
+            border-left: 4px solid #6f42c1;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 6px 6px 0;
+            font-style: italic;
+        }
+        .booking-details {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+            width: 40%;
+        }
+        .detail-value {
+            color: #212529;
+            width: 58%;
+        }
+        .footer {
+            background-color: #343a40;
+            color: white;
+            text-align: center;
+            padding: 30px;
+        }
+        @media (max-width: 600px) {
+            .detail-row {
+                flex-direction: column;
+            }
+            .detail-label, .detail-value {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📬 Message from {{ company_name }}</h1>
+            <p>Regarding your puja booking</p>
+        </div>
+        
+        <div class="content">
+            <p>Dear {{ booking.contact_name }},</p>
+            
+            <div style="text-align: center;">
+                <span class="message-type-badge type-{{ message_type }}">{{ message_type|title|replace_:"_":" " }}</span>
+            </div>
+            
+            {% if custom_message %}
+            <div class="custom-message">
+                <h4 style="margin-top: 0; color: #6f42c1;">💬 Message for You:</h4>
+                <p style="margin: 0; font-size: 16px; line-height: 1.6;">{{ custom_message }}</p>
+            </div>
+            {% endif %}
+            
+            {% if include_details %}
+            <div class="booking-details">
+                <h3 style="margin-top: 0; color: #495057;">📋 Booking Information</h3>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Booking ID:</div>
+                    <div class="detail-value"><strong>#{{ booking.id }}</strong></div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Service:</div>
+                    <div class="detail-value">{{ service_name }}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Date & Time:</div>
+                    <div class="detail-value">{{ booking.booking_date }} at {{ booking.start_time|time:"H:i A" }}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Status:</div>
+                    <div class="detail-value">{{ booking.get_status_display }}</div>
+                </div>
+                
+                {% if booking.address %}
+                <div class="detail-row">
+                    <div class="detail-label">Address:</div>
+                    <div class="detail-value">{{ booking.address }}</div>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            {% if message_type == 'reminder' %}
+            <div style="background-color: #fff3cd; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107;">
+                <h4 style="margin-top: 0; color: #856404;">🔔 Friendly Reminder</h4>
+                <p style="margin: 0;">This is a gentle reminder about your upcoming puja service. Please ensure you are available at the scheduled time.</p>
+            </div>
+            {% elif message_type == 'update' %}
+            <div style="background-color: #cce7ff; padding: 15px; border-radius: 6px; border-left: 4px solid #007bff;">
+                <h4 style="margin-top: 0; color: #004085;">📢 Important Update</h4>
+                <p style="margin: 0;">We have an important update regarding your puja booking. Please review the information above.</p>
+            </div>
+            {% elif message_type == 'follow_up' %}
+            <div style="background-color: #d1ecf1; padding: 15px; border-radius: 6px; border-left: 4px solid #17a2b8;">
+                <h4 style="margin-top: 0; color: #0c5460;">🤝 Follow-up</h4>
+                <p style="margin: 0;">We hope you had a blessed experience with our puja service. Your feedback is valuable to us.</p>
+            </div>
+            {% endif %}
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <p>If you have any questions or concerns, please don't hesitate to contact us:</p>
+                <p><strong>📞 +91-9876543210</strong> | <strong>✉️ support@okpuja.com</strong></p>
+            </div>
+            
+            <div style="background-color: #e7f3ff; padding: 15px; border-radius: 6px; text-align: center;">
+                <p style="margin: 0; color: #0056b3; font-weight: 600;">
+                    🙏 Thank you for choosing {{ company_name }} for your spiritual needs!
+                </p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>{{ company_name }}</strong></p>
+            <p>🕉️ Your Trusted Partner for Sacred Ceremonies 🏠</p>
+            
+            <div style="margin-top: 15px; font-size: 12px;">
+                <p>📧 support@okpuja.com | 📞 +91-9876543210</p>
+                <p>🌐 www.okpuja.com</p>
+                <p style="margin-top: 15px;">
+                    This message was sent regarding booking #{{ booking.id }}.
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

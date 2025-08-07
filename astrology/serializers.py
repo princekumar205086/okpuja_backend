@@ -2,6 +2,20 @@ from rest_framework import serializers
 from .models import AstrologyService, AstrologyBooking
 from accounts.serializers import UserSerializer
 
+# Import admin serializers for use in views
+try:
+    from .admin_serializers import (
+        AdminAstrologyServiceSerializer,
+        AdminAstrologyBookingSerializer,
+        AdminBookingUpdateSerializer,
+        AdminSessionScheduleSerializer,
+        AdminBulkActionSerializer,
+        AdminDashboardSerializer
+    )
+except ImportError:
+    # Graceful fallback if admin_serializers doesn't exist yet
+    pass
+
 class AstrologyServiceSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(write_only=True, required=False)
     image_url = serializers.URLField(read_only=True)

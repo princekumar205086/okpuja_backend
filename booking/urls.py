@@ -11,4 +11,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('invoice/<str:book_id>/', generate_invoice_pdf, name='booking-invoice'),
     path('public/invoice/<str:book_id>/', public_invoice_pdf, name='booking-public-invoice'),
+    
+    # Enterprise Admin URLs
+    path('', include('booking.admin_urls')),
 ]

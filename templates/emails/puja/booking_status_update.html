@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puja Booking Status Update - {{ company_name }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 10px 0;
+        }
+        .status-confirmed {
+            background-color: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        .status-cancelled {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        .status-completed {
+            background-color: #cce7ff;
+            color: #004085;
+            border: 2px solid #b3d7ff;
+        }
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffeaa7;
+        }
+        .booking-details {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+            width: 40%;
+        }
+        .detail-value {
+            color: #212529;
+            width: 58%;
+        }
+        .highlight-box {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 14px 28px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .footer {
+            background-color: #343a40;
+            color: white;
+            text-align: center;
+            padding: 30px;
+        }
+        .footer p {
+            margin: 5px 0;
+        }
+        .contact-info {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #495057;
+        }
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                border-radius: 0;
+            }
+            .content {
+                padding: 20px 15px;
+            }
+            .detail-row {
+                flex-direction: column;
+            }
+            .detail-label {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+            .detail-value {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Puja Booking Status Update</h1>
+            <p>Your booking status has been updated</p>
+        </div>
+        
+        <div class="content">
+            <p>Dear {{ booking.contact_name }},</p>
+            
+            <p>We wanted to inform you that the status of your puja booking has been updated.</p>
+            
+            <div class="highlight-box">
+                <h3 style="margin: 0 0 10px 0;">Status Changed</h3>
+                <p style="margin: 0;">From: <strong>{{ old_status|title }}</strong> → To: <span class="status-badge status-{{ new_status|lower }}">{{ booking.get_status_display }}</span></p>
+            </div>
+            
+            <div class="booking-details">
+                <h3 style="margin-top: 0; color: #495057;">Booking Details</h3>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Booking ID:</div>
+                    <div class="detail-value"><strong>#{{ booking.id }}</strong></div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Service:</div>
+                    <div class="detail-value">{{ service_name }}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Package:</div>
+                    <div class="detail-value">{{ package_details.name }}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Price:</div>
+                    <div class="detail-value">₹{{ package_details.price }}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Date & Time:</div>
+                    <div class="detail-value">{{ booking.booking_date }} at {{ booking.start_time|time:"H:i" }}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Current Status:</div>
+                    <div class="detail-value"><span class="status-badge status-{{ new_status|lower }}">{{ booking.get_status_display }}</span></div>
+                </div>
+            </div>
+            
+            {% if new_status == 'CONFIRMED' %}
+            <div style="background-color: #d4edda; padding: 15px; border-radius: 6px; border-left: 4px solid #28a745;">
+                <strong>Great News!</strong> Your puja booking has been confirmed. Our team will contact you shortly with further details about the preparations and arrangements.
+            </div>
+            {% elif new_status == 'CANCELLED' %}
+            <div style="background-color: #f8d7da; padding: 15px; border-radius: 6px; border-left: 4px solid #dc3545;">
+                <strong>Booking Cancelled:</strong> We regret to inform you that your puja booking has been cancelled. If you have any questions or would like to reschedule, please contact our support team.
+            </div>
+            {% elif new_status == 'COMPLETED' %}
+            <div style="background-color: #cce7ff; padding: 15px; border-radius: 6px; border-left: 4px solid #007bff;">
+                <strong>Service Completed!</strong> Thank you for choosing our puja services. We hope you had a blessed experience. Your feedback is valuable to us.
+            </div>
+            {% endif %}
+            
+            {% if booking.special_requests %}
+            <div class="booking-details">
+                <h4 style="margin-top: 0; color: #495057;">Special Requests:</h4>
+                <p style="margin: 0;">{{ booking.special_requests }}</p>
+            </div>
+            {% endif %}
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <p>Need assistance? Contact our support team:</p>
+                <p><strong>Phone:</strong> +91-9876543210 | <strong>Email:</strong> support@okpuja.com</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>{{ company_name }}</strong></p>
+            <p>Bringing Divine Blessings to Your Doorstep</p>
+            
+            <div class="contact-info">
+                <p>📧 support@okpuja.com | 📞 +91-9876543210</p>
+                <p>🌐 www.okpuja.com</p>
+                <p style="font-size: 12px; margin-top: 15px;">
+                    This is an automated notification. Please do not reply to this email.
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

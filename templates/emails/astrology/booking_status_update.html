@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Status Updated - {{ booking.astro_book_id }}</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .content { padding: 30px; }
+        .status-badge { display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: bold; margin: 10px 0; }
+        .status-confirmed { background-color: #d4edda; color: #155724; }
+        .status-completed { background-color: #cce5ff; color: #004085; }
+        .status-cancelled { background-color: #f8d7da; color: #721c24; }
+        .booking-details { background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .detail-row { display: flex; justify-content: space-between; margin: 10px 0; }
+        .detail-label { font-weight: bold; color: #666; }
+        .detail-value { color: #333; }
+        .footer { background-color: #f8f9fa; padding: 20px; text-align: center; color: #666; }
+        .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 25px; font-weight: bold; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔄 Booking Status Updated</h1>
+            <p>Your astrology booking has been updated</p>
+        </div>
+        
+        <div class="content">
+            <p>Dear {{ booking.contact_email|default:"Valued Customer" }},</p>
+            
+            <p>Your astrology booking status has been updated:</p>
+            
+            <div style="text-align: center; margin: 20px 0;">
+                <div class="status-badge status-{{ old_status|lower }}">Previous: {{ old_status }}</div>
+                <span style="margin: 0 10px;">→</span>
+                <div class="status-badge status-{{ new_status|lower }}">Current: {{ new_status }}</div>
+            </div>
+            
+            <div class="booking-details">
+                <h3>📋 Booking Details</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Booking ID:</span>
+                    <span class="detail-value">{{ booking.astro_book_id }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Service:</span>
+                    <span class="detail-value">{{ booking.service.title }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Date & Time:</span>
+                    <span class="detail-value">{{ booking.preferred_date|date:"F d, Y" }} at {{ booking.preferred_time|time:"g:i A" }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Language:</span>
+                    <span class="detail-value">{{ booking.language }}</span>
+                </div>
+                {% if booking.google_meet_link %}
+                <div class="detail-row">
+                    <span class="detail-label">Session Link:</span>
+                    <span class="detail-value"><a href="{{ booking.google_meet_link }}" class="button">Join Session</a></span>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if new_status == "COMPLETED" %}
+            <p>🎉 <strong>Thank you for choosing our astrology services!</strong> We hope you found the session insightful and valuable.</p>
+            <p>If you have any feedback or questions, please don't hesitate to contact us.</p>
+            {% elif new_status == "CONFIRMED" %}
+            <p>✅ <strong>Your booking is confirmed!</strong> Our astrologer will contact you soon to schedule the session.</p>
+            {% elif new_status == "CANCELLED" %}
+            <p>❌ <strong>Your booking has been cancelled.</strong> If this was unexpected, please contact our support team.</p>
+            <p>Any payments will be refunded according to our refund policy.</p>
+            {% endif %}
+            
+            <p>If you have any questions or concerns, please feel free to contact us at <a href="mailto:support@okpuja.com">support@okpuja.com</a> or call us at +91-XXX-XXX-XXXX.</p>
+        </div>
+        
+        <div class="footer">
+            <p>🙏 Thank you for trusting OkPuja with your spiritual journey</p>
+            <p><small>This is an automated message. Please do not reply to this email.</small></p>
+        </div>
+    </div>
+</body>
+</html>

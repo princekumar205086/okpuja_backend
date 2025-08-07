@@ -5,6 +5,11 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from imagekitio import ImageKit
 from imagekitio.models.UploadFileRequestOptions import UploadFileRequestOptions
+import os
+import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 User = settings.AUTH_USER_MODEL
 
@@ -160,7 +165,7 @@ class AstrologyService(models.Model):
                 thumb_io.seek(0)
                 return thumb_io.getvalue()
         except Exception as e:
-            print(f"Error creating thumbnail: {str(e)}")
+            logger.error(f"Error creating thumbnail: {str(e)}")
             raise
 
     def _create_card_image(self, image_bytes, size=(300, 200), quality=85):
@@ -179,6 +184,9 @@ class AstrologyService(models.Model):
                 img.save(card_io, format='JPEG', quality=quality, optimize=True)
                 card_io.seek(0)
                 return card_io.getvalue()
+        except Exception as e:
+            logger.error(f"Error creating card image: {str(e)}")
+            raise
         except Exception as e:
             print(f"Error creating card image: {str(e)}")
             raise
