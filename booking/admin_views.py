@@ -4,6 +4,7 @@ Comprehensive booking management with advanced features
 """
 import logging
 from datetime import datetime, date, timedelta
+from decimal import Decimal
 from django.db import transaction
 from django.db.models import Q, Count, Sum, Avg, F
 from django.utils import timezone
@@ -95,8 +96,12 @@ class AdminBookingDashboardView(APIView):
             ).select_related('cart', 'user')
             
             # Calculate revenue from bookings
-            total_revenue = sum(booking.total_amount for booking in period_bookings)
-            avg_booking_value = total_revenue / period_bookings.count() if period_bookings.count() > 0 else 0
+            from decimal import Decimal
+            total_revenue = Decimal('0')
+            for booking in period_bookings:
+                if booking.total_amount:
+                    total_revenue += Decimal(str(booking.total_amount))
+            avg_booking_value = float(total_revenue) / period_bookings.count() if period_bookings.count() > 0 else 0
             
             # Employee/assignment stats
             assigned_bookings = Booking.objects.filter(assigned_to__isnull=False).count()
@@ -144,7 +149,10 @@ class AdminBookingDashboardView(APIView):
                     created_at__year=month_date.year,
                     created_at__month=month_date.month
                 )
-                month_revenue = sum(booking.total_amount for booking in month_bookings)
+                month_revenue = Decimal('0')
+                for booking in month_bookings:
+                    if booking.total_amount:
+                        month_revenue += Decimal(str(booking.total_amount))
                 monthly_trends.append({
                     'month': month_date.strftime('%Y-%m'),
                     'month_name': month_date.strftime('%B %Y'),
@@ -702,15 +710,22 @@ class AdminBookingReportsView(APIView):
             status__in=[BookingStatus.CONFIRMED, BookingStatus.COMPLETED]
         ).select_related('user', 'cart')
         
-        total_revenue = sum(booking.total_amount for booking in bookings)
+        total_revenue = Decimal('0')
+        for booking in bookings:
+            if booking.total_amount:
+                total_revenue += Decimal(str(booking.total_amount))
         
         # Daily revenue breakdown
         daily_revenue = {}
         current_date = start_date
         while current_date <= end_date:
             day_bookings = bookings.filter(created_at__date=current_date)
+            day_revenue = Decimal('0')
+            for booking in day_bookings:
+                if booking.total_amount:
+                    day_revenue += Decimal(str(booking.total_amount))
             daily_revenue[current_date.isoformat()] = {
-                'revenue': float(sum(booking.total_amount for booking in day_bookings)),
+                'revenue': float(day_revenue),
                 'bookings': day_bookings.count()
             }
             current_date += timedelta(days=1)

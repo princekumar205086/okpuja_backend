@@ -77,7 +77,7 @@ class AdminPujaBookingSerializer(serializers.ModelSerializer):
         if obj.contact_name:
             return obj.contact_name
         elif obj.user:
-            return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.email
+            return obj.user.username or obj.user.email
         return obj.contact_email
     
     def get_booking_value(self, obj):

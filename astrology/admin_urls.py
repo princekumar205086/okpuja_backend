@@ -20,10 +20,10 @@ urlpatterns = [
     path('dashboard/', AdminAstrologyDashboardView.as_view(), name='admin-dashboard'),
     path('reports/', AdminAstrologyReportsView.as_view(), name='admin-reports'),
     
-    # Booking Management
+    # Booking Management - Order matters! Specific URLs first
     path('bookings/', AdminAstrologyBookingManagementView.as_view(), name='admin-bookings-list'),
-    path('bookings/<str:astro_book_id>/', AdminAstrologerManagementView.as_view(), name='admin-booking-detail'),
     path('bookings/bulk-actions/', AdminAstrologyBulkActionsView.as_view(), name='admin-bulk-actions'),
+    path('bookings/<str:astro_book_id>/', AdminAstrologerManagementView.as_view(), name='admin-booking-detail'),
     
     # Service Management
     path('services/', AdminServiceManagementView.as_view(), name='admin-services'),

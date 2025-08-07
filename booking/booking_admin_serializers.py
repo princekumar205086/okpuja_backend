@@ -41,9 +41,8 @@ class AdminBookingSerializer(serializers.ModelSerializer):
     
     def get_user_name(self, obj):
         """Get user's full name or email"""
-        if obj.user.first_name or obj.user.last_name:
-            return f"{obj.user.first_name} {obj.user.last_name}".strip()
-        return obj.user.email
+        # Use username if available, otherwise fall back to email
+        return obj.user.username or obj.user.email
     
     def get_user_phone(self, obj):
         """Get user's phone number if available"""
@@ -52,9 +51,8 @@ class AdminBookingSerializer(serializers.ModelSerializer):
     def get_assigned_to_name(self, obj):
         """Get assigned employee's name"""
         if obj.assigned_to:
-            if obj.assigned_to.first_name or obj.assigned_to.last_name:
-                return f"{obj.assigned_to.first_name} {obj.assigned_to.last_name}".strip()
-            return obj.assigned_to.email
+            # Use username if available, otherwise fall back to email
+            return obj.assigned_to.username or obj.assigned_to.email
         return None
     
     def get_total_amount(self, obj):
@@ -64,13 +62,22 @@ class AdminBookingSerializer(serializers.ModelSerializer):
     def get_cart_items_count(self, obj):
         """Get number of items in cart"""
         if obj.cart:
-            return obj.cart.items.count()
+            # Cart model has single service per cart, so count is always 1 if cart exists
+            return 1
         return 0
     
     def get_address_full(self, obj):
         """Get full address string"""
         if obj.address:
-            return obj.address.full_address
+            parts = [
+                obj.address.address_line1,
+                obj.address.address_line2 if obj.address.address_line2 else '',
+                obj.address.city,
+                obj.address.state,
+                obj.address.postal_code,
+                obj.address.country
+            ]
+            return ', '.join(filter(None, parts))
         return None
     
     def get_booking_age(self, obj):
@@ -222,8 +229,8 @@ class AdminBookingDetailSerializer(AdminBookingSerializer):
         return {
             'id': obj.user.id,
             'email': obj.user.email,
-            'first_name': obj.user.first_name,
-            'last_name': obj.user.last_name,
+            'username': obj.user.username,
+            'phone': getattr(obj.user, 'phone', None),
             'date_joined': obj.user.date_joined,
             'is_active': obj.user.is_active,
             'phone_number': getattr(obj.user, 'phone_number', None),
@@ -239,8 +246,8 @@ class AdminBookingDetailSerializer(AdminBookingSerializer):
         return {
             'id': obj.assigned_to.id,
             'email': obj.assigned_to.email,
-            'first_name': obj.assigned_to.first_name,
-            'last_name': obj.assigned_to.last_name,
+            'username': obj.assigned_to.username,
+            'phone': getattr(obj.assigned_to, 'phone', None),
             'is_staff': obj.assigned_to.is_staff,
             'total_assignments': obj.assigned_to.assigned_bookings.count(),
             'completed_assignments': obj.assigned_to.assigned_bookings.filter(
@@ -470,7 +477,7 @@ class AdminEmployeeSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'email', 'first_name', 'last_name', 'full_name',
+            'id', 'email', 'username', 'full_name',
             'is_staff', 'is_active', 'date_joined',
             'total_assignments', 'completed_assignments', 'active_assignments',
             'completion_rate'
@@ -478,8 +485,8 @@ class AdminEmployeeSerializer(serializers.ModelSerializer):
     
     def get_full_name(self, obj):
         """Get employee's full name"""
-        if obj.first_name or obj.last_name:
-            return f"{obj.first_name} {obj.last_name}".strip()
+        if obj.username:
+            return obj.username
         return obj.email
     
     def get_total_assignments(self, obj):

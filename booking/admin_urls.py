@@ -10,10 +10,10 @@ admin_urlpatterns = [
     # Dashboard and Analytics
     path('dashboard/', admin_views.AdminBookingDashboardView.as_view(), name='admin-booking-dashboard'),
     
-    # Booking Management
+    # Booking Management - Order matters! Specific URLs first
     path('bookings/', admin_views.AdminBookingManagementView.as_view(), name='admin-booking-management'),
-    path('bookings/<int:pk>/', admin_views.AdminBookingDetailView.as_view(), name='admin-booking-detail'),
     path('bookings/bulk-actions/', admin_views.AdminBookingBulkActionsView.as_view(), name='admin-booking-bulk-actions'),
+    path('bookings/<int:pk>/', admin_views.AdminBookingDetailView.as_view(), name='admin-booking-detail'),
     
     # Reports and Analytics
     path('reports/', admin_views.AdminBookingReportsView.as_view(), name='admin-booking-reports'),

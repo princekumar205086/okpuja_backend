@@ -5,7 +5,7 @@ from .invoice_views import generate_invoice_pdf, public_invoice_pdf
 
 router = DefaultRouter()
 router.register(r'bookings', BookingViewSet, basename='booking')
-router.register(r'admin/bookings', AdminBookingViewSet, basename='admin-booking')
+# Admin bookings are handled by admin_urls.py instead of router
 
 urlpatterns = [
     path('', include(router.urls)),

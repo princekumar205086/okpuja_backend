@@ -47,7 +47,8 @@ class AdminAstrologyBookingSerializer(serializers.ModelSerializer):
     def get_customer_name(self, obj):
         """Get customer display name"""
         if obj.user:
-            return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.email
+            # Use username if available, otherwise fall back to email
+            return obj.user.username or obj.user.email
         return obj.contact_email
     
     def get_session_status(self, obj):
