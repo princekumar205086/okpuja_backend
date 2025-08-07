@@ -22,7 +22,7 @@ class AdminPujaServiceSerializer(serializers.ModelSerializer):
             'id', 'title', 'description', 'image', 'category', 'category_name',
             'type', 'type_display', 'is_active', 'created_at', 'updated_at',
             'booking_count', 'total_revenue', 'package_count', 'active_packages',
-            'duration', 'what_includes', 'benefits', 'procedure'
+            'duration_minutes'
         ]
     
     def get_booking_count(self, obj):
@@ -66,7 +66,7 @@ class AdminPujaBookingSerializer(serializers.ModelSerializer):
             'package', 'package_name', 'package_price', 'user', 'user_email',
             'contact_name', 'contact_email', 'contact_number', 'address',
             'booking_date', 'start_time', 'end_time', 'status', 'status_display',
-            'special_requests', 'cancellation_reason', 'created_at', 'updated_at',
+            'special_instructions', 'cancellation_reason', 'created_at', 'updated_at',
             'booking_age', 'time_until_service'
         ]
     
@@ -120,7 +120,7 @@ class AdminPujaBookingUpdateSerializer(serializers.ModelSerializer):
         model = PujaBooking
         fields = [
             'status', 'booking_date', 'start_time', 'end_time',
-            'special_requests', 'cancellation_reason', 'address'
+            'special_instructions', 'cancellation_reason', 'address'
         ]
     
     def validate(self, attrs):
