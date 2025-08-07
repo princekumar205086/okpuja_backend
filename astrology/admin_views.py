@@ -19,6 +19,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
 from .models import AstrologyService, AstrologyBooking
+from .serializers import AstrologyServiceSerializer
 from .admin_serializers import (
     AdminAstrologyServiceSerializer,
     AdminAstrologyBookingSerializer,
