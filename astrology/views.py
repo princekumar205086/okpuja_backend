@@ -15,7 +15,8 @@ from .serializers import (
     AstrologyServiceSerializer,
     AstrologyBookingSerializer,
     CreateAstrologyBookingSerializer,
-    AstrologyBookingWithPaymentSerializer
+    AstrologyBookingWithPaymentSerializer,
+    AstrologyBookingRescheduleSerializer
 )
 from core.permissions import IsActiveUser
 from payments.services import PaymentService
@@ -113,6 +114,105 @@ class AstrologyBookingDeleteView(generics.DestroyAPIView):
         if self.request.user.is_staff:
             return AstrologyBooking.objects.all()
         return AstrologyBooking.objects.filter(user=self.request.user)
+
+class AstrologyBookingRescheduleView(APIView):
+    """Reschedule an astrology booking"""
+    
+    permission_classes = [IsActiveUser]
+    
+    @swagger_auto_schema(
+        operation_description="Reschedule an astrology booking",
+        operation_summary="Reschedule Astrology Booking",
+        tags=['Astrology'],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['preferred_date', 'preferred_time'],
+            properties={
+                'preferred_date': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    format=openapi.FORMAT_DATE,
+                    description='New preferred date (YYYY-MM-DD)'
+                ),
+                'preferred_time': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description='New preferred time (HH:MM:SS)'
+                ),
+                'reason': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description='Optional reason for rescheduling'
+                ),
+            }
+        ),
+        responses={
+            200: openapi.Response(
+                description="Booking rescheduled successfully",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'message': openapi.Schema(type=openapi.TYPE_STRING),
+                        'booking': openapi.Schema(type=openapi.TYPE_OBJECT),
+                        'old_date': openapi.Schema(type=openapi.TYPE_STRING),
+                        'old_time': openapi.Schema(type=openapi.TYPE_STRING),
+                    }
+                )
+            ),
+            400: openapi.Response(description="Bad request"),
+            403: openapi.Response(description="Permission denied"),
+            404: openapi.Response(description="Booking not found"),
+        }
+    )
+    def patch(self, request, pk):
+        """Reschedule astrology booking"""
+        from .serializers import AstrologyBookingRescheduleSerializer
+        
+        try:
+            # Get booking
+            if request.user.is_staff:
+                booking = AstrologyBooking.objects.get(pk=pk)
+            else:
+                booking = AstrologyBooking.objects.get(pk=pk, user=request.user)
+            
+            # Check permissions: user can reschedule their own booking, or admin/staff can reschedule any booking
+            if not (booking.user == request.user or request.user.is_staff):
+                return Response(
+                    {'error': 'You do not have permission to reschedule this booking'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Validate input data
+            serializer = AstrologyBookingRescheduleSerializer(data=request.data)
+            if serializer.is_valid():
+                try:
+                    # Reschedule the booking
+                    booking.reschedule(
+                        serializer.validated_data['preferred_date'],
+                        serializer.validated_data['preferred_time'],
+                        rescheduled_by=request.user
+                    )
+                    
+                    # Get updated booking data
+                    booking_serializer = AstrologyBookingSerializer(booking)
+                    
+                    return Response({
+                        'message': 'Astrology booking rescheduled successfully',
+                        'booking': booking_serializer.data,
+                        'old_date': str(serializer.validated_data.get('old_date', '')),
+                        'old_time': str(serializer.validated_data.get('old_time', ''))
+                    }, status=status.HTTP_200_OK)
+                    
+                except Exception as e:
+                    return Response(
+                        {'error': str(e)},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                
+        except AstrologyBooking.DoesNotExist:
+            return Response(
+                {'error': 'Astrology booking not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 class AstrologyServiceImageUploadView(APIView):
     permission_classes = [permissions.IsAdminUser]

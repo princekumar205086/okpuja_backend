@@ -173,3 +173,38 @@ class PujaBooking(models.Model):
 
     def __str__(self):
         return f"{self.puja_service.title} - {self.booking_date} ({self.get_status_display()})"
+    
+    def can_be_rescheduled(self):
+        """Check if booking can be rescheduled"""
+        return self.status not in [self.BookingStatus.COMPLETED, self.BookingStatus.CANCELLED]
+    
+    def reschedule(self, new_date, new_time, rescheduled_by=None):
+        """Reschedule puja booking to new date/time"""
+        from django.core.exceptions import ValidationError
+        
+        if not self.can_be_rescheduled():
+            raise ValidationError("Cannot reschedule completed or cancelled bookings")
+        
+        old_date = self.booking_date
+        old_time = self.start_time
+        
+        self.booking_date = new_date
+        self.start_time = new_time
+        self.save()
+        
+        # Send reschedule notification
+        try:
+            from core.tasks import send_puja_reschedule_notification
+            send_puja_reschedule_notification.delay(
+                self.id, old_date, old_time, rescheduled_by.id if rescheduled_by else None
+            )
+        except ImportError:
+            # Fallback if task doesn't exist
+            pass
+            
+        return {
+            'old_date': old_date,
+            'old_time': old_time,
+            'new_date': new_date,
+            'new_time': new_time
+        }

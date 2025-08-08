@@ -3,7 +3,8 @@ from .views import (
     PujaCategoryListView, PujaCategoryCreateView, PujaCategoryDetailView,
     PujaServiceListView, PujaServiceCreateView, PujaServiceDetailView,
     PackageListView, PackageCreateView, PackageDetailView,
-    PujaBookingListView, PujaBookingCreateView, PujaBookingDetailView
+    PujaBookingListView, PujaBookingCreateView, PujaBookingDetailView,
+    PujaBookingRescheduleView
 )
 
 urlpatterns = [
@@ -26,6 +27,7 @@ urlpatterns = [
     path('bookings/', PujaBookingListView.as_view(), name='puja-booking-list'),
     path('bookings/create/', PujaBookingCreateView.as_view(), name='puja-booking-create'),
     path('bookings/<int:pk>/', PujaBookingDetailView.as_view(), name='puja-booking-detail'),
+    path('bookings/<int:pk>/reschedule/', PujaBookingRescheduleView.as_view(), name='puja-booking-reschedule'),
 
     # Admin URLs - Enterprise level admin endpoints
     path('', include('puja.admin_urls')),

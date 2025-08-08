@@ -1,11 +1,13 @@
-from rest_framework import generics, permissions, filters
+from rest_framework import generics, permissions, filters, status
+from rest_framework.views import APIView
+from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from core.permissions import IsAdminUser, IsActiveUser
 from .models import PujaCategory, PujaService, Package, PujaBooking
 from .serializers import (
     PujaCategorySerializer, PujaServiceSerializer,
     PackageSerializer, PujaBookingSerializer,
-    CreatePujaBookingSerializer
+    CreatePujaBookingSerializer, PujaBookingRescheduleSerializer
 )
 from .filters import PujaServiceFilter, PackageFilter
 
@@ -103,3 +105,58 @@ class PackageDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Package.objects.all()
     serializer_class = PackageSerializer
     permission_classes = [IsAdminUser]
+
+class PujaBookingRescheduleView(APIView):
+    """Reschedule a puja booking"""
+    permission_classes = [IsActiveUser]
+    
+    def post(self, request, pk):
+        """Reschedule puja booking"""
+        try:
+            # Get booking
+            if request.user.is_staff:
+                booking = PujaBooking.objects.get(pk=pk)
+            else:
+                booking = PujaBooking.objects.get(pk=pk, user=request.user)
+            
+            # Check permissions: user can reschedule their own booking, or staff can reschedule any booking
+            if not (booking.user == request.user or request.user.is_staff):
+                return Response(
+                    {'error': 'You do not have permission to reschedule this booking'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Validate input data
+            serializer = PujaBookingRescheduleSerializer(data=request.data)
+            if serializer.is_valid():
+                try:
+                    # Reschedule the booking
+                    result = booking.reschedule(
+                        serializer.validated_data['new_date'],
+                        serializer.validated_data['new_time'],
+                        rescheduled_by=request.user
+                    )
+                    
+                    # Get updated booking data
+                    booking_serializer = PujaBookingSerializer(booking)
+                    
+                    return Response({
+                        'message': 'Puja booking rescheduled successfully',
+                        'booking': booking_serializer.data,
+                        'old_date': str(result['old_date']),
+                        'old_time': str(result['old_time'])
+                    }, status=status.HTTP_200_OK)
+                    
+                except Exception as e:
+                    return Response(
+                        {'error': str(e)},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                
+        except PujaBooking.DoesNotExist:
+            return Response(
+                {'error': 'Puja booking not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )

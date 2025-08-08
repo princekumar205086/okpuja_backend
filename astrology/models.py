@@ -299,7 +299,7 @@ class AstrologyBooking(models.Model):
         html_message = render_to_string('astrology/booking_confirmation_email.html', {
             'booking': self,
             'service': self.service,
-            'user_name': self.user.full_name if self.user else 'Valued Customer'
+            'user_name': 'Valued Customer' if not self.user else (getattr(self.user, 'username', '') or 'Valued Customer')
         })
         plain_message = strip_tags(html_message)
         
@@ -343,6 +343,78 @@ class AstrologyBooking(models.Model):
             logger = logging.getLogger(__name__)
             logger.error(f"Failed to send admin notification email: {e}")
 
+    def can_be_rescheduled(self):
+        """Check if booking can be rescheduled"""
+        return self.status not in ['COMPLETED', 'CANCELLED']
+    
+    def reschedule(self, new_date, new_time, rescheduled_by):
+        """Reschedule astrology booking to new date/time"""
+        from django.core.exceptions import ValidationError
+        
+        if not self.can_be_rescheduled():
+            raise ValidationError("Cannot reschedule completed or cancelled bookings")
+        
+        old_date = self.preferred_date
+        old_time = self.preferred_time
+        
+        self.preferred_date = new_date
+        self.preferred_time = new_time
+        self.save()
+        
+        # Send reschedule notification
+        self.send_reschedule_notification(old_date, old_time, rescheduled_by)
+    
+    def send_reschedule_notification(self, old_date, old_time, rescheduled_by):
+        """Send reschedule notification to user and admin"""
+        # Notification to user
+        subject = f"Astrology Session Rescheduled - {self.astro_book_id}"
+        html_message = render_to_string('astrology/reschedule_notification_email.html', {
+            'booking': self,
+            'service': self.service,
+            'old_date': old_date,
+            'old_time': old_time,
+            'user_name': 'Valued Customer' if not self.user else (getattr(self.user, 'username', '') or 'Valued Customer'),
+            'rescheduled_by': rescheduled_by
+        })
+        plain_message = strip_tags(html_message)
+        
+        try:
+            send_mail(
+                subject,
+                plain_message,
+                settings.DEFAULT_FROM_EMAIL,
+                [self.contact_email],
+                html_message=html_message,
+                fail_silently=False
+            )
+            
+            # Also notify admin
+            admin_emails = getattr(settings, 'ASTROLOGY_ADMIN_EMAILS', ['admin@okpuja.com'])
+            admin_subject = f"Astrology Booking Rescheduled - {self.astro_book_id}"
+            admin_message = f"""
+Astrology booking {self.astro_book_id} has been rescheduled:
+
+Customer: {self.contact_email}
+Service: {self.service.title}
+Old Date/Time: {old_date} at {old_time}
+New Date/Time: {self.preferred_date} at {self.preferred_time}
+Rescheduled by: {rescheduled_by.email if rescheduled_by else 'System'}
+
+Customer has been notified of the change.
+            """
+            
+            send_mail(
+                admin_subject,
+                admin_message,
+                settings.DEFAULT_FROM_EMAIL,
+                admin_emails,
+                fail_silently=False
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to send reschedule notification: {e}")
+
     def send_session_link_notification(self):
         """Send Google Meet session link to user"""
         if not self.google_meet_link:
@@ -352,7 +424,7 @@ class AstrologyBooking(models.Model):
         html_message = render_to_string('astrology/session_link_email.html', {
             'booking': self,
             'service': self.service,
-            'user_name': self.user.full_name if self.user else 'Valued Customer',
+            'user_name': 'Valued Customer' if not self.user else (getattr(self.user, 'username', '') or 'Valued Customer'),
             'google_meet_link': self.google_meet_link,
             'session_notes': self.session_notes
         })

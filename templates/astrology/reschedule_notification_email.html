@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astrology Session Rescheduled - OkPuja</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #ff6b35; color: white; padding: 20px; text-align: center; }
+        .content { background-color: #f9f9f9; padding: 30px; }
+        .booking-details { background-color: white; padding: 20px; margin: 20px 0; border-radius: 5px; }
+        .highlight { background-color: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; margin: 10px 0; }
+        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+        .button { background-color: #ff6b35; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; }
+        .changes { background-color: #d1ecf1; padding: 15px; border-radius: 5px; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔮 Astrology Session Rescheduled</h1>
+        </div>
+        
+        <div class="content">
+            <p>Dear {{ user_name }},</p>
+            
+            <p>Your astrology session has been successfully rescheduled. Please note the updated details below:</p>
+            
+            <div class="booking-details">
+                <h3>📅 Updated Session Details</h3>
+                <p><strong>Booking ID:</strong> {{ booking.astro_book_id }}</p>
+                <p><strong>Service:</strong> {{ booking.service.title }}</p>
+                <p><strong>Astrologer Language:</strong> {{ booking.language }}</p>
+                
+                <div class="changes">
+                    <h4>📋 Schedule Changes</h4>
+                    <p><strong>Previous Date & Time:</strong><br>
+                       📅 {{ old_date|date:"F d, Y" }} at ⏰ {{ old_time|time:"g:i A" }}</p>
+                    
+                    <p><strong>New Date & Time:</strong><br>
+                       📅 {{ booking.preferred_date|date:"F d, Y" }} at ⏰ {{ booking.preferred_time|time:"g:i A" }}</p>
+                </div>
+                
+                <p><strong>Contact Email:</strong> {{ booking.contact_email }}</p>
+                <p><strong>Contact Phone:</strong> {{ booking.contact_phone }}</p>
+                
+                {% if rescheduled_by %}
+                <div class="highlight">
+                    <p><strong>Rescheduled by:</strong> {{ rescheduled_by.full_name|default:rescheduled_by.email }}</p>
+                </div>
+                {% endif %}
+                
+                {% if booking.google_meet_link %}
+                <div class="highlight">
+                    <p><strong>Google Meet Link:</strong><br>
+                       <a href="{{ booking.google_meet_link }}" class="button">Join Session</a></p>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="highlight">
+                <h4>⚠️ Important Notes:</h4>
+                <ul>
+                    <li>Please be available 5 minutes before your session time</li>
+                    <li>If you have a Google Meet link, test your connection beforehand</li>
+                    <li>Keep your birth details and questions ready</li>
+                    <li>Contact us if you need further assistance</li>
+                </ul>
+            </div>
+            
+            <p>If you have any questions or concerns, please don't hesitate to contact our support team.</p>
+            
+            <p>Thank you for choosing OkPuja for your spiritual journey!</p>
+            
+            <p>Warm regards,<br>
+               <strong>The OkPuja Team</strong></p>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; 2025 OkPuja. All rights reserved.</p>
+            <p>Need help? Contact us at <a href="mailto:support@okpuja.com">support@okpuja.com</a></p>
+        </div>
+    </div>
+</body>
+</html>

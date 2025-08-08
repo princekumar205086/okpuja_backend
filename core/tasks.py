@@ -261,3 +261,40 @@ def send_contact_notification_email(contact_id):
         )
     except ContactUs.DoesNotExist:
         pass
+
+@shared_task
+def send_puja_reschedule_notification(puja_booking_id, old_date, old_time, rescheduled_by_id=None):
+    """Send email notification when puja booking is rescheduled"""
+    try:
+        from puja.models import PujaBooking
+        from accounts.models import User
+        
+        puja_booking = PujaBooking.objects.select_related(
+            'user', 'puja_service', 'package'
+        ).get(id=puja_booking_id)
+        
+        rescheduled_by = None
+        if rescheduled_by_id:
+            rescheduled_by = User.objects.get(id=rescheduled_by_id)
+        
+        subject = f"🙏 Puja Session Rescheduled - Booking #{puja_booking.id}"
+        html_message = render_to_string('emails/puja/booking_rescheduled.html', {
+            'booking': puja_booking,
+            'old_date': old_date,
+            'old_time': old_time,
+            'rescheduled_by': rescheduled_by,
+            'company_name': 'OkPuja'
+        })
+        
+        send_mail(
+            subject,
+            f"Your puja session {puja_booking.puja_service.title} has been rescheduled to {puja_booking.booking_date} at {puja_booking.start_time}.",
+            settings.DEFAULT_FROM_EMAIL,
+            [puja_booking.contact_email],
+            html_message=html_message
+        )
+        
+        logger.info(f"Puja reschedule notification sent for booking #{puja_booking.id}")
+        
+    except Exception as e:
+        logger.error(f"Failed to send puja reschedule notification: {str(e)}")

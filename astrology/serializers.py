@@ -152,3 +152,28 @@ class AstrologyBookingWithPaymentSerializer(serializers.Serializer):
             })
         
         return data
+
+class AstrologyBookingRescheduleSerializer(serializers.Serializer):
+    """Serializer for rescheduling an astrology booking"""
+    preferred_date = serializers.DateField(
+        help_text="New preferred date for the astrology session"
+    )
+    preferred_time = serializers.TimeField(
+        help_text="New preferred time for the astrology session"
+    )
+    reason = serializers.CharField(
+        max_length=500,
+        required=False,
+        help_text="Reason for rescheduling (optional)"
+    )
+
+    def validate(self, data):
+        from datetime import date
+        
+        # Validate that the new date is not in the past
+        if data['preferred_date'] < date.today():
+            raise serializers.ValidationError({
+                'preferred_date': 'New preferred date cannot be in the past'
+            })
+        
+        return data

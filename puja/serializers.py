@@ -195,3 +195,16 @@ class CreatePujaBookingSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({'contact_number': 'Enter a valid Indian phone number.'})
         
         return data
+
+class PujaBookingRescheduleSerializer(serializers.Serializer):
+    """Serializer for rescheduling puja bookings"""
+    new_date = serializers.DateField()
+    new_time = serializers.TimeField()
+    reason = serializers.CharField(max_length=500, required=False)
+    
+    def validate_new_date(self, value):
+        """Ensure new date is not in the past"""
+        from datetime import date
+        if value < date.today():
+            raise serializers.ValidationError("Cannot reschedule to a past date")
+        return value
