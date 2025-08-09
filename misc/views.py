@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from .models import Event, JobOpening, ContactUs
+from .models import Event, JobOpening, ContactUs, ContactUsStatus
 from .serializers import (
     EventSerializer,
     EventAdminSerializer,
@@ -72,31 +72,6 @@ class EventAdminViewSet(viewsets.ModelViewSet):
 
     @swagger_auto_schema(
         operation_description="Create a new event with image upload",
-        manual_parameters=[
-            openapi.Parameter(
-                'original_image',
-                openapi.IN_FORM,
-                description="Event image file (JPEG/PNG recommended, max 10MB)",
-                type=openapi.TYPE_FILE,
-                required=True,
-            ),
-        ],
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'title': openapi.Schema(type=openapi.TYPE_STRING, description='Event title'),
-                'description': openapi.Schema(type=openapi.TYPE_STRING, description='Event description'),
-                'event_date': openapi.Schema(type=openapi.TYPE_STRING, format='date', description='Event date (YYYY-MM-DD)'),
-                'start_time': openapi.Schema(type=openapi.TYPE_STRING, format='time', description='Start time (HH:MM:SS)'),
-                'end_time': openapi.Schema(type=openapi.TYPE_STRING, format='time', description='End time (HH:MM:SS)'),
-                'location': openapi.Schema(type=openapi.TYPE_STRING, description='Event location'),
-                'registration_link': openapi.Schema(type=openapi.TYPE_STRING, format='uri', description='Registration URL'),
-                'status': openapi.Schema(type=openapi.TYPE_STRING, enum=['DRAFT', 'PUBLISHED', 'ARCHIVED'], description='Event status'),
-                'is_featured': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Featured event flag'),
-                'original_image': openapi.Schema(type=openapi.TYPE_FILE, description='Event image file'),
-            },
-            required=['title', 'event_date', 'original_image']
-        ),
         consumes=['multipart/form-data']
     )
     def create(self, request, *args, **kwargs):
@@ -105,16 +80,7 @@ class EventAdminViewSet(viewsets.ModelViewSet):
 
     @swagger_auto_schema(
         operation_description="Update an existing event (image upload optional)",
-        manual_parameters=[
-            openapi.Parameter(
-                'original_image',
-                openapi.IN_FORM,
-                description="Event image file (optional for updates)",
-                type=openapi.TYPE_FILE,
-                required=False,
-            ),
-        ],
-        consumes=['multipart/form-data', 'application/json']
+        consumes=['multipart/form-data']
     )
     def update(self, request, *args, **kwargs):
         """Update an existing event"""
@@ -122,16 +88,7 @@ class EventAdminViewSet(viewsets.ModelViewSet):
 
     @swagger_auto_schema(
         operation_description="Partially update an existing event (image upload optional)",
-        manual_parameters=[
-            openapi.Parameter(
-                'original_image',
-                openapi.IN_FORM,
-                description="Event image file (optional for updates)",
-                type=openapi.TYPE_FILE,
-                required=False,
-            ),
-        ],
-        consumes=['multipart/form-data', 'application/json']
+        consumes=['multipart/form-data']
     )
     def partial_update(self, request, *args, **kwargs):
         """Partially update an existing event"""
