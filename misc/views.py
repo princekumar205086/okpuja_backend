@@ -1,4 +1,5 @@
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
@@ -7,12 +8,13 @@ from django.utils import timezone
 from .models import Event, JobOpening, ContactUs
 from .serializers import (
     EventSerializer,
+    EventAdminSerializer,
     JobOpeningSerializer,
     ContactUsSerializer,
     ContactUsCreateSerializer,
     ContactUsAdminSerializer
 )
-from core.permissions import IsAdminOrReadOnly
+from core.permissions import IsAdminUser, IsAdminOrReadOnly
 from core.tasks import send_contact_confirmation_email, send_contact_notification_email
 
 class EventListView(generics.ListAPIView):
@@ -52,6 +54,71 @@ class EventDetailView(generics.RetrieveAPIView):
     permission_classes = [permissions.AllowAny]
     lookup_field = 'slug'
 
+# Admin CRUD Views for Events
+class EventAdminViewSet(viewsets.ModelViewSet):
+    """Complete CRUD operations for Events - Admin only"""
+    queryset = Event.objects.all().order_by('-created_at')
+    serializer_class = EventAdminSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['status', 'is_featured', 'event_date']
+    search_fields = ['title', 'description', 'location']
+    ordering_fields = ['event_date', 'created_at', 'updated_at', 'title']
+    lookup_field = 'pk'
+
+    @action(detail=True, methods=['post'], url_path='toggle-featured')
+    def toggle_featured(self, request, pk=None):
+        """Toggle featured status of an event"""
+        event = self.get_object()
+        event.is_featured = not event.is_featured
+        event.save()
+        serializer = self.get_serializer(event)
+        return Response({
+            'message': f'Event featured status changed to {event.is_featured}',
+            'event': serializer.data
+        })
+
+    @action(detail=True, methods=['post'], url_path='change-status')
+    def change_status(self, request, pk=None):
+        """Change status of an event"""
+        event = self.get_object()
+        new_status = request.data.get('status')
+        
+        if new_status not in ['DRAFT', 'PUBLISHED', 'ARCHIVED']:
+            return Response(
+                {'error': 'Invalid status. Must be DRAFT, PUBLISHED, or ARCHIVED'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        event.status = new_status
+        event.save()
+        serializer = self.get_serializer(event)
+        return Response({
+            'message': f'Event status changed to {new_status}',
+            'event': serializer.data
+        })
+
+    @action(detail=False, methods=['get'], url_path='stats')
+    def get_stats(self, request):
+        """Get statistics about events"""
+        total_events = Event.objects.count()
+        published_events = Event.objects.filter(status='PUBLISHED').count()
+        draft_events = Event.objects.filter(status='DRAFT').count()
+        archived_events = Event.objects.filter(status='ARCHIVED').count()
+        featured_events = Event.objects.filter(is_featured=True).count()
+        upcoming_events = Event.objects.filter(
+            status='PUBLISHED',
+            event_date__gte=timezone.now().date()
+        ).count()
+        
+        return Response({
+            'total_events': total_events,
+            'published_events': published_events,
+            'draft_events': draft_events,
+            'archived_events': archived_events,
+            'featured_events': featured_events,
+            'upcoming_events': upcoming_events
+        })
 class FeaturedEventsView(generics.ListAPIView):
     serializer_class = EventSerializer
     permission_classes = [permissions.AllowAny]

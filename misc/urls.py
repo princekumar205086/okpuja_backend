@@ -1,8 +1,13 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from . import views
 
+# Create router for admin viewsets
+router = DefaultRouter()
+router.register(r'admin/events', views.EventAdminViewSet, basename='admin-events')
+
 urlpatterns = [
-    # Events
+    # Public Events
     path('events/', views.EventListView.as_view(), name='event-list'),
     path('events/featured/', views.FeaturedEventsView.as_view(), name='featured-events'),
     path('events/<slug:slug>/', views.EventDetailView.as_view(), name='event-detail'),
@@ -15,8 +20,11 @@ urlpatterns = [
     # Contact Us
     path('contact/', views.ContactUsCreateView.as_view(), name='contact-create'),
     
-    # Admin Endpoints
+    # Admin Endpoints - Contact
     path('admin/contact/', views.ContactUsListView.as_view(), name='admin-contact-list'),
     path('admin/contact/<int:pk>/', views.ContactUsDetailView.as_view(), name='admin-contact-detail'),
     path('admin/contact/<int:pk>/<str:status>/', views.ContactUsStatusUpdateView.as_view(), name='admin-contact-status'),
+    
+    # Include router URLs
+    path('', include(router.urls)),
 ]

@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Event, JobOpening, ContactUs
 
 class EventSerializer(serializers.ModelSerializer):
+    """Read-only serializer for public event listing"""
     thumbnail_url = serializers.SerializerMethodField()
     banner_url = serializers.SerializerMethodField()
     original_image_url = serializers.SerializerMethodField()
@@ -18,13 +19,48 @@ class EventSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+class EventAdminSerializer(serializers.ModelSerializer):
+    """Admin serializer for CRUD operations on events"""
+    thumbnail_url = serializers.SerializerMethodField(read_only=True)
+    banner_url = serializers.SerializerMethodField(read_only=True)
+    original_image_url = serializers.SerializerMethodField(read_only=True)
+    days_until = serializers.SerializerMethodField(read_only=True)
+    
+    class Meta:
+        model = Event
+        fields = [
+            'id', 'title', 'slug', 'description', 'original_image',
+            'thumbnail_url', 'banner_url', 'original_image_url',
+            'event_date', 'start_time', 'end_time', 'location',
+            'registration_link', 'status', 'is_featured',
+            'days_until', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'slug', 'thumbnail_url', 'banner_url', 'original_image_url', 'days_until', 'created_at', 'updated_at']
+
+    def validate_event_date(self, value):
+        """Validate that event date is not in the past for new events"""
+        from django.utils import timezone
+        if not self.instance and value < timezone.now().date():
+            raise serializers.ValidationError("Event date cannot be in the past.")
+        return value
+
+    def validate(self, data):
+        """Cross-field validation"""
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+        
+        if start_time and end_time and start_time >= end_time:
+            raise serializers.ValidationError("End time must be after start time.")
+            
+        return data
+
     def get_thumbnail_url(self, obj):
-        if obj.thumbnail:
+        if obj.original_image and hasattr(obj, 'thumbnail') and obj.thumbnail:
             return self.context['request'].build_absolute_uri(obj.thumbnail.url)
         return None
 
     def get_banner_url(self, obj):
-        if obj.banner:
+        if obj.original_image and hasattr(obj, 'banner') and obj.banner:
             return self.context['request'].build_absolute_uri(obj.banner.url)
         return None
 
