@@ -36,6 +36,12 @@ class EventAdminSerializer(serializers.ModelSerializer):
             'days_until', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'slug', 'thumbnail_url', 'banner_url', 'original_image_url', 'days_until', 'created_at', 'updated_at']
+        extra_kwargs = {
+            'original_image': {
+                'write_only': False,  # Allow both read and write
+                'required': True,     # Make it mandatory for creation
+            }
+        }
 
     def validate_event_date(self, value):
         """Validate that event date is not in the past for new events"""
@@ -55,17 +61,26 @@ class EventAdminSerializer(serializers.ModelSerializer):
         return data
 
     def get_thumbnail_url(self, obj):
-        if obj.original_image and hasattr(obj, 'thumbnail') and obj.thumbnail:
+        """Return ImageKit thumbnail URL"""
+        if obj.imagekit_thumbnail_url:
+            return obj.imagekit_thumbnail_url
+        elif obj.original_image and hasattr(obj, 'thumbnail') and obj.thumbnail:
             return self.context['request'].build_absolute_uri(obj.thumbnail.url)
         return None
 
     def get_banner_url(self, obj):
-        if obj.original_image and hasattr(obj, 'banner') and obj.banner:
+        """Return ImageKit banner URL"""
+        if obj.imagekit_banner_url:
+            return obj.imagekit_banner_url
+        elif obj.original_image and hasattr(obj, 'banner') and obj.banner:
             return self.context['request'].build_absolute_uri(obj.banner.url)
         return None
 
     def get_original_image_url(self, obj):
-        if obj.original_image:
+        """Return ImageKit original URL"""
+        if obj.imagekit_original_url:
+            return obj.imagekit_original_url
+        elif obj.original_image:
             return self.context['request'].build_absolute_uri(obj.original_image.url)
         return None
 

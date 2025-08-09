@@ -71,24 +71,41 @@ class EventAdminViewSet(viewsets.ModelViewSet):
     lookup_field = 'pk'
 
     @swagger_auto_schema(
-        operation_description="Create a new event with image upload",
-        consumes=['multipart/form-data']
+        operation_description="Create a new event with mandatory image upload to ImageKit.io",
+        consumes=['multipart/form-data'],
+        responses={
+            201: EventAdminSerializer,
+            400: 'Bad Request - Missing required fields or invalid data',
+            401: 'Unauthorized - Admin authentication required'
+        }
     )
     def create(self, request, *args, **kwargs):
         """Create a new event with image upload"""
         return super().create(request, *args, **kwargs)
 
     @swagger_auto_schema(
-        operation_description="Update an existing event (image upload optional)",
-        consumes=['multipart/form-data']
+        operation_description="Update an existing event (ImageKit.io image upload optional)",
+        consumes=['multipart/form-data'],
+        responses={
+            200: EventAdminSerializer,
+            400: 'Bad Request - Invalid data',
+            401: 'Unauthorized - Admin authentication required',
+            404: 'Not Found - Event does not exist'
+        }
     )
     def update(self, request, *args, **kwargs):
         """Update an existing event"""
         return super().update(request, *args, **kwargs)
 
     @swagger_auto_schema(
-        operation_description="Partially update an existing event (image upload optional)",
-        consumes=['multipart/form-data']
+        operation_description="Partially update an existing event (ImageKit.io image upload optional)",
+        consumes=['multipart/form-data'],
+        responses={
+            200: EventAdminSerializer,
+            400: 'Bad Request - Invalid data',
+            401: 'Unauthorized - Admin authentication required',
+            404: 'Not Found - Event does not exist'
+        }
     )
     def partial_update(self, request, *args, **kwargs):
         """Partially update an existing event"""

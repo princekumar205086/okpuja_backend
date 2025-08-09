@@ -3,10 +3,67 @@ from django.utils.translation import gettext_lazy as _
 from django.utils.text import slugify
 from django.utils import timezone
 from django.urls import reverse
-from imagekit.models import ImageSpecField
-from imagekit.processors import ResizeToFill, ResizeToFit
+from django.conf import settings
+from imagekitio import ImageKit
+from imagekitio.models.UploadFileRequestOptions import UploadFileRequestOptions
 import uuid
 import os
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Initialize ImageKit client
+imagekit = ImageKit(
+    private_key=settings.IMAGEKIT_PRIVATE_KEY,
+    public_key=settings.IMAGEKIT_PUBLIC_KEY,
+    url_endpoint=settings.IMAGEKIT_URL_ENDPOINT
+)
+
+def upload_to_imagekit(file, file_name, folder="events"):
+    """Upload file to ImageKit.io and return URL"""
+    try:
+        from io import BytesIO
+        
+        options = UploadFileRequestOptions(
+            use_unique_file_name=True,
+            folder=folder,
+            is_private_file=False,
+            overwrite_file=False,
+            overwrite_ai_tags=True,
+            overwrite_tags=True,
+            overwrite_custom_metadata=True
+        )
+
+        # Handle file upload
+        if hasattr(file, 'read'):
+            file_content = file.read()
+            file.seek(0)  # Reset file pointer
+            file_data = (file_name, BytesIO(file_content))
+        else:
+            file_data = file
+
+        response = imagekit.upload_file(
+            file=file_data,
+            file_name=file_name,
+            options=options
+        )
+
+        # Check for valid response and URL
+        if (hasattr(response, 'response_metadata') and 
+            getattr(response.response_metadata, 'http_status_code', None) == 200):
+            if hasattr(response, 'url') and response.url:
+                return response.url
+            elif (hasattr(response.response_metadata, 'raw') and 
+                  response.response_metadata.raw.get('url')):
+                return response.response_metadata.raw['url']
+            else:
+                raise Exception("ImageKit upload succeeded but no URL returned")
+        else:
+            raise Exception(f"ImageKit upload failed: {getattr(response.response_metadata, 'raw', 'No metadata')}")
+
+    except Exception as e:
+        logger.error(f"ImageKit upload error: {e}")
+        raise Exception(f"ImageKit upload error: {e}")
 
 def event_image_upload_path(instance, filename):
     ext = filename.split('.')[-1]
@@ -34,24 +91,30 @@ class Event(models.Model):
         blank=True,
         null=True
     )
+    # Store uploaded image temporarily (will be uploaded to ImageKit)
     original_image = models.ImageField(
         _('image'),
         upload_to=event_image_upload_path
     )
     
-    # Image specifications
-    thumbnail = ImageSpecField(
-        source='original_image',
-        processors=[ResizeToFill(400, 300)],
-        format='JPEG',
-        options={'quality': 85}
+    # ImageKit URLs (will be populated after upload)
+    imagekit_original_url = models.URLField(
+        _('ImageKit Original URL'),
+        max_length=500,
+        blank=True,
+        null=True
     )
-    
-    banner = ImageSpecField(
-        source='original_image',
-        processors=[ResizeToFit(1200, 600)],
-        format='JPEG',
-        options={'quality': 90}
+    imagekit_thumbnail_url = models.URLField(
+        _('ImageKit Thumbnail URL'),
+        max_length=500,
+        blank=True,
+        null=True
+    )
+    imagekit_banner_url = models.URLField(
+        _('ImageKit Banner URL'),
+        max_length=500,
+        blank=True,
+        null=True
     )
     
     event_date = models.DateField(
@@ -112,8 +175,60 @@ class Event(models.Model):
         return self.title
 
     def save(self, *args, **kwargs):
+        # Generate slug if not exists
         if not self.slug:
             self.slug = slugify(self.title)
+        
+        # Upload to ImageKit if image is uploaded and URLs are not set
+        if self.original_image and not self.imagekit_original_url:
+            try:
+                from PIL import Image
+                from io import BytesIO
+                
+                # Upload original image to ImageKit
+                original_name = f"event-{self.slug or 'temp'}-original.jpg"
+                self.imagekit_original_url = upload_to_imagekit(
+                    self.original_image,
+                    original_name,
+                    folder="events/originals"
+                )
+                
+                # Create and upload thumbnail (400x300)
+                img = Image.open(self.original_image)
+                img.thumbnail((400, 300), Image.Resampling.LANCZOS)
+                
+                thumbnail_buffer = BytesIO()
+                img.save(thumbnail_buffer, format='JPEG', quality=85)
+                thumbnail_buffer.seek(0)
+                
+                thumbnail_name = f"event-{self.slug or 'temp'}-thumbnail.jpg"
+                self.imagekit_thumbnail_url = upload_to_imagekit(
+                    (thumbnail_name, thumbnail_buffer),
+                    thumbnail_name,
+                    folder="events/thumbnails"
+                )
+                
+                # Create and upload banner (1200x600)
+                img = Image.open(self.original_image)
+                img.thumbnail((1200, 600), Image.Resampling.LANCZOS)
+                
+                banner_buffer = BytesIO()
+                img.save(banner_buffer, format='JPEG', quality=90)
+                banner_buffer.seek(0)
+                
+                banner_name = f"event-{self.slug or 'temp'}-banner.jpg"
+                self.imagekit_banner_url = upload_to_imagekit(
+                    (banner_name, banner_buffer),
+                    banner_name,
+                    folder="events/banners"
+                )
+                
+                logger.info(f"Successfully uploaded images to ImageKit for event: {self.title}")
+                
+            except Exception as e:
+                logger.error(f"Failed to upload images to ImageKit for event {self.title}: {e}")
+                # Continue saving even if ImageKit upload fails
+        
         super().save(*args, **kwargs)
         
     def get_absolute_url(self):
