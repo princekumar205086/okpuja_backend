@@ -25,8 +25,11 @@ class PaymentRedirectHandler(View):
     def get(self, request):
         """Handle payment redirect from PhonePe"""
         try:
-            # Log all parameters for debugging
-            logger.info(f"Redirect parameters: {dict(request.GET.items())}")
+            # Enhanced logging for debugging
+            all_params = dict(request.GET.items())
+            logger.info(f"🔄 PAYMENT REDIRECT - All parameters: {all_params}")
+            logger.info(f"🔄 Request path: {request.path}")
+            logger.info(f"🔄 Request method: {request.method}")
             
             # PhonePe V2 might send different parameter names
             merchant_order_id = (
@@ -55,6 +58,38 @@ class PaymentRedirectHandler(View):
                         merchant_order_id = value
                         logger.info(f"Found order ID in parameter '{key}': {merchant_order_id}")
                         break
+                
+                # If still no order ID, check for recent successful astrology payments
+                # This is a fallback for cases where PhonePe sends incomplete redirect data
+                if not merchant_order_id:
+                    try:
+                        from datetime import datetime, timedelta
+                        from astrology.models import AstrologyBooking
+                        from .models import PaymentOrder  # Import PaymentOrder from current app
+                        
+                        # Look for recent successful astrology payments (last 10 minutes)
+                        recent_time = datetime.now() - timedelta(minutes=10)
+                        recent_astrology_payments = PaymentOrder.objects.filter(
+                            metadata__booking_type='astrology',
+                            status='SUCCESS',
+                            updated_at__gte=recent_time
+                        ).order_by('-updated_at')[:5]
+                        
+                        logger.info(f"Found {recent_astrology_payments.count()} recent astrology payments")
+                        
+                        for payment in recent_astrology_payments:
+                            # Check if astrology booking exists for this payment
+                            astrology_booking = AstrologyBooking.objects.filter(payment_id=str(payment.id)).first()
+                            if astrology_booking:
+                                logger.info(f"Using recent astrology payment: {payment.merchant_order_id} -> {astrology_booking.astro_book_id}")
+                                frontend_base = payment.metadata.get('frontend_redirect_url', 'https://www.okpuja.com').rstrip('/')
+                                redirect_url = f"{frontend_base}/astro-booking-success?astro_book_id={astrology_booking.astro_book_id}&fallback=true"
+                                return redirect(redirect_url)
+                        
+                        logger.warning("No recent astrology bookings found with incomplete redirect parameters")
+                        
+                    except Exception as e:
+                        logger.error(f"Error checking recent astrology payments: {e}")
             
             if not merchant_order_id:
                 logger.error("No merchant order ID in redirect - redirecting to generic success page")
