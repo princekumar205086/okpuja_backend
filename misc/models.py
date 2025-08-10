@@ -185,6 +185,8 @@ class Event(models.Model):
                 from PIL import Image
                 from io import BytesIO
                 
+                logger.info(f"Starting ImageKit upload for event: {self.title}")
+                
                 # Upload original image to ImageKit
                 original_name = f"event-{self.slug or 'temp'}-original.jpg"
                 self.imagekit_original_url = upload_to_imagekit(
@@ -227,7 +229,8 @@ class Event(models.Model):
                 
             except Exception as e:
                 logger.error(f"Failed to upload images to ImageKit for event {self.title}: {e}")
-                # Continue saving even if ImageKit upload fails
+                # Continue saving even if ImageKit upload fails - fallback to local storage
+                logger.info(f"Event {self.title} will use local image storage as fallback")
         
         super().save(*args, **kwargs)
         

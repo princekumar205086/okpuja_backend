@@ -13,11 +13,43 @@ class EventSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'slug', 'description',
             'thumbnail_url', 'banner_url', 'original_image_url',
+            'imagekit_original_url', 'imagekit_thumbnail_url', 'imagekit_banner_url',
             'event_date', 'start_time', 'end_time', 'location',
             'registration_link', 'status', 'is_featured',
             'days_until', 'created_at', 'updated_at'
         ]
         read_only_fields = fields
+
+    def get_thumbnail_url(self, obj):
+        """Return ImageKit thumbnail URL"""
+        if obj.imagekit_thumbnail_url:
+            return obj.imagekit_thumbnail_url
+        elif obj.original_image and hasattr(obj, 'thumbnail') and obj.thumbnail:
+            return self.context['request'].build_absolute_uri(obj.thumbnail.url)
+        return None
+
+    def get_banner_url(self, obj):
+        """Return ImageKit banner URL"""
+        if obj.imagekit_banner_url:
+            return obj.imagekit_banner_url
+        elif obj.original_image and hasattr(obj, 'banner') and obj.banner:
+            return self.context['request'].build_absolute_uri(obj.banner.url)
+        return None
+
+    def get_original_image_url(self, obj):
+        """Return ImageKit original URL"""
+        if obj.imagekit_original_url:
+            return obj.imagekit_original_url
+        elif obj.original_image:
+            return self.context['request'].build_absolute_uri(obj.original_image.url)
+        return None
+
+    def get_days_until(self, obj):
+        from django.utils import timezone
+        if obj.event_date:
+            delta = obj.event_date - timezone.now().date()
+            return delta.days
+        return None
 
 class EventAdminSerializer(serializers.ModelSerializer):
     """Admin serializer for CRUD operations on events"""
