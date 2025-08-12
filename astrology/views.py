@@ -341,12 +341,17 @@ class AstrologyBookingWithPaymentView(APIView):
                 'frontend_redirect_url': validated_data['redirect_url']
             }
             
-            # Create payment order using PaymentService
+            # Create payment order using PaymentService with professional timeout
             payment_service = PaymentService()
             
             # Use the payment redirect handler URL instead of direct frontend URL
             # The redirect handler will then redirect to the correct frontend page
             payment_redirect_url = f"{request.scheme}://{request.get_host()}/api/payments/redirect/"
+            
+            # Enhanced booking data with professional timeout settings
+            booking_data['payment_timeout_minutes'] = 5  # Professional 5-minute timeout
+            booking_data['max_retry_attempts'] = 3
+            booking_data['created_timestamp'] = timezone.now().isoformat()
             
             payment_result = payment_service.create_payment_order(
                 user=request.user,
@@ -367,20 +372,27 @@ class AstrologyBookingWithPaymentView(APIView):
             payment_order = payment_result['payment_order']
             merchant_order_id = payment_order.merchant_order_id
             
-            # Prepare response data (no booking created yet)
+            # Prepare response data with professional timeout info
             response_data = {
                 'success': True,
-                'message': 'Payment initiated successfully. Booking will be created after successful payment.',
+                'message': 'Payment initiated successfully with 5-minute timeout. Booking will be created after successful payment.',
                 'data': {
                     'payment': {
                         'payment_url': payment_result['payment_url'],
                         'merchant_order_id': merchant_order_id,
                         'amount': payment_order.amount,
-                        'amount_in_rupees': f"{payment_order.amount_in_rupees:.2f}"
+                        'amount_in_rupees': f"{payment_order.amount_in_rupees:.2f}",
+                        'expires_in_minutes': payment_result.get('expires_in_minutes', 5),
+                        'expires_at': payment_result.get('expires_at')
                     },
                     'service': AstrologyServiceSerializer(service).data,
+                    'timeout_info': {
+                        'expires_in_minutes': payment_result.get('expires_in_minutes', 5),
+                        'max_retry_attempts': 3,
+                        'message': 'Payment session is valid for 5 minutes'
+                    },
                     'redirect_urls': {
-                        'success': f"{validated_data['redirect_url'].rstrip('/')}/astro-booking-success?merchant_order_id={merchant_order_id}",
+                        'success': f"{validated_data['redirect_url'].rstrip('/')}/astro-booking-success?astro_book_id=PLACEHOLDER",
                         'failure': f"{validated_data['redirect_url'].rstrip('/')}/astro-booking-failed?merchant_order_id={merchant_order_id}"
                     }
                 }

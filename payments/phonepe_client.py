@@ -103,15 +103,16 @@ class PhonePePaymentClient:
             logger.error(f"OAuth error: {e}")
             raise Exception(f"OAuth failed: {e}")
     
-    def create_payment_url(self, merchant_order_id, amount, redirect_url, **kwargs):
+    def create_payment_url(self, merchant_order_id, amount, redirect_url, timeout_minutes=5, **kwargs):
         """
-        Create payment URL using PhonePe Checkout API
+        Create payment URL using PhonePe Checkout API with professional timeout management
         Based on Postman: POST /apis/pg-sandbox/checkout/v2/pay
         
         Args:
             merchant_order_id (str): Unique order ID
             amount (int): Amount in paisa (₹1 = 100 paisa)
             redirect_url (str): URL to redirect after payment
+            timeout_minutes (int): Professional timeout in minutes (default: 5)
             **kwargs: Additional optional parameters
         
         Returns:
@@ -127,11 +128,14 @@ class PhonePePaymentClient:
                 'Authorization': f'O-Bearer {access_token}'
             }
             
-            # Prepare payload based on Postman documentation
+            # Calculate professional expiry time (in seconds)
+            expire_after_seconds = timeout_minutes * 60
+            
+            # Prepare payload based on Postman documentation with professional timeout
             payload = {
                 "merchantOrderId": merchant_order_id,
                 "amount": amount,
-                "expireAfter": kwargs.get('expire_after', 1200),  # 20 minutes default
+                "expireAfter": expire_after_seconds,  # Professional timeout
                 "paymentFlow": {
                     "type": "PG_CHECKOUT",
                     "message": kwargs.get('payment_message', f"Payment for order {merchant_order_id}"),
@@ -145,7 +149,7 @@ class PhonePePaymentClient:
             if kwargs.get('meta_info'):
                 payload["metaInfo"] = kwargs['meta_info']
             
-            logger.info(f"Creating payment URL for order: {merchant_order_id}")
+            logger.info(f"Creating payment URL with {timeout_minutes}min timeout for order: {merchant_order_id}")
             
             response = requests.post(
                 self.payment_url,
@@ -157,7 +161,7 @@ class PhonePePaymentClient:
             response.raise_for_status()
             result = response.json()
             
-            logger.info(f"Payment URL created successfully for order: {merchant_order_id}")
+            logger.info(f"Payment URL created successfully with professional timeout for order: {merchant_order_id}")
             
             # Extract the payment URL from response
             payment_url = result.get('redirectUrl') or result.get('url')
@@ -166,7 +170,9 @@ class PhonePePaymentClient:
                 'success': True,
                 'data': result,
                 'payment_url': payment_url,  # The checkout URL for redirect
-                'order_id': merchant_order_id
+                'order_id': merchant_order_id,
+                'timeout_minutes': timeout_minutes,
+                'expires_after_seconds': expire_after_seconds
             }
             
         except requests.exceptions.RequestException as e:

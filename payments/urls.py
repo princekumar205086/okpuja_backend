@@ -1,5 +1,5 @@
 """
-Clean URL patterns for payments app with better organization
+Clean URL patterns for payments app with professional timeout management
 """
 
 from django.urls import path
@@ -9,6 +9,7 @@ from .simple_redirect_handler import SimplePaymentRedirectHandler
 from .professional_redirect_handler import ProfessionalPaymentRedirectHandler
 from .hyper_speed_redirect_handler import HyperSpeedPaymentRedirectHandler
 from .cart_views import CartPaymentView, CartPaymentStatusView
+from .status_views import PaymentStatusView, PaymentRetryView, PaymentCleanupView
 
 app_name = 'payments'
 
@@ -18,7 +19,12 @@ urlpatterns = [
     path('list/', views.PaymentListView.as_view(), name='payment_list'),
     path('status/<str:merchant_order_id>/', views.PaymentStatusView.as_view(), name='payment_status'),
     
-    # Cart-based Payment Operations (NEW)
+    # Professional Payment Management (NEW)
+    path('professional/status/<str:merchant_order_id>/', PaymentStatusView.as_view(), name='professional_payment_status'),
+    path('professional/retry/<str:merchant_order_id>/', PaymentRetryView.as_view(), name='professional_payment_retry'),
+    path('professional/cleanup/', PaymentCleanupView.as_view(), name='professional_payment_cleanup'),
+    
+    # Cart-based Payment Operations
     path('cart/', CartPaymentView.as_view(), name='cart_payment'),
     path('cart/status/<str:cart_id>/', CartPaymentStatusView.as_view(), name='cart_payment_status'),
     

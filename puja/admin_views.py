@@ -315,7 +315,7 @@ class AdminPujaBookingDetailView(generics.RetrieveUpdateAPIView):
     def _send_admin_notification(self, booking, notification_type, context=None):
         """Send notification to admin team"""
         try:
-            admin_emails = getattr(settings, 'PUJA_ADMIN_EMAILS', ['admin@okpuja.com'])
+            admin_emails = [getattr(settings, 'ADMIN_PERSONAL_EMAIL', 'okpuja108@gmail.com')]
             
             subject_map = {
                 'status_updated': f"Puja Booking Status Updated - #{booking.id}",

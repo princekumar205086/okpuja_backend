@@ -319,7 +319,7 @@ class AstrologyBooking(models.Model):
 
     def send_admin_notification(self):
         """Send new booking notification to admin"""
-        admin_emails = getattr(settings, 'ASTROLOGY_ADMIN_EMAILS', ['admin@okpuja.com'])
+        admin_emails = [getattr(settings, 'ADMIN_PERSONAL_EMAIL', 'okpuja108@gmail.com')]
         
         subject = f"New Astrology Booking - {self.astro_book_id}"
         html_message = render_to_string('astrology/admin_booking_notification.html', {
@@ -389,7 +389,7 @@ class AstrologyBooking(models.Model):
             )
             
             # Also notify admin
-            admin_emails = getattr(settings, 'ASTROLOGY_ADMIN_EMAILS', ['admin@okpuja.com'])
+            admin_emails = [getattr(settings, 'ADMIN_PERSONAL_EMAIL', 'okpuja108@gmail.com')]
             admin_subject = f"Astrology Booking Rescheduled - {self.astro_book_id}"
             admin_message = f"""
 Astrology booking {self.astro_book_id} has been rescheduled:
@@ -450,7 +450,7 @@ Customer has been notified of the change.
 
     def send_admin_session_link_notification(self):
         """Notify admin that session link was sent to user"""
-        admin_emails = getattr(settings, 'ASTROLOGY_ADMIN_EMAILS', ['admin@okpuja.com'])
+        admin_emails = [getattr(settings, 'ADMIN_PERSONAL_EMAIL', 'okpuja108@gmail.com')]
         
         subject = f"Session Link Sent - {self.astro_book_id}"
         message = f"""

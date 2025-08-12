@@ -1,11 +1,12 @@
 """
 Payment Services
-Clean business logic layer
+Clean business logic layer with professional timeout management
 """
 
 import uuid
 import logging
-from datetime import timedelta
+import json
+from datetime import datetime, timedelta
 from django.utils import timezone
 from django.conf import settings
 from django.db import models
@@ -35,7 +36,7 @@ class PaymentService:
     
     def create_payment_order(self, user, amount, redirect_url, description=None, metadata=None, cart_id=None, address_id=None):
         """
-        Create a new payment order
+        Create a new payment order with professional timeout management
         
         Args:
             user: Django User instance
@@ -50,13 +51,25 @@ class PaymentService:
             dict: Payment order creation result
         """
         try:
+            # Professional timeout settings (5 minutes max for better UX)
+            payment_timeout_minutes = 5
+            
             # Generate unique merchant order ID
             if cart_id:
                 merchant_order_id = f"CART_{cart_id}_{uuid.uuid4().hex[:8].upper()}"
             else:
                 merchant_order_id = f"OKPUJA_{uuid.uuid4().hex[:12].upper()}"
             
-            # Create payment order in database
+            # Enhanced metadata with timeout management
+            enhanced_metadata = metadata or {}
+            enhanced_metadata.update({
+                'payment_timeout_minutes': payment_timeout_minutes,
+                'max_retry_attempts': 3,
+                'created_timestamp': datetime.now().isoformat(),
+                'retry_count': 0
+            })
+            
+            # Create payment order in database with professional timeout
             payment_order = PaymentOrder.objects.create(
                 merchant_order_id=merchant_order_id,
                 user=user,
@@ -65,32 +78,38 @@ class PaymentService:
                 amount=amount,
                 description=description or f"Payment for ₹{amount/100}",
                 redirect_url=redirect_url,
-                metadata=metadata or {},
-                expires_at=timezone.now() + timedelta(minutes=20)  # 20 minute expiry
+                metadata=enhanced_metadata,
+                expires_at=timezone.now() + timedelta(minutes=payment_timeout_minutes)  # Professional 5-minute expiry
             )
             
-            # Create payment URL with PhonePe
+            # Create payment URL with PhonePe with timeout
             payment_result = self.client.create_payment_url(
                 merchant_order_id=merchant_order_id,
                 amount=amount,
                 redirect_url=redirect_url,
-                payment_message=description
+                payment_message=description,
+                timeout_minutes=payment_timeout_minutes
             )
             
             if payment_result['success']:
-                # Update payment order with PhonePe URL
+                # Update payment order with PhonePe URL and timeout info
                 payment_order.phonepe_payment_url = payment_result['payment_url']
                 payment_order.status = 'INITIATED'
                 payment_order.phonepe_response = payment_result['data']
+                payment_order.metadata['payment_url_created_at'] = datetime.now().isoformat()
+                payment_order.metadata['expires_at'] = payment_order.expires_at.isoformat()
                 payment_order.save()
                 
-                logger.info(f"Payment order created successfully: {merchant_order_id}")
+                logger.info(f"Payment order created with {payment_timeout_minutes}min timeout: {merchant_order_id}")
                 
                 return {
                     'success': True,
                     'payment_order': payment_order,
                     'payment_url': payment_result['payment_url'],
-                    'merchant_order_id': merchant_order_id
+                    'merchant_order_id': merchant_order_id,
+                    'expires_in_minutes': payment_timeout_minutes,
+                    'expires_at': payment_order.expires_at.isoformat(),
+                    'message': f'Payment session valid for {payment_timeout_minutes} minutes'
                 }
             else:
                 # Mark as failed
@@ -303,6 +322,167 @@ class PaymentService:
             return {
                 'success': False,
                 'error': f"Failed to check refund status: {str(e)}"
+            }
+    
+    @staticmethod
+    def is_payment_expired(payment_order):
+        """
+        Check if payment has expired based on professional timeout settings
+        
+        Args:
+            payment_order: PaymentOrder instance
+        
+        Returns:
+            bool: True if payment has expired
+        """
+        try:
+            # Get timeout from metadata or default to 5 minutes
+            timeout_minutes = payment_order.metadata.get('payment_timeout_minutes', 5)
+            created_at = payment_order.created_at
+            
+            # Always use timezone-aware datetime
+            if timezone.is_aware(created_at):
+                current_time = timezone.now()
+            else:
+                # Convert naive datetime to timezone-aware
+                created_at = timezone.make_aware(created_at)
+                current_time = timezone.now()
+            
+            expiry_time = created_at + timedelta(minutes=timeout_minutes)
+            is_expired = current_time > expiry_time
+            
+            # Log for debugging
+            if is_expired:
+                age_minutes = int((current_time - created_at).total_seconds() / 60)
+                logger.info(f"Payment {payment_order.merchant_order_id} expired: age={age_minutes}min, timeout={timeout_minutes}min")
+            
+            return is_expired
+        except Exception as e:
+            logger.error(f"Error checking payment expiry: {e}")
+            return False
+    
+    @staticmethod
+    def can_retry_payment(payment_order):
+        """
+        Check if payment can be retried based on professional retry limits
+        
+        Args:
+            payment_order: PaymentOrder instance
+        
+        Returns:
+            bool: True if payment can be retried
+        """
+        try:
+            # Check if payment is expired
+            if PaymentService.is_payment_expired(payment_order):
+                return False
+            
+            # Check retry limits
+            max_attempts = payment_order.metadata.get('max_retry_attempts', 3)
+            current_attempts = payment_order.metadata.get('retry_count', 0)
+            
+            return current_attempts < max_attempts
+        except Exception as e:
+            logger.error(f"Error checking payment retry eligibility: {e}")
+            return False
+    
+    @staticmethod
+    def get_payment_remaining_time(payment_order):
+        """
+        Get remaining time for payment in seconds
+        
+        Args:
+            payment_order: PaymentOrder instance
+        
+        Returns:
+            int: Remaining seconds (0 if expired)
+        """
+        try:
+            timeout_minutes = payment_order.metadata.get('payment_timeout_minutes', 5)
+            created_at = payment_order.created_at
+            
+            # Always use timezone-aware datetime
+            if timezone.is_aware(created_at):
+                current_time = timezone.now()
+            else:
+                # Convert naive datetime to timezone-aware
+                created_at = timezone.make_aware(created_at)
+                current_time = timezone.now()
+            
+            expiry_time = created_at + timedelta(minutes=timeout_minutes)
+            remaining_delta = expiry_time - current_time
+            
+            return max(0, int(remaining_delta.total_seconds()))
+        except Exception as e:
+            logger.error(f"Error calculating remaining time: {e}")
+            return 0
+    
+    def retry_payment(self, payment_order, redirect_url=None):
+        """
+        Create a retry payment session with professional validation
+        
+        Args:
+            payment_order: Existing PaymentOrder instance
+            redirect_url: New redirect URL (optional)
+        
+        Returns:
+            dict: Retry result
+        """
+        try:
+            # Check if retry is allowed
+            if not self.can_retry_payment(payment_order):
+                return {
+                    'success': False,
+                    'error': 'Payment retry limit exceeded or expired',
+                    'can_retry': False
+                }
+            
+            # Update retry count
+            retry_count = payment_order.metadata.get('retry_count', 0) + 1
+            payment_order.metadata['retry_count'] = retry_count
+            payment_order.metadata[f'retry_{retry_count}_at'] = datetime.now().isoformat()
+            
+            # Reset payment status and extend expiry
+            payment_timeout_minutes = payment_order.metadata.get('payment_timeout_minutes', 5)
+            payment_order.status = 'PENDING'
+            payment_order.expires_at = timezone.now() + timedelta(minutes=payment_timeout_minutes)
+            
+            # Create new payment URL
+            payment_result = self.client.create_payment_url(
+                merchant_order_id=payment_order.merchant_order_id,
+                amount=payment_order.amount,
+                redirect_url=redirect_url or payment_order.redirect_url,
+                payment_message=payment_order.description,
+                timeout_minutes=payment_timeout_minutes
+            )
+            
+            if payment_result['success']:
+                # Update payment order with new URL
+                payment_order.phonepe_payment_url = payment_result['payment_url']
+                payment_order.metadata['last_retry_payment_url_created_at'] = datetime.now().isoformat()
+                payment_order.save()
+                
+                logger.info(f"Payment retry {retry_count} created for: {payment_order.merchant_order_id}")
+                
+                return {
+                    'success': True,
+                    'payment_url': payment_result['payment_url'],
+                    'expires_in_minutes': payment_timeout_minutes,
+                    'retry_attempt': retry_count,
+                    'max_attempts': payment_order.metadata.get('max_retry_attempts', 3),
+                    'message': f'Payment retry {retry_count} created successfully'
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': payment_result['error']
+                }
+                
+        except Exception as e:
+            logger.error(f"Payment retry failed: {e}")
+            return {
+                'success': False,
+                'error': f"Failed to retry payment: {str(e)}"
             }
 
 
@@ -676,20 +856,11 @@ class WebhookService:
     def _send_admin_notification_astrology(self, booking):
         """Send admin notification for new astrology booking"""
         try:
-            from django.contrib.auth import get_user_model
             from django.core.mail import send_mail
             from django.conf import settings
             
-            User = get_user_model()
-            
-            # Get admin users
-            admin_users = User.objects.filter(
-                models.Q(is_staff=True) | models.Q(role='ADMIN'),
-                is_active=True,
-                email__isnull=False
-            ).exclude(email='')
-            
-            admin_emails = [admin.email for admin in admin_users]
+            # Use personal admin email from .env
+            admin_emails = [getattr(settings, 'ADMIN_PERSONAL_EMAIL', 'okpuja108@gmail.com')]
             
             if admin_emails:
                 subject = f"🔮 New Astrology Booking - {booking.astro_book_id} - {booking.service.title}"
@@ -748,10 +919,8 @@ This is an automated notification from OKPUJA Astrology System.
                     fail_silently=False,
                 )
                 
-                logger.info(f"Admin notification sent to {len(admin_emails)} administrators")
-            else:
-                logger.warning("No admin email addresses found for astrology booking notification")
-                
+                logger.info(f"Admin notification sent to admin email")
+            
         except Exception as e:
             logger.error(f"Failed to send admin notification: {e}")
             raise

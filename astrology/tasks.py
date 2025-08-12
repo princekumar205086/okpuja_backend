@@ -351,7 +351,7 @@ def send_astrology_admin_notification(self, booking_id, notification_type):
     try:
         booking = AstrologyBooking.objects.select_related('service', 'user').get(id=booking_id)
         
-        admin_emails = getattr(settings, 'ADMIN_NOTIFICATION_EMAILS', ['admin@okpuja.com'])
+        admin_emails = [getattr(settings, 'ADMIN_PERSONAL_EMAIL', 'okpuja108@gmail.com')]
         
         subjects = {
             'new_booking': f"🆕 New Astrology Booking - {booking.astro_book_id}",

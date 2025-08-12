@@ -50,7 +50,7 @@ def send_booking_confirmation(booking_id):
             f"New Booking Confirmed - {booking.book_id}",
             f"Booking {booking.book_id} for {booking.user.email} has been confirmed.",
             settings.DEFAULT_FROM_EMAIL,
-            [settings.ADMIN_EMAIL] if hasattr(settings, 'ADMIN_EMAIL') else ['support@okpuja.com'],
+            [settings.ADMIN_PERSONAL_EMAIL] if hasattr(settings, 'ADMIN_PERSONAL_EMAIL') else ['okpuja108@gmail.com'],
         )
         
         logger.info(f"Booking confirmation email sent for {booking.book_id}")
@@ -256,7 +256,7 @@ def send_contact_notification_email(contact_id):
             subject,
             text_content,
             settings.DEFAULT_FROM_EMAIL,
-            [settings.CONTACT_NOTIFICATION_EMAIL],
+            [settings.ADMIN_PERSONAL_EMAIL] if hasattr(settings, 'ADMIN_PERSONAL_EMAIL') else ['okpuja108@gmail.com'],
             html_message=html_content
         )
     except ContactUs.DoesNotExist:
