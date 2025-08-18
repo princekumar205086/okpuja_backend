@@ -295,8 +295,18 @@ class AstrologyBooking(models.Model):
 
     def send_booking_confirmation(self):
         """Send booking confirmation email to user"""
-        subject = f"Booking Confirmation - {self.service.title}"
-        html_message = render_to_string('astrology/booking_confirmation_email.html', {
+        from django.core.cache import cache
+        
+        # Avoid duplicate confirmations
+        cache_key = f"astrology_confirmation_sent_{self.id}"
+        if cache.get(cache_key):
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Confirmation already sent for astrology booking {self.astro_book_id}")
+            return
+        
+        subject = f"🔮 Astrology Booking Confirmation - {self.service.title}"
+        html_message = render_to_string('emails/astrology/booking_confirmed.html', {
             'booking': self,
             'service': self.service,
             'user_name': 'Valued Customer' if not self.user else (getattr(self.user, 'username', '') or 'Valued Customer')
@@ -312,6 +322,8 @@ class AstrologyBooking(models.Model):
                 html_message=html_message,
                 fail_silently=False
             )
+            # Mark confirmation as sent
+            cache.set(cache_key, True, timeout=3600)  # 1 hour cache
         except Exception as e:
             import logging
             logger = logging.getLogger(__name__)
@@ -319,25 +331,39 @@ class AstrologyBooking(models.Model):
 
     def send_admin_notification(self):
         """Send new booking notification to admin"""
+        from django.core.cache import cache
+        from django.template.loader import render_to_string
+        from django.core.mail import EmailMessage
+        from django.utils import timezone
+        
+        # Avoid duplicate notifications
+        cache_key = f"astrology_admin_notification_sent_{self.id}"
+        if cache.get(cache_key):
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Admin notification already sent for astrology booking {self.astro_book_id}")
+            return
+        
         admin_emails = [getattr(settings, 'ADMIN_PERSONAL_EMAIL', 'okpuja108@gmail.com')]
         
-        subject = f"New Astrology Booking - {self.astro_book_id}"
-        html_message = render_to_string('astrology/admin_booking_notification.html', {
+        subject = f"🔮 New Astrology Booking - {self.astro_book_id} - {self.service.title}"
+        html_message = render_to_string('emails/admin_astrology_notification.html', {
             'booking': self,
-            'service': self.service,
-            'admin_panel_url': f"{getattr(settings, 'FRONTEND_BASE_URL', 'https://www.okpuja.com')}/admin/astrology/astrologybooking/{self.pk}/change/"
+            'now': timezone.now()
         })
-        plain_message = strip_tags(html_message)
         
         try:
-            send_mail(
+            email = EmailMessage(
                 subject,
-                plain_message,
+                html_message,
                 settings.DEFAULT_FROM_EMAIL,
-                admin_emails,
-                html_message=html_message,
-                fail_silently=False
+                admin_emails
             )
+            email.content_subtype = "html"
+            email.send()
+            
+            # Mark notification as sent
+            cache.set(cache_key, True, timeout=3600)  # 1 hour cache
         except Exception as e:
             import logging
             logger = logging.getLogger(__name__)

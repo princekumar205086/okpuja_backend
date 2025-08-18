@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.core.mail import send_mail
+from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -64,14 +65,24 @@ class RegisterView(generics.CreateAPIView):
                 })
 
     def _send_verification(self, user):
-        # Send OTP via email
-        send_mail(
-            'Verify Your Email for OKPUJA',
-            f'Welcome to OKPUJA! Your verification code is: {user.otp}. This code will expire in {settings.OTP_EXPIRE_MINUTES} minutes.',
+        # Send professional OTP email
+        from django.template.loader import render_to_string
+        
+        html_message = render_to_string('emails/otp_verification.html', {
+            'otp_code': user.otp,
+            'expiry_minutes': settings.OTP_EXPIRE_MINUTES,
+            'current_year': timezone.now().year
+        })
+        
+        from django.core.mail import EmailMessage
+        email = EmailMessage(
+            '🔐 Verify Your Email - OkPuja Account Activation',
+            html_message,
             settings.DEFAULT_FROM_EMAIL,
-            [user.email],
-            fail_silently=False,
+            [user.email]
         )
+        email.content_subtype = "html"
+        email.send()
         # Send OTP via SMS if phone number is provided
         if user.phone:
             message = f"Your OKPUJA verification code is {user.otp}. This code is valid for {settings.OTP_EXPIRE_MINUTES} minutes. Do not share this code."

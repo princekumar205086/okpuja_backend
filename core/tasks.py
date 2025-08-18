@@ -2,6 +2,7 @@ from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
+from django.utils import timezone
 from twilio.rest import Client
 import logging
 
@@ -17,6 +18,13 @@ def send_booking_confirmation(booking_id):
         booking = Booking.objects.select_related(
             'user', 'cart', 'address', 'assigned_to'
         ).get(id=booking_id)
+        
+        # Avoid duplicate notifications
+        from django.core.cache import cache
+        cache_key = f"booking_notification_sent_{booking_id}"
+        if cache.get(cache_key):
+            logger.info(f"Notification already sent for booking {booking.book_id}")
+            return
         
         subject = f"🙏 Booking Confirmed & Invoice - {booking.book_id}"
         html_message = render_to_string('emails/booking_confirmation_professional.html', {
@@ -45,15 +53,35 @@ def send_booking_confirmation(booking_id):
         
         email.send()
         
-        # Also send notification to admin
-        send_mail(
-            f"New Booking Confirmed - {booking.book_id}",
-            f"Booking {booking.book_id} for {booking.user.email} has been confirmed.",
-            settings.DEFAULT_FROM_EMAIL,
-            [settings.ADMIN_PERSONAL_EMAIL] if hasattr(settings, 'ADMIN_PERSONAL_EMAIL') else ['okpuja108@gmail.com'],
-        )
+        # Send professional admin notification with invoice attachment
+        admin_subject = f"🚨 New Booking Alert - {booking.book_id} - ₹{booking.total_amount}"
+        admin_html = render_to_string('emails/admin_booking_notification.html', {
+            'booking': booking,
+            'now': timezone.now()
+        })
         
-        logger.info(f"Booking confirmation email sent for {booking.book_id}")
+        admin_email = EmailMessage(
+            admin_subject,
+            admin_html,
+            settings.DEFAULT_FROM_EMAIL,
+            [getattr(settings, 'ADMIN_PERSONAL_EMAIL', 'okpuja108@gmail.com')]
+        )
+        admin_email.content_subtype = "html"
+        
+        # Attach invoice to admin email too
+        try:
+            from booking.invoice_views import generate_invoice_pdf_data
+            pdf_data = generate_invoice_pdf_data(booking)
+            admin_email.attach(f'OkPuja-Invoice-{booking.book_id}.pdf', pdf_data, 'application/pdf')
+        except Exception as e:
+            logger.warning(f"Failed to attach invoice PDF to admin email: {str(e)}")
+        
+        admin_email.send()
+        
+        # Mark notification as sent to prevent duplicates
+        cache.set(cache_key, True, timeout=3600)  # 1 hour cache
+        
+        logger.info(f"Booking confirmation and admin notification sent for {booking.book_id}")
         
     except Booking.DoesNotExist:
         logger.error(f"Booking with ID {booking_id} not found")

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Booking Alert - Admin - OkPuja</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+        .header {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+            position: relative;
+        }
+        .admin-badge {
+            background-color: rgba(255,255,255,0.2);
+            color: white;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+        .header-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .header-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .alert-section {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border-left: 5px solid #ffc107;
+            padding: 20px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 25px;
+        }
+        .alert-title {
+            color: #856404;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .alert-text {
+            color: #856404;
+            font-size: 14px;
+        }
+        .booking-summary {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            border: 2px solid #2196f3;
+        }
+        .summary-title {
+            color: #1976d2;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .detail-item {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+        .detail-value {
+            color: #212529;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .booking-id {
+            background: linear-gradient(135deg, #FF6B35, #F7931E);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 25px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .amount-highlight {
+            font-size: 24px;
+            color: #28a745;
+            font-weight: bold;
+        }
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-confirmed { background-color: #d4edda; color: #155724; }
+        .status-pending { background-color: #fff3cd; color: #856404; }
+        .customer-info {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .customer-title {
+            color: #495057;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .action-buttons {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 25px;
+            margin: 5px 10px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+        }
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d, #545b62);
+            color: white;
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #1e7e34);
+            color: white;
+        }
+        .invoice-section {
+            background: linear-gradient(135deg, #d1ecf1 0%, #b8daff 100%);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #17a2b8;
+        }
+        .invoice-title {
+            color: #0c5460;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .invoice-note {
+            color: #0c5460;
+            font-size: 14px;
+        }
+        .footer {
+            background-color: #343a40;
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+        .footer-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #FF6B35;
+        }
+        .timestamp {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #6c757d;
+            text-align: center;
+            margin: 15px 0;
+        }
+        @media (max-width: 600px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            .content {
+                padding: 20px 15px;
+            }
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+            .btn {
+                display: block;
+                margin: 8px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="admin-badge">🚨 ADMIN ALERT</div>
+            <div class="header-title">🕉️ New Booking Received</div>
+            <div class="header-subtitle">Immediate Action Required</div>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Alert Section -->
+            <div class="alert-section">
+                <div class="alert-title">⚡ New Booking Confirmation</div>
+                <div class="alert-text">
+                    A new booking has been successfully confirmed and payment has been processed. 
+                    Customer details and booking information are provided below.
+                </div>
+            </div>
+
+            <!-- Booking Summary -->
+            <div class="booking-summary">
+                <div class="summary-title">📋 Booking Details</div>
+                
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div class="booking-id">Booking ID: {{ booking.book_id }}</div>
+                </div>
+
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Service</div>
+                        <div class="detail-value">{{ booking.cart.puja_service.title }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Category</div>
+                        <div class="detail-value">{{ booking.cart.puja_service.category.name }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Date & Time</div>
+                        <div class="detail-value">{{ booking.selected_date }}<br><small>{{ booking.selected_time }}</small></div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Status</div>
+                        <div class="detail-value">
+                            <span class="status-badge status-{{ booking.status|lower }}">
+                                {{ booking.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Total Amount</div>
+                        <div class="detail-value amount-highlight">₹{{ booking.total_amount }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Payment Status</div>
+                        <div class="detail-value">
+                            <span class="status-badge status-confirmed">✅ PAID</span>
+                        </div>
+                    </div>
+                </div>
+
+                {% if booking.address %}
+                <div class="detail-item" style="grid-column: 1 / -1; margin-top: 15px;">
+                    <div class="detail-label">Service Address</div>
+                    <div class="detail-value">{{ booking.address.full_address }}</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Customer Information -->
+            <div class="customer-info">
+                <div class="customer-title">👤 Customer Information</div>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Name</div>
+                        <div class="detail-value">{{ booking.user.get_full_name|default:booking.user.username }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Email</div>
+                        <div class="detail-value">{{ booking.user.email }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Phone</div>
+                        <div class="detail-value">{{ booking.user.phone|default:"Not provided" }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Customer Since</div>
+                        <div class="detail-value">{{ booking.user.date_joined|date:"M d, Y" }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invoice Information -->
+            <div class="invoice-section">
+                <div class="invoice-title">📄 Invoice Information</div>
+                <div class="invoice-note">
+                    📎 Professional invoice has been generated and sent to the customer via email.<br>
+                    💼 Invoice copy is also attached to this admin notification for your records.
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <a href="http://localhost:8000/admin/booking/booking/{{ booking.id }}/change/" class="btn btn-primary">
+                    📋 View Booking Details
+                </a>
+                <a href="http://localhost:8000/admin/booking/booking/" class="btn btn-secondary">
+                    📊 Manage All Bookings
+                </a>
+                <a href="mailto:{{ booking.user.email }}" class="btn btn-success">
+                    ✉️ Contact Customer
+                </a>
+            </div>
+
+            <!-- Timestamp -->
+            <div class="timestamp">
+                🕐 Alert generated on {{ now|date:"F d, Y" }} at {{ now|date:"g:i A" }}
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-title">🕉️ OkPuja Admin Panel</div>
+            <div style="font-size: 14px; margin: 10px 0;">
+                Professional Spiritual Services Management System
+            </div>
+            <div style="font-size: 12px; color: #adb5bd; margin-top: 15px;">
+                This is an automated admin notification. Please do not reply to this email.<br>
+                For support, contact: support@okpuja.com
+            </div>
+        </div>
+    </div>
+</body>
+</html>

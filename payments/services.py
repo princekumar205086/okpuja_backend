@@ -842,7 +842,10 @@ class WebhookService:
             
             # Send notification to admin
             try:
-                self._send_admin_notification_astrology(booking)
+                booking.send_admin_notification()
+                logger.info(f"Admin notification sent for astrology booking {booking.astro_book_id}")
+            except Exception as e:
+                logger.error(f"Failed to send admin notification for astrology booking {booking.astro_book_id}: {e}")
                 logger.info(f"Admin notification sent for astrology booking {booking.astro_book_id}")
             except Exception as e:
                 logger.error(f"Failed to send admin notification for astrology booking {booking.astro_book_id}: {e}")
@@ -852,75 +855,3 @@ class WebhookService:
         except Exception as e:
             logger.error(f"Failed to create astrology booking: {e}")
             return None
-
-    def _send_admin_notification_astrology(self, booking):
-        """Send admin notification for new astrology booking"""
-        try:
-            from django.core.mail import send_mail
-            from django.conf import settings
-            
-            # Use personal admin email from .env
-            admin_emails = [getattr(settings, 'ADMIN_PERSONAL_EMAIL', 'okpuja108@gmail.com')]
-            
-            if admin_emails:
-                subject = f"🔮 New Astrology Booking - {booking.astro_book_id} - {booking.service.title}"
-                
-                message = f"""
-📋 NEW ASTROLOGY BOOKING RECEIVED
-
-Booking Details:
-• Booking ID: {booking.astro_book_id}
-• Service: {booking.service.title}
-• Amount: ₹{booking.service.price}
-• Status: {booking.get_status_display()}
-• Duration: {booking.service.duration_minutes} minutes
-
-Customer Information:
-• Name: Customer (via {booking.contact_email})
-• Email: {booking.contact_email}
-• Phone: {booking.contact_phone}
-
-Session Details:
-• Preferred Date: {booking.preferred_date.strftime('%B %d, %Y')}
-• Preferred Time: {booking.preferred_time.strftime('%I:%M %p')}
-• Language: {booking.language}
-
-Birth Information:
-• Birth Place: {booking.birth_place}
-• Birth Date: {booking.birth_date.strftime('%B %d, %Y')}
-• Birth Time: {booking.birth_time.strftime('%I:%M %p')}
-• Gender: {booking.get_gender_display()}
-
-Customer Questions:
-{booking.questions if booking.questions else 'No specific questions provided.'}
-
-Payment Information:
-• Payment Status: Confirmed ✅
-• Amount Paid: ₹{booking.service.price}
-• Payment Method: PhonePe
-
-Next Steps:
-1. Review customer's birth details and questions
-2. Prepare consultation materials
-3. Contact customer before the session
-4. Ensure you're available at the scheduled time
-
-Admin Panel: http://localhost:8000/admin/astrology/astrologybooking/{booking.id}/
-
----
-This is an automated notification from OKPUJA Astrology System.
-                """
-                
-                send_mail(
-                    subject,
-                    message,
-                    settings.DEFAULT_FROM_EMAIL,
-                    admin_emails,
-                    fail_silently=False,
-                )
-                
-                logger.info(f"Admin notification sent to admin email")
-            
-        except Exception as e:
-            logger.error(f"Failed to send admin notification: {e}")
-            raise

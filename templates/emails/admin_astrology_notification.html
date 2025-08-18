@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Astrology Booking - Admin Alert - OkPuja</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+            position: relative;
+        }
+        .admin-badge {
+            background-color: rgba(255,255,255,0.2);
+            color: white;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+        .header-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .header-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .alert-section {
+            background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%);
+            border-left: 5px solid #03a9f4;
+            padding: 20px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 25px;
+        }
+        .alert-title {
+            color: #0277bd;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .alert-text {
+            color: #0277bd;
+            font-size: 14px;
+        }
+        .booking-summary {
+            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            border: 2px solid #9c27b0;
+        }
+        .summary-title {
+            color: #7b1fa2;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .detail-item {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+        .detail-value {
+            color: #212529;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .booking-id {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 25px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .amount-highlight {
+            font-size: 24px;
+            color: #28a745;
+            font-weight: bold;
+        }
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-confirmed { background-color: #d4edda; color: #155724; }
+        .status-pending { background-color: #fff3cd; color: #856404; }
+        .customer-info {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .customer-title {
+            color: #495057;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .birth-details {
+            background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #ff9800;
+        }
+        .birth-title {
+            color: #e65100;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .action-buttons {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 25px;
+            margin: 5px 10px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d, #545b62);
+            color: white;
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #1e7e34);
+            color: white;
+        }
+        .footer {
+            background-color: #343a40;
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+        .footer-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+        .timestamp {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #6c757d;
+            text-align: center;
+            margin: 15px 0;
+        }
+        @media (max-width: 600px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            .content {
+                padding: 20px 15px;
+            }
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+            .btn {
+                display: block;
+                margin: 8px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="admin-badge">🔮 ASTROLOGY ALERT</div>
+            <div class="header-title">✨ New Astrology Booking</div>
+            <div class="header-subtitle">Professional Consultation Booked</div>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Alert Section -->
+            <div class="alert-section">
+                <div class="alert-title">🌟 New Astrology Consultation Booked</div>
+                <div class="alert-text">
+                    A customer has successfully booked an astrology consultation session. 
+                    Payment has been confirmed and customer details are provided below.
+                </div>
+            </div>
+
+            <!-- Booking Summary -->
+            <div class="booking-summary">
+                <div class="summary-title">🔮 Consultation Details</div>
+                
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div class="booking-id">Booking ID: {{ booking.astro_book_id }}</div>
+                </div>
+
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Service</div>
+                        <div class="detail-value">{{ booking.service.title }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Duration</div>
+                        <div class="detail-value">{{ booking.service.duration_minutes }} minutes</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Preferred Date</div>
+                        <div class="detail-value">{{ booking.preferred_date }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Preferred Time</div>
+                        <div class="detail-value">{{ booking.preferred_time }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Amount Paid</div>
+                        <div class="detail-value amount-highlight">₹{{ booking.service.price }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Status</div>
+                        <div class="detail-value">
+                            <span class="status-badge status-confirmed">✅ CONFIRMED</span>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Language</div>
+                        <div class="detail-value">{{ booking.language }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Gender</div>
+                        <div class="detail-value">{{ booking.get_gender_display }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Information -->
+            <div class="customer-info">
+                <div class="customer-title">👤 Customer Information</div>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Email</div>
+                        <div class="detail-value">{{ booking.contact_email }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Phone</div>
+                        <div class="detail-value">{{ booking.contact_phone }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Birth Place</div>
+                        <div class="detail-value">{{ booking.birth_place }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Booking Date</div>
+                        <div class="detail-value">{{ booking.created_at|date:"M d, Y H:i" }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Birth Details -->
+            <div class="birth-details">
+                <div class="birth-title">⭐ Birth Chart Information</div>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Birth Date</div>
+                        <div class="detail-value">{{ booking.birth_date }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Birth Time</div>
+                        <div class="detail-value">{{ booking.birth_time }}</div>
+                    </div>
+                </div>
+                
+                {% if booking.questions %}
+                <div class="detail-item" style="margin-top: 15px;">
+                    <div class="detail-label">Customer's Questions</div>
+                    <div class="detail-value" style="font-style: italic; background: #fff; padding: 10px; border-radius: 6px;">
+                        "{{ booking.questions }}"
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <a href="http://localhost:8000/admin/astrology/astrologybooking/{{ booking.id }}/change/" class="btn btn-primary">
+                    🔮 View Full Details
+                </a>
+                <a href="http://localhost:8000/admin/astrology/astrologybooking/" class="btn btn-secondary">
+                    📊 Manage Astrology
+                </a>
+                <a href="mailto:{{ booking.contact_email }}" class="btn btn-success">
+                    ✉️ Contact Customer
+                </a>
+            </div>
+
+            <!-- Timestamp -->
+            <div class="timestamp">
+                🕐 Alert generated on {{ now|date:"F d, Y" }} at {{ now|date:"g:i A" }}
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-title">🔮 OkPuja Astrology Admin</div>
+            <div style="font-size: 14px; margin: 10px 0;">
+                Professional Astrology Services Management System
+            </div>
+            <div style="font-size: 12px; color: #adb5bd; margin-top: 15px;">
+                This is an automated admin notification. Please do not reply to this email.<br>
+                For support, contact: support@okpuja.com
+            </div>
+        </div>
+    </div>
+</body>
+</html>
