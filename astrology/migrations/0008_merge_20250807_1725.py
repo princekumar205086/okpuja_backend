@@ -6,7 +6,6 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('astrology', '0003_add_google_meet_fields'),
         ('astrology', '0007_add_google_meet_session_fields'),
     ]
 

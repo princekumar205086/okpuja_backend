@@ -1,9 +1,7 @@
 from django.http import HttpResponse
-from django.template.loader import get_template, render_to_string
+from django.template.loader import get_template
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
-from django.core.mail import EmailMessage
-from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from booking.models import Booking
@@ -14,18 +12,14 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-from reportlab.lib.utils import ImageReader
 from io import BytesIO
 import datetime
-import requests
-from urllib.parse import urlparse
-import os
 
 def generate_invoice_pdf_data(booking):
     """Generate PDF invoice data for a booking (for email attachment)"""
     # Create PDF buffer
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
     
     # Container for the 'Flowable' objects
     elements = []
@@ -37,20 +31,18 @@ def generate_invoice_pdf_data(booking):
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
-        fontSize=20,
-        spaceAfter=20,
+        fontSize=24,
+        spaceAfter=30,
         alignment=TA_CENTER,
-        textColor=colors.HexColor('#2c3e50'),
-        fontName='Helvetica-Bold'
+        textColor=colors.HexColor('#ff6b35')
     )
     
     heading_style = ParagraphStyle(
         'CustomHeading',
         parent=styles['Heading2'],
-        fontSize=14,
-        spaceAfter=10,
-        textColor=colors.HexColor('#2c3e50'),
-        fontName='Helvetica-Bold'
+        fontSize=16,
+        spaceAfter=12,
+        textColor=colors.HexColor('#333333')
     )
     
     normal_style = ParagraphStyle(
@@ -58,32 +50,11 @@ def generate_invoice_pdf_data(booking):
         parent=styles['Normal'],
         fontSize=10,
         spaceAfter=6,
-        textColor=colors.HexColor('#333333')
     )
-    
-    footer_style = ParagraphStyle(
-        'Footer',
-        parent=styles['Normal'],
-        fontSize=8,
-        alignment=TA_CENTER,
-        textColor=colors.grey
-    )
-    
-    # Try to add logo
-    try:
-        logo_url = "https://media.licdn.com/dms/image/v2/D4E16AQGoOTbMqP7mVA/profile-displaybackgroundimage-shrink_200_800/profile-displaybackgroundimage-shrink_200_800/0/1726774481871?e=2147483647&v=beta&t=7o61d-oh2xOsk-EpkSlkTt227BkOZk-4p4FXx0ZyRRA"
-        response = requests.get(logo_url)
-        logo_img = ImageReader(BytesIO(response.content))
-        logo = Image(logo_img, width=180, height=60)
-        elements.append(logo)
-        elements.append(Spacer(1, 10))
-    except Exception as e:
-        # Fallback to text if logo can't be loaded
-        elements.append(Paragraph("OKPUJA", title_style))
     
     # Invoice Header
-    elements.append(Paragraph("INVOICE", title_style))
-    elements.append(Spacer(1, 15))
+    elements.append(Paragraph("🙏 OKPUJA INVOICE", title_style))
+    elements.append(Spacer(1, 20))
     
     # Company Information
     company_info = [
@@ -93,18 +64,20 @@ def generate_invoice_pdf_data(booking):
         ["Website: www.okpuja.com", f"Booking ID: {booking.book_id}"]
     ]
     
-    company_table = Table(company_info, colWidths=[3.5*inch, 3.5*inch])
+    company_table = Table(company_info, colWidths=[3*inch, 3*inch])
     company_table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('LINEBELOW', (0, 0), (-1, 0), 1, colors.HexColor('#2c3e50')),
-        ('PADDING', (0, 0), (-1, -1), 6),
+        ('LINEBELOW', (0, 0), (-1, 0), 1, colors.HexColor('#ff6b35')),
     ]))
     elements.append(company_table)
     elements.append(Spacer(1, 20))
     
     # Customer Information
+    elements.append(Paragraph("Bill To:", heading_style))
+    
+    # Get proper customer name
     customer_name = "Valued Customer"
     if booking.user:
         if hasattr(booking.user, 'first_name') and booking.user.first_name:
@@ -116,33 +89,26 @@ def generate_invoice_pdf_data(booking):
         elif hasattr(booking.user, 'email') and booking.user.email:
             customer_name = booking.user.email.split('@')[0].title()
     
-    # Create two-column layout for From and Bill To
-    from_to_data = [
-        ["From:", "Bill To:"],
-        ["OkPuja - Your Spiritual Journey Partner", f"Name: {customer_name}"],
-        ["123 Spiritual Street, Varanasi", f"Email: {booking.user.email if booking.user else 'N/A'}"],
-        ["Uttar Pradesh, 221001, India", f"Phone: {getattr(booking.user, 'phone', 'N/A') or 'N/A'}"],
-        ["support@okpuja.com | +91-XXXXXXXXXX", ""]
+    customer_info = [
+        [f"Name: {customer_name}"],
+        [f"Email: {booking.user.email}"],
+        [f"Phone: {getattr(booking.user, 'phone', 'N/A') or 'N/A'}"]
     ]
     
     if booking.address:
-        from_to_data.extend([
-            ["", f"Address: {booking.address.address_line1}"],
-            ["", f"{getattr(booking.address, 'address_line2', '') or ''}"],
-            ["", f"{booking.address.city}, {booking.address.state}"],
-            ["", f"Postal Code: {booking.address.postal_code}, {booking.address.country}"]
+        customer_info.extend([
+            [f"Address: {booking.address.address_line1}"],
+            [f"{getattr(booking.address, 'address_line2', '') or ''} {booking.address.city}, {booking.address.state}"],
+            [f"Postal Code: {booking.address.postal_code}, {booking.address.country}"]
         ])
     
-    from_to_table = Table(from_to_data, colWidths=[3.5*inch, 3.5*inch])
-    from_to_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+    customer_table = Table(customer_info, colWidths=[6*inch])
+    customer_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f8f9fa')),
-        ('PADDING', (0, 0), (-1, -1), 6),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e9ecef')),
     ]))
-    elements.append(from_to_table)
+    elements.append(customer_table)
     elements.append(Spacer(1, 20))
     
     # Service Details
@@ -165,40 +131,34 @@ def generate_invoice_pdf_data(booking):
         service_data.append([package_desc, "", ""])
     
     # Add totals
-    subtotal = booking.total_amount
-    tax = subtotal * 0.10  # 10% tax for example
-    total = subtotal + tax
-    
     service_data.extend([
         ['', '', ''],
-        ['', 'Subtotal:', f"₹{subtotal}"],
-        ['', 'Tax (10%):', f"₹{tax}"],
-        ['', 'Total Amount:', f"₹{total}"]
+        ['', 'Subtotal:', f"₹{booking.total_amount}"],
+        ['', 'Total Amount:', f"₹{booking.total_amount}"]
     ])
     
-    service_table = Table(service_data, colWidths=[3.5*inch, 2*inch, 1.5*inch])
+    service_table = Table(service_data, colWidths=[3*inch, 2*inch, 1*inch])
     service_table.setStyle(TableStyle([
         # Header row
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2c3e50')),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#ff6b35')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 11),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-        ('PADDING', (0, 0), (-1, 0), 8),
         
         # Data rows
-        ('FONTNAME', (0, 1), (-1, -4), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -4), 10),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
         ('ALIGN', (2, 1), (2, -1), 'RIGHT'),
-        ('PADDING', (0, 1), (-1, -1), 6),
         
         # Total rows
-        ('FONTNAME', (0, -3), (-1, -1), 'Helvetica-Bold'),
-        ('LINEABOVE', (0, -3), (-1, -3), 1, colors.black),
+        ('FONTNAME', (0, -2), (-1, -1), 'Helvetica-Bold'),
+        ('LINEABOVE', (0, -2), (-1, -2), 1, colors.black),
         ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#f8f9fa')),
         
         # Grid
-        ('GRID', (0, 0), (-1, -4), 0.5, colors.HexColor('#e9ecef')),
+        ('GRID', (0, 0), (-1, -3), 1, colors.black),
+        ('LINEABOVE', (0, -2), (-1, -1), 1, colors.black),
     ]))
     elements.append(service_table)
     elements.append(Spacer(1, 20))
@@ -207,59 +167,47 @@ def generate_invoice_pdf_data(booking):
     if hasattr(booking, 'payment_details') and booking.payment_details:
         elements.append(Paragraph("Payment Information:", heading_style))
         payment_details = booking.payment_details
-        
-        payment_data = [
-            ["Transaction ID", "Status", "Payment Date", "Amount Paid"],
-            [
-                payment_details.get('transaction_id', 'N/A'),
-                payment_details.get('status', 'N/A'),
-                payment_details.get('payment_date', 'N/A'),
-                f"₹{payment_details.get('amount', booking.total_amount)}"
-            ]
+        payment_info = [
+            [f"Transaction ID: {payment_details.get('transaction_id', 'N/A')}"],
+            [f"Payment Status: {payment_details.get('status', 'N/A')}"],
+            [f"Payment Date: {payment_details.get('payment_date', 'N/A')}"],
+            [f"Amount Paid: ₹{payment_details.get('amount', booking.total_amount)}"],
         ]
         
-        payment_table = Table(payment_data, colWidths=[1.75*inch, 1.75*inch, 1.75*inch, 1.75*inch])
+        payment_table = Table(payment_info, colWidths=[6*inch])
         payment_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2c3e50')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('PADDING', (0, 0), (-1, -1), 6),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e9ecef')),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ]))
         elements.append(payment_table)
         elements.append(Spacer(1, 20))
     
     # Terms and Conditions
     elements.append(Paragraph("Terms & Conditions:", heading_style))
-    terms_data = [
-        ["• This is a computer-generated invoice and does not require a physical signature."],
-        ["• Payment must be made in full before the service date."],
-        ["• Cancellation policy applies as per our terms of service."],
-        ["• For any queries, please contact our customer support."],
-        ["• Thank you for choosing OkPuja for your spiritual needs."]
+    terms = [
+        "• This is a computer-generated invoice and does not require a physical signature.",
+        "• Payment must be made in full before the service date.",
+        "• Cancellation policy applies as per our terms of service.",
+        "• For any queries, please contact our customer support.",
+        "• Thank you for choosing OkPuja for your spiritual needs."
     ]
     
-    terms_table = Table(terms_data, colWidths=[7*inch])
-    terms_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('PADDING', (0, 0), (-1, -1), 4),
-    ]))
-    elements.append(terms_table)
+    for term in terms:
+        elements.append(Paragraph(term, normal_style))
+    
     elements.append(Spacer(1, 30))
     
     # Footer
-    footer_text = [
-        "Thank you for choosing OkPuja!",
-        "May divine blessings bring peace and prosperity to your life.",
-        "www.okpuja.com | support@okpuja.com | +91-XXXXXXXXXX"
-    ]
-    
-    for text in footer_text:
-        elements.append(Paragraph(text, footer_style))
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontSize=8,
+        alignment=TA_CENTER,
+        textColor=colors.grey
+    )
+    elements.append(Paragraph("Thank you for choosing OkPuja! 🙏", footer_style))
+    elements.append(Paragraph("May divine blessings bring peace and prosperity to your life.", footer_style))
     
     # Build PDF
     doc.build(elements)
@@ -269,80 +217,6 @@ def generate_invoice_pdf_data(booking):
     buffer.close()
     
     return pdf_data
-
-def send_booking_confirmation_email(booking):
-    """Send booking confirmation email with invoice attached"""
-    try:
-        # Generate invoice PDF
-        pdf_data = generate_invoice_pdf_data(booking)
-        
-        # Get customer email
-        customer_email = booking.user.email if booking.user else None
-        if not customer_email:
-            # Fallback if no user email
-            if hasattr(booking, 'customer_email'):
-                customer_email = booking.customer_email
-            else:
-                # If no email is available, we can't send the email
-                return False
-        
-        # Create email subject and message
-        subject = f"Booking Confirmation - #{booking.book_id}"
-        
-        # Render HTML email template
-        context = {
-            'booking': booking,
-            'customer_name': booking.user.get_full_name() if booking.user else "Valued Customer",
-        }
-        
-        html_message = render_to_string('emails/booking_confirmation.html', context)
-        plain_message = render_to_string('emails/booking_confirmation.txt', context)
-        
-        # Create email
-        email = EmailMessage(
-            subject,
-            plain_message,
-            settings.DEFAULT_FROM_EMAIL,
-            [customer_email],
-        )
-        
-        # Attach HTML version
-        email.content_subtype = "html"
-        email.body = html_message
-        
-        # Attach PDF invoice
-        email.attach(
-            f"OkPuja-Invoice-{booking.book_id}.pdf",
-            pdf_data,
-            "application/pdf"
-        )
-        
-        # Send email
-        email.send()
-        
-        return True
-        
-    except Exception as e:
-        # Log the error
-        print(f"Error sending booking confirmation email: {str(e)}")
-        return False
-
-# Add this to your Booking model save method or booking creation view
-def booking_post_save(sender, instance, created, **kwargs):
-    """Signal to send email when a booking is created successfully"""
-    if created and instance.status == 'confirmed':  # Or whatever status indicates success
-        # Send confirmation email with invoice
-        send_booking_confirmation_email(instance)
-
-# Connect the signal (usually in models.py or apps.py)
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-
-@receiver(post_save, sender=Booking)
-def handle_booking_save(sender, instance, created, **kwargs):
-    """Handle booking save events"""
-    if created and instance.status == 'confirmed':
-        send_booking_confirmation_email(instance)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
