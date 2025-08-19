@@ -76,8 +76,21 @@ def generate_invoice_pdf_data(booking):
     
     # Customer Information
     elements.append(Paragraph("Bill To:", heading_style))
+    
+    # Get proper customer name
+    customer_name = "Valued Customer"
+    if booking.user:
+        if hasattr(booking.user, 'first_name') and booking.user.first_name:
+            first_name = booking.user.first_name
+            last_name = getattr(booking.user, 'last_name', '') or ''
+            customer_name = f"{first_name} {last_name}".strip()
+        elif hasattr(booking.user, 'username') and booking.user.username:
+            customer_name = booking.user.username
+        elif hasattr(booking.user, 'email') and booking.user.email:
+            customer_name = booking.user.email.split('@')[0].title()
+    
     customer_info = [
-        [f"Name: {getattr(booking.user, 'first_name', '') or 'N/A'} {getattr(booking.user, 'last_name', '') or ''}"],
+        [f"Name: {customer_name}"],
         [f"Email: {booking.user.email}"],
         [f"Phone: {getattr(booking.user, 'phone', 'N/A') or 'N/A'}"]
     ]

@@ -398,6 +398,13 @@ class Address(models.Model):
         max_length=100,
         default='India'
     )
+    landmark = models.CharField(
+        _('landmark'),
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text=_('Nearby landmark for easy identification')
+    )
     is_default = models.BooleanField(_('default address'), default=False)
 
     # Timestamps
@@ -418,6 +425,25 @@ class Address(models.Model):
 
     def __str__(self):
         return f"{self.address_line1}, {self.city}, {self.postal_code}"
+
+    def get_full_address(self):
+        """Get full address formatted for Google Maps"""
+        address_parts = [self.address_line1]
+        
+        if self.address_line2:
+            address_parts.append(self.address_line2)
+        
+        if self.landmark:
+            address_parts.append(f"Near {self.landmark}")
+        
+        address_parts.extend([
+            self.city,
+            self.state,
+            self.postal_code,
+            self.country
+        ])
+        
+        return ", ".join(filter(None, address_parts))
 
     def save(self, *args, **kwargs):
         """Ensure only one default address per user"""

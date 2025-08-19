@@ -229,6 +229,94 @@
                 margin: 8px 0;
             }
         }
+
+        /* Location and Maps Styles */
+        .location-section {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .location-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 15px;
+        }
+
+        .location-card {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            border-radius: 10px;
+            padding: 20px;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: none;
+            margin-bottom: 15px;
+        }
+
+        .location-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+        }
+
+        .location-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .location-icon {
+            font-size: 20px;
+        }
+
+        .location-text {
+            flex-grow: 1;
+            text-align: center;
+        }
+
+        .location-arrow {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .location-address {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .location-details {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .service-details-section {
+            background: #fff5f5;
+            border: 2px solid #fed7d7;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .service-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #c53030;
+            margin-bottom: 15px;
+        }
+
+        .status-cancelled { background: #f8d7da; color: #721c24; }
+        .status-refunded { background: #d1ecf1; color: #0c5460; }
     </style>
 </head>
 <body>
@@ -311,23 +399,152 @@
                 <div class="detail-grid">
                     <div class="detail-item">
                         <div class="detail-label">Name</div>
-                        <div class="detail-value">{{ booking.user.get_full_name|default:booking.user.username }}</div>
+                        <div class="detail-value">
+                            {% if booking.user.first_name %}
+                                {{ booking.user.first_name }} {{ booking.user.last_name|default:"" }}
+                            {% elif booking.user.username %}
+                                {{ booking.user.username }}
+                            {% else %}
+                                {{ booking.user.email|truncatechars:20 }}
+                            {% endif %}
+                        </div>
                     </div>
                     
                     <div class="detail-item">
                         <div class="detail-label">Email</div>
-                        <div class="detail-value">{{ booking.user.email }}</div>
+                        <div class="detail-value">
+                            <a href="mailto:{{ booking.user.email }}" style="color: #007bff; text-decoration: none;">
+                                {{ booking.user.email }}
+                            </a>
+                        </div>
                     </div>
                     
                     <div class="detail-item">
                         <div class="detail-label">Phone</div>
-                        <div class="detail-value">{{ booking.user.phone|default:"Not provided" }}</div>
+                        <div class="detail-value">
+                            {% if booking.user.phone %}
+                                <a href="tel:{{ booking.user.phone }}" style="color: #28a745; text-decoration: none;">
+                                    {{ booking.user.phone }}
+                                </a>
+                            {% else %}
+                                Not provided
+                            {% endif %}
+                        </div>
                     </div>
                     
                     <div class="detail-item">
                         <div class="detail-label">Customer Since</div>
                         <div class="detail-value">{{ booking.user.date_joined|date:"M d, Y" }}</div>
                     </div>
+
+                    <div class="detail-item">
+                        <div class="detail-label">Total Bookings</div>
+                        <div class="detail-value">{{ booking.user.booking_set.count }} booking{{ booking.user.booking_set.count|pluralize }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Account Status</div>
+                        <div class="detail-value">
+                            <span class="status-badge {% if booking.user.is_active %}status-confirmed{% else %}status-pending{% endif %}">
+                                {{ booking.user.is_active|yesno:"Active,Inactive" }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Service Location with Google Maps -->
+            {% if booking.address %}
+            <div class="location-section">
+                <div class="location-title">📍 Service Location & Navigation</div>
+                <div class="location-card" onclick="openGoogleMaps('{{ booking.address.get_full_address|urlencode }}')">
+                    <div class="location-header">
+                        <span class="location-icon">🗺️</span>
+                        <span class="location-text">Click to Navigate</span>
+                        <span class="location-arrow">→</span>
+                    </div>
+                    <div class="location-address">
+                        <strong>{{ booking.address.address_line1 }}</strong><br>
+                        {% if booking.address.address_line2 %}{{ booking.address.address_line2 }}<br>{% endif %}
+                        {{ booking.address.city }}, {{ booking.address.state }} {{ booking.address.postal_code }}<br>
+                        {{ booking.address.country }}
+                    </div>
+                    <div class="location-details">
+                        <div class="detail-grid" style="margin-top: 10px;">
+                            <div class="detail-item" style="padding: 8px;">
+                                <div class="detail-label">Landmark</div>
+                                <div class="detail-value">{{ booking.address.landmark|default:"Not specified" }}</div>
+                            </div>
+                            <div class="detail-item" style="padding: 8px;">
+                                <div class="detail-label">Contact at Location</div>
+                                <div class="detail-value">{{ booking.user.phone|default:"Use customer phone" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 15px;">
+                    <a href="https://www.google.com/maps/search/?api=1&query={{ booking.address.get_full_address|urlencode }}" 
+                       class="btn btn-success" 
+                       target="_blank" 
+                       style="text-decoration: none;">
+                        🗺️ Open in Google Maps
+                    </a>
+                </div>
+            </div>
+            {% else %}
+            <div class="location-section">
+                <div class="location-title">📍 Service Location</div>
+                <div class="alert-section">
+                    <div class="alert-title">⚠️ No Address Provided</div>
+                    <div class="alert-text">Customer has not provided a service address. Please contact them to confirm location details.</div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Enhanced Service Details -->
+            <div class="service-details-section">
+                <div class="service-title">🕉️ Service Details</div>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Service Name</div>
+                        <div class="detail-value">{{ booking.cart.puja_service.title }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Category</div>
+                        <div class="detail-value">{{ booking.cart.puja_service.category.name }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Duration</div>
+                        <div class="detail-value">{{ booking.cart.puja_service.duration|default:"Not specified" }} minutes</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Service Type</div>
+                        <div class="detail-value">{{ booking.cart.puja_service.service_type|default:"Standard Service" }}</div>
+                    </div>
+
+                    {% if booking.cart.package %}
+                    <div class="detail-item">
+                        <div class="detail-label">Package</div>
+                        <div class="detail-value">{{ booking.cart.package.name }} - {{ booking.cart.package.package_type }}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Package Location</div>
+                        <div class="detail-value">{{ booking.cart.package.location|default:"As per address" }}</div>
+                    </div>
+                    {% endif %}
+
+                    {% if booking.special_requirements %}
+                    <div class="detail-item" style="grid-column: 1 / -1;">
+                        <div class="detail-label">Special Requirements</div>
+                        <div class="detail-value" style="font-style: italic; background: #f8f9fa; padding: 10px; border-radius: 6px;">
+                            "{{ booking.special_requirements }}"
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -371,5 +588,33 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function openGoogleMaps(address) {
+            // Create Google Maps URL with the address
+            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+            
+            // Open in new window/tab
+            window.open(mapsUrl, '_blank');
+        }
+
+        // Add click handlers for location cards when email is viewed in web browsers
+        document.addEventListener('DOMContentLoaded', function() {
+            const locationCards = document.querySelectorAll('.location-card');
+            locationCards.forEach(card => {
+                card.style.cursor = 'pointer';
+                card.addEventListener('click', function() {
+                    const address = this.getAttribute('onclick');
+                    if (address) {
+                        // Extract address from onclick attribute
+                        const match = address.match(/openGoogleMaps\('([^']+)'\)/);
+                        if (match) {
+                            openGoogleMaps(decodeURIComponent(match[1]));
+                        }
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>
