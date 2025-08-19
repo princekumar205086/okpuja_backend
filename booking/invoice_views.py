@@ -116,10 +116,10 @@ def generate_invoice_pdf_data(booking):
     # Create two-column layout for From and Bill To
     from_to_data = [
         ["From:", "Bill To:"],
-        ["OkPuja - Your Spiritual Journey Partner", f"Name: {customer_name}"],
+        ["OkPuja - Vastu|Puja|Astrology", f"Name: {customer_name}"],
         ["123 Spiritual Street, Varanasi", f"Email: {booking.user.email if booking.user else 'N/A'}"],
-        ["Uttar Pradesh, 221001, India", f"Phone: {getattr(booking.user, 'phone', 'N/A') or 'N/A'}"],
-        ["support@okpuja.com | +91-XXXXXXXXXX", ""]
+        ["Ram Ratan Ji Nagar Rambagh, Purnia, Bihar, 854301", f"Phone: {getattr(booking.user, 'phone', 'N/A') or 'N/A'}"],
+        ["support@okpuja.com | +91-9471661636", ""]
     ]
     
     if booking.address:
@@ -252,7 +252,7 @@ def generate_invoice_pdf_data(booking):
     footer_text = [
         "Thank you for choosing OkPuja!",
         "May divine blessings bring peace and prosperity to your life.",
-        "www.okpuja.com | support@okpuja.com | +91-XXXXXXXXXX"
+        "www.okpuja.com | support@okpuja.com | +91-9471661636"
     ]
     
     for text in footer_text:
