@@ -1,7 +1,9 @@
 from django.http import HttpResponse
-from django.template.loader import get_template
+from django.template.loader import get_template, render_to_string
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
+from django.core.mail import EmailMessage
+from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from booking.models import Booking
@@ -17,6 +19,7 @@ from io import BytesIO
 import datetime
 import requests
 from urllib.parse import urlparse
+import os
 
 def generate_invoice_pdf_data(booking):
     """Generate PDF invoice data for a booking (for email attachment)"""
@@ -116,10 +119,10 @@ def generate_invoice_pdf_data(booking):
     # Create two-column layout for From and Bill To
     from_to_data = [
         ["From:", "Bill To:"],
-        ["OkPuja - Vastu|Puja|Astrology", f"Name: {customer_name}"],
+        ["OkPuja - Your Spiritual Journey Partner", f"Name: {customer_name}"],
         ["123 Spiritual Street, Varanasi", f"Email: {booking.user.email if booking.user else 'N/A'}"],
-        ["Ram Ratan Ji Nagar Rambagh, Purnia, Bihar, 854301", f"Phone: {getattr(booking.user, 'phone', 'N/A') or 'N/A'}"],
-        ["support@okpuja.com | +91-9471661636", ""]
+        ["Uttar Pradesh, 221001, India", f"Phone: {getattr(booking.user, 'phone', 'N/A') or 'N/A'}"],
+        ["support@okpuja.com | +91-XXXXXXXXXX", ""]
     ]
     
     if booking.address:
@@ -252,7 +255,7 @@ def generate_invoice_pdf_data(booking):
     footer_text = [
         "Thank you for choosing OkPuja!",
         "May divine blessings bring peace and prosperity to your life.",
-        "www.okpuja.com | support@okpuja.com | +91-9471661636"
+        "www.okpuja.com | support@okpuja.com | +91-XXXXXXXXXX"
     ]
     
     for text in footer_text:
@@ -266,6 +269,80 @@ def generate_invoice_pdf_data(booking):
     buffer.close()
     
     return pdf_data
+
+def send_booking_confirmation_email(booking):
+    """Send booking confirmation email with invoice attached"""
+    try:
+        # Generate invoice PDF
+        pdf_data = generate_invoice_pdf_data(booking)
+        
+        # Get customer email
+        customer_email = booking.user.email if booking.user else None
+        if not customer_email:
+            # Fallback if no user email
+            if hasattr(booking, 'customer_email'):
+                customer_email = booking.customer_email
+            else:
+                # If no email is available, we can't send the email
+                return False
+        
+        # Create email subject and message
+        subject = f"Booking Confirmation - #{booking.book_id}"
+        
+        # Render HTML email template
+        context = {
+            'booking': booking,
+            'customer_name': booking.user.get_full_name() if booking.user else "Valued Customer",
+        }
+        
+        html_message = render_to_string('emails/booking_confirmation.html', context)
+        plain_message = render_to_string('emails/booking_confirmation.txt', context)
+        
+        # Create email
+        email = EmailMessage(
+            subject,
+            plain_message,
+            settings.DEFAULT_FROM_EMAIL,
+            [customer_email],
+        )
+        
+        # Attach HTML version
+        email.content_subtype = "html"
+        email.body = html_message
+        
+        # Attach PDF invoice
+        email.attach(
+            f"OkPuja-Invoice-{booking.book_id}.pdf",
+            pdf_data,
+            "application/pdf"
+        )
+        
+        # Send email
+        email.send()
+        
+        return True
+        
+    except Exception as e:
+        # Log the error
+        print(f"Error sending booking confirmation email: {str(e)}")
+        return False
+
+# Add this to your Booking model save method or booking creation view
+def booking_post_save(sender, instance, created, **kwargs):
+    """Signal to send email when a booking is created successfully"""
+    if created and instance.status == 'confirmed':  # Or whatever status indicates success
+        # Send confirmation email with invoice
+        send_booking_confirmation_email(instance)
+
+# Connect the signal (usually in models.py or apps.py)
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+@receiver(post_save, sender=Booking)
+def handle_booking_save(sender, instance, created, **kwargs):
+    """Handle booking save events"""
+    if created and instance.status == 'confirmed':
+        send_booking_confirmation_email(instance)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

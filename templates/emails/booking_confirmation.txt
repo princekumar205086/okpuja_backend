@@ -1,0 +1,20 @@
+Dear {{ customer_name }},
+
+Thank you for booking with OkPuja! Your booking has been confirmed successfully.
+
+Booking Details:
+- Booking ID: {{ booking.book_id }}
+- Service: {{ booking.cart.puja_service.title }}
+- Date: {{ booking.selected_date }}
+- Time: {{ booking.selected_time }}
+- Total Amount: ₹{{ booking.total_amount }}
+
+Your invoice is attached to this email. Please keep it for your records.
+
+If you have any questions, please contact our support team at support@okpuja.com.
+
+Thank you for choosing OkPuja for your spiritual journey!
+
+--
+OkPuja - Your Spiritual Journey Partner
+www.okpuja.com | support@okpuja.com | +91-XXXXXXXXXX
