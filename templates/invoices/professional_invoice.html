@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice - {{ booking.book_id }}</title>
+    {% load invoice_filters %}
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background-color: #fff;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .invoice-container {
+            max-width: 850px;
+            margin: 30px auto;
+            background: #fff;
+            padding: 40px 50px;
+            border: 1px solid #eee;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            border-radius: 8px;
+            position: relative;
+        }
+
+        /* --- Header --- */
+        .invoice-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #E65100;
+            background: linear-gradient(90deg, #FFF3E0, #FFF8E1);
+            border-radius: 8px 8px 0 0;
+            padding: 20px;
+        }
+
+        .logo {
+            max-width: 180px;
+            height: auto;
+        }
+
+        .invoice-info {
+            text-align: right;
+        }
+
+        .invoice-title {
+            font-size: 36px;
+            font-weight: bold;
+            color: #E65100;
+            margin-bottom: 5px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .invoice-number {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        .invoice-dates {
+            font-size: 14px;
+            color: #444;
+        }
+
+        .date-item {
+            margin-bottom: 4px;
+        }
+
+        .date-label {
+            font-weight: 600;
+            color: #E65100;
+        }
+
+        /* --- Company & Client --- */
+        .company-info {
+            display: flex;
+            justify-content: space-between;
+            gap: 40px;
+            margin: 35px 0;
+        }
+
+        .from-section, .to-section {
+            flex: 1;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #E65100;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            border-bottom: 2px solid #FFB300;
+            display: inline-block;
+            padding-bottom: 4px;
+        }
+
+        .address {
+            font-size: 14px;
+            line-height: 1.7;
+            color: #555;
+        }
+
+        .address p {
+            margin-bottom: 3px;
+        }
+
+        /* --- Table --- */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+        }
+
+        .items-table th {
+            background-color: #E65100;
+            color: white;
+            text-align: left;
+            padding: 14px 12px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .items-table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+
+        .items-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+
+        /* --- Summary --- */
+        .summary {
+            display: flex;
+            justify-content: flex-end;
+            margin: 30px 0;
+        }
+
+        .summary-content {
+            width: 300px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 14px;
+        }
+
+        .summary-row.total {
+            font-weight: bold;
+            font-size: 16px;
+            border-top: 2px solid #E65100;
+            padding-top: 10px;
+            margin-top: 8px;
+            color: #E65100;
+        }
+
+        /* --- Payment Info --- */
+        .payment-info {
+            background-color: #FFF8E1;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 30px 0;
+            border: 1px solid #FFECB3;
+        }
+
+        .payment-title {
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: #E65100;
+            font-size: 15px;
+            text-transform: uppercase;
+        }
+
+        .payment-details {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .payment-details p {
+            margin-bottom: 4px;
+        }
+
+        /* --- Terms --- */
+        .terms {
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #fdfdfd;
+            border-radius: 5px;
+            border: 1px solid #eee;
+        }
+
+        .terms-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #E65100;
+            font-size: 15px;
+            text-transform: uppercase;
+        }
+
+        .terms-content {
+            font-size: 13.5px;
+            line-height: 1.7;
+            color: #555;
+        }
+
+        /* --- Paid Stamp --- */
+        .paid-stamp {
+            position: absolute;
+            top: 220px;
+            right: 80px;
+            padding: 12px 25px;
+            border: 3px solid #28a745;
+            border-radius: 6px;
+            transform: rotate(-12deg);
+            color: #28a745;
+            font-weight: bold;
+            font-size: 20px;
+            text-transform: uppercase;
+            opacity: 0.85;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        /* --- Footer --- */
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #777;
+            font-size: 13px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+
+        .footer p:first-child {
+            font-weight: bold;
+            color: #E65100;
+            font-size: 14px;
+        }
+
+        @media print {
+            body { background: white; padding: 0; }
+            .invoice-container { padding: 20px; max-width: none; box-shadow: none; border: none; }
+            .paid-stamp { position: fixed; }
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <!-- Header -->
+        <div class="invoice-header">
+            <div class="logo-container">
+                <img src="https://media.licdn.com/dms/image/v2/D4E16AQGoOTbMqP7mVA/profile-displaybackgroundimage-shrink_200_800/profile-displaybackgroundimage-shrink_200_800/0/1726774481871?e=2147483647&v=beta&t=7o61d-oh2xOsk-EpkSlkTt227BkOZk-4p4FXx0ZyRRA" alt="OkPuja Logo" class="logo">
+            </div>
+            <div class="invoice-info">
+                <div class="invoice-title">Invoice</div>
+                <div class="invoice-number">#{{ booking.book_id }}</div>
+                <div class="invoice-dates">
+                    <div class="date-item"><span class="date-label">Invoice Date:</span> {{ now|date:"F d, Y" }}</div>
+                    <div class="date-item"><span class="date-label">Service Date:</span> {{ booking.selected_date|date:"F d, Y" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Company Info -->
+        <div class="company-info">
+            <div class="from-section">
+                <div class="section-title">From</div>
+                <div class="address">
+                    <p><strong>OKPUJA PUJA|VASTU|ASTROLOGY</strong></p>
+                    <p></p>
+                    <p>Purnia, Bihar - 854301</p>
+                    <p>India</p>
+                    <p>Email: support@okpuja.com</p>
+                    <p>Phone: +91-9471661636</p>
+                </div>
+            </div>
+            <div class="to-section">
+                <div class="section-title">Bill To</div>
+                <div class="address">
+                    {% if booking.user %}
+                        <p><strong>
+                            {% if booking.user.username %}
+                                {{ booking.user.username|title }}
+                            {% else %}
+                                {{ booking.user.email|split:"@"|first|title_case }}
+                            {% endif %}
+                        </strong></p>
+                        <p>Email: {{ booking.user.email }}</p>
+                        <p>Phone: {{ booking.user.phone|default:"N/A" }}</p>
+                        {% if booking.address %}
+                            <p>{{ booking.address.address_line1 }}</p>
+                            {% if booking.address.address_line2 %}<p>{{ booking.address.address_line2 }}</p>{% endif %}
+                            <p>{{ booking.address.city }}, {{ booking.address.state }}</p>
+                            <p>{{ booking.address.postal_code }}, {{ booking.address.country }}</p>
+                        {% endif %}
+                    {% else %}
+                        <p><strong>Valued Customer</strong></p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <hr/>
+        <hr/>
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th class="text-center">Quantity</th>
+                    <th>Unit Price</th>
+                    <th class="text-right">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        {% if booking.cart.puja_service %}
+                            {{ booking.cart.puja_service.title }}
+                        {% else %}
+                            Spiritual Service
+                        {% endif %}
+                        {% if booking.cart.package %}
+                            <br><small style="color: #666;">Package: {{ booking.cart.package.package_type }}{% if booking.cart.package.location %} - {{ booking.cart.package.location }}{% endif %}</small>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">1</td>
+                    <td>Rs.{{ booking.total_amount }}</td>
+                    <td class="text-right">Rs.{{ booking.total_amount }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Summary -->
+        <div class="summary">
+            <div class="summary-content">
+                <div class="summary-row"><span>Subtotal:</span><span>Rs.{{ booking.total_amount }}</span></div>
+                <div class="summary-row"><span>Tax (0%):</span><span>Rs.0</span></div>
+                <div class="summary-row"><span>Discount:</span><span>Rs.0</span></div>
+                <div class="summary-row total"><span>Total:</span><span>Rs.{{ booking.total_amount }}</span></div>
+            </div>
+        </div>
+
+        <!-- Payment Info -->
+        {% if booking.payment_order_id or booking.cart %}
+        <div class="payment-info">
+            <div class="payment-title">Payment Information</div>
+            <div class="payment-details">
+                <p><strong>Payment Method:</strong> PhonePe</p>
+                <p><strong>Transaction ID:</strong> {{ booking.payment_order_id|default:"TXN-987654321" }}</p>
+                <p><strong>Payment Status:</strong> Completed</p>
+                <p><strong>Payment Date:</strong> {{ booking.created_at|date:"F d, Y" }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Terms -->
+        <div class="terms">
+            <div class="terms-title">Terms & Conditions</div>
+            <div class="terms-content">
+                <p>Payment is due within 15 days of invoice date. A 1.5% monthly service charge is applied to overdue balances.</p>
+                <p>All spiritual services are subject to availability of priests and materials.</p>
+                <p>Cancellations must be made at least 48 hours in advance for a full refund.</p>
+            </div>
+        </div>
+
+        <!-- Paid Stamp -->
+        {% if booking.status == "COMPLETED" or booking.status == "CONFIRMED" %}
+        <div class="paid-stamp">Paid</div>
+        {% endif %}
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Thank you for choosing OKPUJA</p>
+            <p>Bringing divine blessings to your doorstep</p>
+            <p>www.okpuja.com | support@okpuja.com | +91-9471661636</p>
+        </div>
+    </div>
+</body>
+</html>

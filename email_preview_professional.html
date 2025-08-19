@@ -83,7 +83,7 @@
     </style>
 </head>
 <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; line-height: 1.6; color: #374151; background-color: #f8fafc;">
-    {% load invoice_filters %}
+    
     
     <!-- Outer Container -->
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f8fafc;">
@@ -131,7 +131,7 @@
                                         
                                         <h2 style="font-size: 24px; font-weight: bold; color: #059669; margin: 0 0 8px 0; font-family: Georgia, serif;">Booking Confirmed</h2>
                                         <p style="color: #6b7280; font-size: 16px; margin: 0;">
-                                            Reference: <span style="font-family: 'Courier New', monospace; font-weight: bold; color: #2563eb;">#{{ booking.book_id }}</span>
+                                            Reference: <span style="font-family: 'Courier New', monospace; font-weight: bold; color: #2563eb;">#BK-7EDFC3B4</span>
                                         </p>
                                     </td>
                                 </tr>
@@ -142,7 +142,7 @@
                                 <tr>
                                     <td style="padding: 24px;">
                                         <h3 style="font-size: 20px; font-weight: 600; color: #2563eb; margin: 0 0 12px 0; font-family: Georgia, serif;">
-                                            Dear {% if booking.user.username %}{{ booking.user.username|title }}{% else %}{{ booking.user.email|split:"@"|first|title_case }}{% endif %},
+                                            Dear Princekumar205086,
                                         </h3>
                                         <p style="color: #374151; line-height: 1.6; margin: 0;">
                                             Thank you for entrusting us with your spiritual needs. Your booking has been successfully confirmed 
@@ -188,25 +188,12 @@
                                                             </td>
                                                             <td style="padding-left: 16px; vertical-align: top;">
                                                                 <p style="font-size: 12px; color: #6b7280; margin: 0 0 4px 0;">Service Type</p>
-                                                                <p style="font-weight: 500; color: #111827; margin: 0;">{{ booking.cart.puja_service.title|default:"Puja Service" }}</p>
+                                                                <p style="font-weight: 500; color: #111827; margin: 0;">Ganesh Puja</p>
                                                             </td>
                                                         </tr>
                                                     </table>
                                                     
-                                                    {% if booking.cart.package %}
-                                                    <!-- Package -->
-                                                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                                                        <tr>
-                                                            <td style="width: 40px; vertical-align: top;">
-                                                                <div style="width: 40px; height: 40px; background-color: #059669; border-radius: 50%; text-align: center; line-height: 40px; color: #ffffff; font-size: 16px;">📦</div>
-                                                            </td>
-                                                            <td style="padding-left: 16px; vertical-align: top;">
-                                                                <p style="font-size: 12px; color: #6b7280; margin: 0 0 4px 0;">Package</p>
-                                                                <p style="font-weight: 500; color: #111827; margin: 0;">{{ booking.cart.package.package_type|capfirst }} - {{ booking.cart.package.location }}</p>
-                                                            </td>
-                                                        </tr>
-                                                    </table>
-                                                    {% endif %}
+                                                    
                                                 </td>
                                             </tr>
                                         </table>
@@ -227,7 +214,7 @@
                                                             </td>
                                                             <td style="padding-left: 16px; vertical-align: top;">
                                                                 <p style="font-size: 12px; color: #6b7280; margin: 0 0 4px 0;">Date</p>
-                                                                <p style="font-weight: 500; color: #111827; margin: 0;">{{ booking.selected_date|date:"F d, Y" }}</p>
+                                                                <p style="font-weight: 500; color: #111827; margin: 0;">August 26, 2025</p>
                                                             </td>
                                                         </tr>
                                                     </table>
@@ -240,7 +227,7 @@
                                                             </td>
                                                             <td style="padding-left: 16px; vertical-align: top;">
                                                                 <p style="font-size: 12px; color: #6b7280; margin: 0 0 4px 0;">Time</p>
-                                                                <p style="font-weight: 500; color: #111827; margin: 0;">{{ booking.selected_time }}</p>
+                                                                <p style="font-weight: 500; color: #111827; margin: 0;">11:30 p.m.</p>
                                                             </td>
                                                         </tr>
                                                     </table>
@@ -259,7 +246,7 @@
                                             <tr>
                                                 <td style="vertical-align: middle;">
                                                     <p style="font-size: 14px; color: #6b7280; margin: 0 0 4px 0;">Total Amount</p>
-                                                    <p style="font-size: 32px; font-weight: bold; color: #2563eb; margin: 0;">₹{{ booking.total_amount }}</p>
+                                                    <p style="font-size: 32px; font-weight: bold; color: #2563eb; margin: 0;">₹0</p>
                                                 </td>
                                                 <td style="text-align: right; vertical-align: middle; width: 60px;">
                                                     <div style="width: 48px; height: 48px; background-color: #2563eb; border-radius: 50%; text-align: center; line-height: 48px; color: #ffffff; font-size: 20px; font-weight: bold;">₹</div>
@@ -316,13 +303,13 @@
                                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
                                             <tr>
                                                 <td style="padding: 4px 8px;">
-                                                    <a href="http://localhost:8000/api/booking/public/invoice/pdf/{{ booking.book_id }}/" 
+                                                    <a href="http://localhost:8000/api/booking/public/invoice/pdf/BK-7EDFC3B4/" 
                                                        style="display: inline-block; padding: 12px 24px; background-color: #2563eb; color: #ffffff; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);">
                                                         📄 Download PDF Invoice
                                                     </a>
                                                 </td>
                                                 <td style="padding: 4px 8px;">
-                                                    <a href="http://localhost:8000/api/booking/public/invoice/html/{{ booking.book_id }}/" 
+                                                    <a href="http://localhost:8000/api/booking/public/invoice/html/BK-7EDFC3B4/" 
                                                        style="display: inline-block; padding: 12px 24px; background-color: #ffffff; color: #2563eb; border: 1px solid #2563eb; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
                                                         👁️ View Online Invoice
                                                     </a>
@@ -335,7 +322,7 @@
                             </table>
                             
                             <!-- Address Information -->
-                            {% if booking.address %}
+                            
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: linear-gradient(to bottom right, #eff6ff, #e0e7ff); border: 1px solid #c7d2fe; border-radius: 12px; margin-bottom: 32px;">
                                 <tr>
                                     <td style="padding: 24px;">
@@ -363,19 +350,17 @@
                                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: rgba(255, 255, 255, 0.7); border-radius: 8px; border-left: 4px solid #3b82f6;">
                                             <tr>
                                                 <td style="padding: 16px;">
-                                                    <p style="margin: 0 0 4px 0; color: #111827; font-weight: 500;">{{ booking.address.address_line1 }}</p>
-                                                    {% if booking.address.address_line2 %}
-                                                    <p style="margin: 0 0 4px 0; color: #111827;">{{ booking.address.address_line2 }}</p>
-                                                    {% endif %}
-                                                    <p style="margin: 0 0 4px 0; color: #111827;">{{ booking.address.city }}, {{ booking.address.state }} - {{ booking.address.postal_code }}</p>
-                                                    <p style="margin: 0; color: #6b7280;">{{ booking.address.country }}</p>
+                                                    <p style="margin: 0 0 4px 0; color: #111827; font-weight: 500;">Rohini, Sector 5</p>
+                                                    
+                                                    <p style="margin: 0 0 4px 0; color: #111827;">Purnia, Bihar - 854301</p>
+                                                    <p style="margin: 0; color: #6b7280;">India</p>
                                                 </td>
                                             </tr>
                                         </table>
                                     </td>
                                 </tr>
                             </table>
-                            {% endif %}
+                            
                             
                         </td>
                     </tr>

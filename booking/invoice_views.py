@@ -1,240 +1,173 @@
 from django.http import HttpResponse
-from django.template.loader import get_template
-from django.shortcuts import get_object_or_404
+from django.template.loader import render_to_string
+from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from booking.models import Booking
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.lib import colors
-from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from xhtml2pdf import pisa
 from io import BytesIO
 import datetime
+from django.conf import settings
+
+def generate_invoice_html(booking):
+    """Generate HTML invoice for a booking"""
+    context = {
+        'booking': booking,
+        'now': timezone.now()
+    }
+    return render_to_string('invoices/professional_invoice.html', context)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def generate_invoice_html_view(request, book_id):
+    """Generate and return HTML invoice for a booking (authenticated)"""
+    try:
+        booking = get_object_or_404(Booking, book_id=book_id, user=request.user)
+        context = {
+            'booking': booking,
+            'now': timezone.now()
+        }
+        return render(request, 'invoices/professional_invoice.html', context)
+    except Exception as e:
+        return HttpResponse(f"Error generating invoice: {str(e)}", status=500)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+@csrf_exempt
+def public_invoice_html_view(request, book_id):
+    """Generate and return HTML invoice for a booking (public access)"""
+    try:
+        booking = get_object_or_404(Booking, book_id=book_id)
+        context = {
+            'booking': booking,
+            'now': timezone.now()
+        }
+        return render(request, 'invoices/professional_invoice.html', context)
+    except Exception as e:
+        return HttpResponse(f"Error generating invoice: {str(e)}", status=500)
 
 def generate_invoice_pdf_data(booking):
-    """Generate PDF invoice data for a booking (for email attachment)"""
-    # Create PDF buffer
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+    """Generate PDF invoice data for a booking using HTML-to-PDF (for email attachment)"""
+    import warnings
+    import logging
     
-    # Container for the 'Flowable' objects
-    elements = []
+    # Suppress warnings during PDF generation
+    warnings.filterwarnings('ignore')
+    logging.getLogger('xhtml2pdf').setLevel(logging.ERROR)
+    logging.getLogger('reportlab').setLevel(logging.ERROR)
     
-    # Get styles
-    styles = getSampleStyleSheet()
-    
-    # Custom styles
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=24,
-        spaceAfter=30,
-        alignment=TA_CENTER,
-        textColor=colors.HexColor('#ff6b35')
-    )
-    
-    heading_style = ParagraphStyle(
-        'CustomHeading',
-        parent=styles['Heading2'],
-        fontSize=16,
-        spaceAfter=12,
-        textColor=colors.HexColor('#333333')
-    )
-    
-    normal_style = ParagraphStyle(
-        'CustomNormal',
-        parent=styles['Normal'],
-        fontSize=10,
-        spaceAfter=6,
-    )
-    
-    # Invoice Header
-    elements.append(Paragraph("🙏 OKPUJA INVOICE", title_style))
-    elements.append(Spacer(1, 20))
-    
-    # Company Information
-    company_info = [
-        ["OkPuja - Your Spiritual Journey Partner", ""],
-        ["Email: support@okpuja.com", f"Invoice Date: {datetime.datetime.now().strftime('%B %d, %Y')}"],
-        ["Phone: +91-XXXXXXXXXX", f"Invoice #: INV-{booking.book_id}"],
-        ["Website: www.okpuja.com", f"Booking ID: {booking.book_id}"]
-    ]
-    
-    company_table = Table(company_info, colWidths=[3*inch, 3*inch])
-    company_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('LINEBELOW', (0, 0), (-1, 0), 1, colors.HexColor('#ff6b35')),
-    ]))
-    elements.append(company_table)
-    elements.append(Spacer(1, 20))
-    
-    # Customer Information
-    elements.append(Paragraph("Bill To:", heading_style))
-    
-    # Get proper customer name
-    customer_name = "Valued Customer"
-    if booking.user:
-        if hasattr(booking.user, 'first_name') and booking.user.first_name:
-            first_name = booking.user.first_name
-            last_name = getattr(booking.user, 'last_name', '') or ''
-            customer_name = f"{first_name} {last_name}".strip()
-        elif hasattr(booking.user, 'username') and booking.user.username:
-            customer_name = booking.user.username
-        elif hasattr(booking.user, 'email') and booking.user.email:
-            customer_name = booking.user.email.split('@')[0].title()
-    
-    customer_info = [
-        [f"Name: {customer_name}"],
-        [f"Email: {booking.user.email}"],
-        [f"Phone: {getattr(booking.user, 'phone', 'N/A') or 'N/A'}"]
-    ]
-    
-    if booking.address:
-        customer_info.extend([
-            [f"Address: {booking.address.address_line1}"],
-            [f"{getattr(booking.address, 'address_line2', '') or ''} {booking.address.city}, {booking.address.state}"],
-            [f"Postal Code: {booking.address.postal_code}, {booking.address.country}"]
-        ])
-    
-    customer_table = Table(customer_info, colWidths=[6*inch])
-    customer_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-    ]))
-    elements.append(customer_table)
-    elements.append(Spacer(1, 20))
-    
-    # Service Details
-    elements.append(Paragraph("Service Details:", heading_style))
-    
-    service_data = [
-        ['Description', 'Date & Time', 'Amount'],
-    ]
-    
-    # Service row
-    service_name = booking.cart.puja_service.title if booking.cart.puja_service else "Service"
-    service_date = f"{booking.selected_date.strftime('%B %d, %Y')} at {booking.selected_time}"
-    service_amount = f"₹{booking.total_amount}"
-    
-    service_data.append([service_name, service_date, service_amount])
-    
-    # Package details if available
-    if booking.cart.package:
-        package_desc = f"Package: {booking.cart.package.package_type} - {getattr(booking.cart.package, 'location', '')}"
-        service_data.append([package_desc, "", ""])
-    
-    # Add totals
-    service_data.extend([
-        ['', '', ''],
-        ['', 'Subtotal:', f"₹{booking.total_amount}"],
-        ['', 'Total Amount:', f"₹{booking.total_amount}"]
-    ])
-    
-    service_table = Table(service_data, colWidths=[3*inch, 2*inch, 1*inch])
-    service_table.setStyle(TableStyle([
-        # Header row
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#ff6b35')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
-        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+    try:
+        # Generate HTML content using the same template as the web view
+        context = {
+            'booking': booking,
+            'now': timezone.now()
+        }
+        html_content = render_to_string('invoices/professional_invoice.html', context)
         
-        # Data rows
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 10),
-        ('ALIGN', (2, 1), (2, -1), 'RIGHT'),
+        # Create simplified HTML for PDF (remove Google Fonts to avoid warnings)
+        pdf_html = html_content.replace(
+            "@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Playfair+Display:wght@400;600;700&display=swap');",
+            ""
+        ).replace(
+            "font-family: 'Roboto', sans-serif;",
+            "font-family: Arial, sans-serif;"
+        ).replace(
+            "font-family: 'Playfair Display', serif;",
+            "font-family: Georgia, serif;"
+        ).replace(
+            '<style>',
+            '''<style>
+            @page {
+                size: A4;
+                margin: 2cm;
+            }
+            
+            body {
+                background-color: white !important;
+                padding: 0;
+                margin: 0;
+                font-family: Arial, sans-serif;
+            }
+            
+            .invoice-container {
+                max-width: none;
+                width: 100%;
+                margin: 0;
+                padding: 20px;
+                box-shadow: none !important;
+            }
+            
+            .watermark {
+                opacity: 0.05 !important;
+            }
+            
+            .logo {
+                max-width: 120px;
+            }
+            
+            '''
+        )
         
-        # Total rows
-        ('FONTNAME', (0, -2), (-1, -1), 'Helvetica-Bold'),
-        ('LINEABOVE', (0, -2), (-1, -2), 1, colors.black),
-        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#f8f9fa')),
+        # Create PDF from HTML using xhtml2pdf with suppressed output
+        pdf_buffer = BytesIO()
         
-        # Grid
-        ('GRID', (0, 0), (-1, -3), 1, colors.black),
-        ('LINEABOVE', (0, -2), (-1, -1), 1, colors.black),
-    ]))
-    elements.append(service_table)
-    elements.append(Spacer(1, 20))
-    
-    # Payment Information
-    if hasattr(booking, 'payment_details') and booking.payment_details:
-        elements.append(Paragraph("Payment Information:", heading_style))
-        payment_details = booking.payment_details
-        payment_info = [
-            [f"Transaction ID: {payment_details.get('transaction_id', 'N/A')}"],
-            [f"Payment Status: {payment_details.get('status', 'N/A')}"],
-            [f"Payment Date: {payment_details.get('payment_date', 'N/A')}"],
-            [f"Amount Paid: ₹{payment_details.get('amount', booking.total_amount)}"],
-        ]
+        # Redirect stderr to suppress warnings
+        import sys
+        import os
+        old_stderr = sys.stderr
+        sys.stderr = open(os.devnull, 'w')
         
-        payment_table = Table(payment_info, colWidths=[6*inch])
-        payment_table.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ]))
-        elements.append(payment_table)
-        elements.append(Spacer(1, 20))
-    
-    # Terms and Conditions
-    elements.append(Paragraph("Terms & Conditions:", heading_style))
-    terms = [
-        "• This is a computer-generated invoice and does not require a physical signature.",
-        "• Payment must be made in full before the service date.",
-        "• Cancellation policy applies as per our terms of service.",
-        "• For any queries, please contact our customer support.",
-        "• Thank you for choosing OkPuja for your spiritual needs."
-    ]
-    
-    for term in terms:
-        elements.append(Paragraph(term, normal_style))
-    
-    elements.append(Spacer(1, 30))
-    
-    # Footer
-    footer_style = ParagraphStyle(
-        'Footer',
-        parent=styles['Normal'],
-        fontSize=8,
-        alignment=TA_CENTER,
-        textColor=colors.grey
-    )
-    elements.append(Paragraph("Thank you for choosing OkPuja! 🙏", footer_style))
-    elements.append(Paragraph("May divine blessings bring peace and prosperity to your life.", footer_style))
-    
-    # Build PDF
-    doc.build(elements)
-    
-    # Get PDF data
-    pdf_data = buffer.getvalue()
-    buffer.close()
-    
-    return pdf_data
+        try:
+            pisa_status = pisa.CreatePDF(pdf_html, dest=pdf_buffer)
+        finally:
+            sys.stderr.close()
+            sys.stderr = old_stderr
+        
+        if pisa_status.err:
+            raise Exception(f"PDF generation error: {pisa_status.err}")
+        
+        pdf_data = pdf_buffer.getvalue()
+        pdf_buffer.close()
+        
+        return pdf_data
+    except Exception as e:
+        # Fallback to a simple error PDF if HTML-to-PDF fails
+        buffer = BytesIO()
+        from reportlab.pdfgen import canvas
+        try:
+            p = canvas.Canvas(buffer)
+            p.drawString(100, 750, f"Invoice - {booking.book_id}")
+            p.drawString(100, 730, f"Error: {str(e)}")
+            p.drawString(100, 710, f"Booking ID: {booking.book_id}")
+            p.drawString(100, 690, f"Amount: ₹{booking.total_amount}")
+            if booking.cart and booking.cart.puja_service:
+                p.drawString(100, 670, f"Service: {booking.cart.puja_service.title}")
+            p.drawString(100, 650, f"Date: {booking.selected_date}")
+            p.showPage()
+            p.save()
+        except:
+            p = canvas.Canvas(buffer)
+            p.drawString(100, 750, f"OkPuja Invoice - {booking.book_id}")
+            p.drawString(100, 730, f"Total: ₹{booking.total_amount}")
+            p.showPage()
+            p.save()
+        
+        pdf_data = buffer.getvalue()
+        buffer.close()
+        return pdf_data
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def generate_invoice_pdf(request, book_id):
     """Generate and return PDF invoice for a booking (authenticated)"""
     try:
-        # Get booking
         booking = get_object_or_404(Booking, book_id=book_id, user=request.user)
-        
-        # Generate PDF data
         pdf_data = generate_invoice_pdf_data(booking)
-        
-        # Create response
         response = HttpResponse(pdf_data, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="OkPuja-Invoice-{booking.book_id}.pdf"'
-        
         return response
-        
     except Exception as e:
         return HttpResponse(f"Error generating invoice: {str(e)}", status=500)
 
@@ -242,24 +175,12 @@ def generate_invoice_pdf(request, book_id):
 @permission_classes([AllowAny])
 @csrf_exempt
 def public_invoice_pdf(request, book_id):
-    """Generate and return PDF invoice for a booking (public access for email links)"""
+    """Generate and return PDF invoice for a booking (public access)"""
     try:
-        # Get booking - no user restriction for public access
         booking = get_object_or_404(Booking, book_id=book_id)
-        
-        # Additional security: only allow if booking has payment details
-        # This ensures only confirmed bookings can have public invoices
-        if not hasattr(booking, 'payment_details') or not booking.payment_details:
-            return HttpResponse("Invoice not available for this booking", status=404)
-        
-        # Generate PDF data
         pdf_data = generate_invoice_pdf_data(booking)
-        
-        # Create response
         response = HttpResponse(pdf_data, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="OkPuja-Invoice-{booking.book_id}.pdf"'
-        
         return response
-        
     except Exception as e:
         return HttpResponse(f"Error generating invoice: {str(e)}", status=500)
