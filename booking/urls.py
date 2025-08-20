@@ -8,7 +8,7 @@ from .invoice_views import (
 
 router = DefaultRouter()
 router.register(r'bookings', BookingViewSet, basename='booking')
-# Admin bookings are handled by admin_urls.py instead of router
+router.register(r'admin/bookings', AdminBookingViewSet, basename='admin-booking')
 
 urlpatterns = [
     path('', include(router.urls)),
