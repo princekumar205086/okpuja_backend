@@ -172,8 +172,8 @@ class AstrologyBookingRescheduleView(APIView):
             else:
                 booking = AstrologyBooking.objects.get(pk=pk, user=request.user)
             
-            # Check permissions: user can reschedule their own booking, or admin/staff can reschedule any booking
-            if not (booking.user == request.user or request.user.is_staff):
+            # Enforce admin-only reschedule policy: only admin/staff can reschedule
+            if not request.user.is_staff and getattr(request.user, 'role', '') != 'ADMIN':
                 return Response(
                     {'error': 'You do not have permission to reschedule this booking'},
                     status=status.HTTP_403_FORBIDDEN

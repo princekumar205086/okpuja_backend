@@ -98,15 +98,13 @@ class BookingViewSet(viewsets.ModelViewSet):
         request_body=BookingRescheduleSerializer,
         responses={200: BookingSerializer}
     )
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
     def reschedule(self, request, pk=None):
-        """Reschedule a booking (available to assigned employee or admin)"""
+        """Reschedule a booking (Admin-only)"""
         booking = self.get_object()
         
-        # Check permissions: user can reschedule their own booking, or employee can reschedule assigned booking
-        if not (booking.user == request.user or 
-                booking.assigned_to == request.user or 
-                request.user.role == User.Role.ADMIN):
+        # Admin-only: permission enforced by decorator
+        if not request.user.role == User.Role.ADMIN:
             return Response(
                 {'error': 'You do not have permission to reschedule this booking'},
                 status=status.HTTP_403_FORBIDDEN

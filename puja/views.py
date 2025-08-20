@@ -107,7 +107,7 @@ class PackageDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAdminUser]
 
 class PujaBookingRescheduleView(APIView):
-    """Reschedule a puja booking"""
+    """Reschedule a puja booking (Admin-only)"""
     permission_classes = [IsActiveUser]
     
     def post(self, request, pk):
@@ -119,8 +119,8 @@ class PujaBookingRescheduleView(APIView):
             else:
                 booking = PujaBooking.objects.get(pk=pk, user=request.user)
             
-            # Check permissions: user can reschedule their own booking, or staff can reschedule any booking
-            if not (booking.user == request.user or request.user.is_staff):
+            # Only admin/staff can reschedule bookings per new policy
+            if not request.user.is_staff and getattr(request.user, 'role', '') != 'ADMIN':
                 return Response(
                     {'error': 'You do not have permission to reschedule this booking'},
                     status=status.HTTP_403_FORBIDDEN
