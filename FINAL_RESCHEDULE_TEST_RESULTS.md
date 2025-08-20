@@ -16,11 +16,11 @@ Successfully tested all reschedule endpoints for both Puja and Astrology booking
 - **Is Staff:** True
 - **Is Superuser:** True
 
-### ❌ User Credentials (NEEDS CREATION):
-- **Email:** `aslprinceraj@gmail.com`
-- **Password:** `testpass123`
-- **Status:** ❌ No active account found (HTTP 401)
-- **Note:** User account needs to be created for testing
+### User Credentials (CREATION):
+- **Email:** `asliprinceraj@gmail.com`
+- **Password:** `Testpass@123`
+- **Status:** account found
+- **Note:** User account created for testing
 
 ### 🔑 Login Endpoint:
 ```http

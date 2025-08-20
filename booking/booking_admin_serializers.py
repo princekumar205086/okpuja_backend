@@ -46,7 +46,7 @@ class AdminBookingSerializer(serializers.ModelSerializer):
     
     def get_user_phone(self, obj):
         """Get user's phone number if available"""
-        return getattr(obj.user, 'phone_number', None) or 'N/A'
+        return getattr(obj.user, 'phone', None) or 'N/A'
     
     def get_assigned_to_name(self, obj):
         """Get assigned employee's name"""
@@ -233,7 +233,6 @@ class AdminBookingDetailSerializer(AdminBookingSerializer):
             'phone': getattr(obj.user, 'phone', None),
             'date_joined': obj.user.date_joined,
             'is_active': obj.user.is_active,
-            'phone_number': getattr(obj.user, 'phone_number', None),
             'total_bookings': obj.user.bookings.count(),
             'completed_bookings': obj.user.bookings.filter(status=BookingStatus.COMPLETED).count()
         }
